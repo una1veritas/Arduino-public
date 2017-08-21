@@ -1,0 +1,222 @@
+   1               		.file	"int.c"
+   2               		.arch atmega32
+   3               	__SREG__ = 0x3f
+   4               	__SP_H__ = 0x3e
+   5               	__SP_L__ = 0x3d
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.global __do_copy_data
+   9               		.global __do_clear_bss
+  17               	.Ltext0:
+  18               	.global	val2
+  19               	.global	val2
+  20               		.section .bss
+  23               	val2:
+  24 0000 00        		.skip 1、0
+  25               	.global	val1
+  26               	.global	val1
+  29               	val1:
+  30 0001 00        		.skip 1、0
+  31               		.text
+  32               	.global	Init_INT0
+  34               	Init_INT0:
+  35               	.LFB2:
+  36               	.LM1:
+  37               	/* prologue: frame size=0 */
+  38               	/* prologue end (size=0) */
+  39               	.LM2:
+  40 0000 8FB7      		in r24、95-0x20
+  41 0002 8068      		ori r24、lo8(-128)
+  42 0004 8FBF      		out 95-0x20、r24
+  43               	.LM3:
+  44 0006 85B7      		in r24、85-0x20
+  45 0008 8260      		ori r24、lo8(2)
+  46 000a 85BF      		out 85-0x20、r24
+  47               	.LM4:
+  48 000c 80E4      		ldi r24、lo8(64)
+  49 000e 8BBF      		out 91-0x20、r24
+  50               	/* epilogue: frame size=0 */
+  51 0010 0895      		ret
+  52               	/* epilogue end (size=1) */
+  53               	/* function Init_INT0 size 9 (8) */
+  54               	.LFE2:
+  56               	.global	__vector_1
+  58               	__vector_1:
+  59               	.LFB3:
+  60               	.LM5:
+  61               	/* prologue: frame size=0 */
+  62 0012 1F92      		push __zero_reg__
+  63 0014 0F92      		push __tmp_reg__
+  64 0016 0FB6      		in __tmp_reg__、__SREG__
+  65 0018 0F92      		push __tmp_reg__
+  66 001a 1124      		clr __zero_reg__
+  67 001c 2F93      		push r18
+  68 001e 3F93      		push r19
+  69 0020 4F93      		push r20
+  70 0022 5F93      		push r21
+  71 0024 6F93      		push r22
+  72 0026 7F93      		push r23
+  73 0028 8F93      		push r24
+  74 002a 9F93      		push r25
+  75 002c AF93      		push r26
+  76 002e BF93      		push r27
+  77 0030 CF93      		push r28
+  78 0032 EF93      		push r30
+  79 0034 FF93      		push r31
+  80               	/* prologue end (size=18) */
+  81               	.LM6:
+  82               	/* #APP */
+  83 0036 F894      		cli
+  84               	.LM7:
+  85               	/* #NOAPP */
+  86 0038 859B      		sbis 48-0x20、5
+  87 003a 0DC0      		rjmp .L3
+  88               	.LM8:
+  89 003c 8091 0000 		lds r24、val2
+  90 0040 8F5F      		subi r24、lo8(-(1))
+  91 0042 8093 0000 		sts val2、r24
+  92 0046 8091 0000 		lds r24、val2
+  93 004a 8536      		cpi r24、lo8(101)
+  94 004c A0F0      		brlo .L5
+  95 004e 84E6      		ldi r24、lo8(100)
+  96 0050 8093 0000 		sts val2、r24
+  97 0054 10C0      		rjmp .L5
+  98               	.L3:
+  99               	.LM9:
+ 100 0056 8091 0000 		lds r24、val2
+ 101 005a 8630      		cpi r24、lo8(6)
+ 102 005c 60F0      		brlo .L5
+ 103               	.LM10:
+ 104 005e 8091 0000 		lds r24、val1
+ 105 0062 8823      		tst r24
+ 106 0064 19F0      		breq .L7
+ 107 0066 1092 0000 		sts val1、__zero_reg__
+ 108 006a 03C0      		rjmp .L8
+ 109               	.L7:
+ 110               	.LM11:
+ 111 006c 81E0      		ldi r24、lo8(1)
+ 112 006e 8093 0000 		sts val1、r24
+ 113               	.L8:
+ 114               	.LM12:
+ 115 0072 1092 0000 		sts val2、__zero_reg__
+ 116               	.L5:
+ 117               	.LM13:
+ 118 0076 C091 0000 		lds r28、val1
+ 119 007a CC23      		tst r28
+ 120 007c C9F5      		brne .L9
+ 121               	.LM14:
+ 122 007e C098      		cbi 56-0x20、0
+ 123               	.LM15:
+ 124 0080 969A      		sbi 50-0x20、6
+ 125               	.LM16:
+ 126 0082 8FEF      		ldi r24、lo8(-1)
+ 127 0084 84BB      		out 52-0x20、r24
+ 128               	.LM17:
+ 129 0086 6FEE      		ldi r22、lo8(239)
+ 130 0088 70E0      		ldi r23、hi8(239)
+ 131 008a 80E2      		ldi r24、lo8(32)
+ 132 008c 90E0      		ldi r25、hi8(32)
+ 133 008e 0E94 0000 		call LCD_WR_REG
+ 134               	.LM18:
+ 135 0092 60E0      		ldi r22、lo8(0)
+ 136 0094 70E0      		ldi r23、hi8(0)
+ 137 0096 81E2      		ldi r24、lo8(33)
+ 138 0098 90E0      		ldi r25、hi8(33)
+ 139 009a 0E94 0000 		call LCD_WR_REG
+ 140               	.LM19:
+ 141 009e 60E0      		ldi r22、lo8(0)
+ 142 00a0 70E0      		ldi r23、hi8(0)
+ 143 00a2 80E5      		ldi r24、lo8(80)
+ 144 00a4 90E0      		ldi r25、hi8(80)
+ 145 00a6 0E94 0000 		call LCD_WR_REG
+ 146               	.LM20:
+ 147 00aa 6FEE      		ldi r22、lo8(239)
+ 148 00ac 70E0      		ldi r23、hi8(239)
+ 149 00ae 81E5      		ldi r24、lo8(81)
+ 150 00b0 90E0      		ldi r25、hi8(81)
+ 151 00b2 0E94 0000 		call LCD_WR_REG
+ 152               	.LM21:
+ 153 00b6 60E0      		ldi r22、lo8(0)
+ 154 00b8 70E0      		ldi r23、hi8(0)
+ 155 00ba 82E5      		ldi r24、lo8(82)
+ 156 00bc 90E0      		ldi r25、hi8(82)
+ 157 00be 0E94 0000 		call LCD_WR_REG
+ 158               	.LM22:
+ 159 00c2 6FE3      		ldi r22、lo8(319)
+ 160 00c4 71E0      		ldi r23、hi8(319)
+ 161 00c6 83E5      		ldi r24、lo8(83)
+ 162 00c8 90E0      		ldi r25、hi8(83)
+ 163 00ca 0E94 0000 		call LCD_WR_REG
+ 164               	.LM23:
+ 165 00ce 68E2      		ldi r22、lo8(4136)
+ 166 00d0 70E1      		ldi r23、hi8(4136)
+ 167 00d2 83E0      		ldi r24、lo8(3)
+ 168 00d4 90E0      		ldi r25、hi8(3)
+ 169 00d6 0E94 0000 		call LCD_WR_REG
+ 170               	.LM24:
+ 171 00da 82E2      		ldi r24、lo8(34)
+ 172 00dc 90E0      		ldi r25、hi8(34)
+ 173 00de 0E94 0000 		call LCD_WR_REG16
+ 174               	.LM25:
+ 175 00e2 C4BB      		out 52-0x20、r28
+ 176               	.LM26:
+ 177 00e4 DE9A      		sbi 59-0x20、6
+ 178               	.LM27:
+ 179 00e6 C39A      		sbi 56-0x20、3
+ 180               	.LM28:
+ 181 00e8 C09A      		sbi 56-0x20、0
+ 182               	.LM29:
+ 183 00ea 9698      		cbi 50-0x20、6
+ 184               	.LM30:
+ 185 00ec DD98      		cbi 59-0x20、5
+ 186 00ee 02C0      		rjmp .L10
+ 187               	.L9:
+ 188               	.LM31:
+ 189 00f0 C098      		cbi 56-0x20、0
+ 190               	.LM32:
+ 191 00f2 969A      		sbi 50-0x20、6
+ 192               	.L10:
+ 193               	.LM33:
+ 194               	/* #APP */
+ 195 00f4 7894      		sei
+ 196               	/* #NOAPP */
+ 197               	/* epilogue: frame size=0 */
+ 198 00f6 FF91      		pop r31
+ 199 00f8 EF91      		pop r30
+ 200 00fa CF91      		pop r28
+ 201 00fc BF91      		pop r27
+ 202 00fe AF91      		pop r26
+ 203 0100 9F91      		pop r25
+ 204 0102 8F91      		pop r24
+ 205 0104 7F91      		pop r23
+ 206 0106 6F91      		pop r22
+ 207 0108 5F91      		pop r21
+ 208 010a 4F91      		pop r20
+ 209 010c 3F91      		pop r19
+ 210 010e 2F91      		pop r18
+ 211 0110 0F90      		pop __tmp_reg__
+ 212 0112 0FBE      		out __SREG__、__tmp_reg__
+ 213 0114 0F90      		pop __tmp_reg__
+ 214 0116 1F90      		pop __zero_reg__
+ 215 0118 1895      		reti
+ 216               	/* epilogue end (size=18) */
+ 217               	/* function __vector_1 size 134 (98) */
+ 218               	.LFE3:
+ 220               	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 int.c
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc2Haaaa.s:3      *ABS*:0000003f __SREG__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc2Haaaa.s:4      *ABS*:0000003e __SP_H__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc2Haaaa.s:5      *ABS*:0000003d __SP_L__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc2Haaaa.s:6      *ABS*:00000000 __tmp_reg__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc2Haaaa.s:7      *ABS*:00000001 __zero_reg__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc2Haaaa.s:23     .bss:00000000 val2
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc2Haaaa.s:29     .bss:00000001 val1
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc2Haaaa.s:34     .text:00000000 Init_INT0
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc2Haaaa.s:58     .text:00000012 __vector_1
+
+UNDEFINED SYMBOLS
+__do_copy_data
+__do_clear_bss
+LCD_WR_REG
+LCD_WR_REG16

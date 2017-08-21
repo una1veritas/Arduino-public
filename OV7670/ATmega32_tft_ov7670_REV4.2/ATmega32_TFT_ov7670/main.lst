@@ -1,0 +1,841 @@
+   1               		.file	"main.c"
+   2               		.arch atmega32
+   3               	__SREG__ = 0x3f
+   4               	__SP_H__ = 0x3e
+   5               	__SP_L__ = 0x3d
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.global __do_copy_data
+   9               		.global __do_clear_bss
+  17               	.Ltext0:
+  18               	.global	image_all
+  19               	.global	image_all
+  20               		.section .bss
+  23               	image_all:
+  24 0000 0000      		.skip 2、0
+  25               	.global	image_count
+  26               	.global	image_count
+  29               	image_count:
+  30 0002 0000      		.skip 2、0
+  31               		.text
+  32               	.global	disp_image
+  34               	disp_image:
+  35               	.LFB11:
+  36               	.LM1:
+  37               	/* prologue: frame size=55 */
+  38 0000 2F92      		push r2
+  39 0002 3F92      		push r3
+  40 0004 4F92      		push r4
+  41 0006 5F92      		push r5
+  42 0008 6F92      		push r6
+  43 000a 7F92      		push r7
+  44 000c 8F92      		push r8
+  45 000e 9F92      		push r9
+  46 0010 AF92      		push r10
+  47 0012 BF92      		push r11
+  48 0014 CF92      		push r12
+  49 0016 DF92      		push r13
+  50 0018 EF92      		push r14
+  51 001a FF92      		push r15
+  52 001c 0F93      		push r16
+  53 001e 1F93      		push r17
+  54 0020 CF93      		push r28
+  55 0022 DF93      		push r29
+  56 0024 CDB7      		in r28、__SP_L__
+  57 0026 DEB7      		in r29、__SP_H__
+  58 0028 E797      		sbiw r28、55
+  59 002a 0FB6      		in __tmp_reg__、__SREG__
+  60 002c F894      		cli
+  61 002e DEBF      		out __SP_H__、r29
+  62 0030 0FBE      		out __SREG__、__tmp_reg__
+  63 0032 CDBF      		out __SP_L__、r28
+  64               	/* prologue end (size=26) */
+  65               	.LM2:
+  66 0034 71E0      		ldi r23、lo8(1)
+  67 0036 672E      		mov r6、r23
+  68 0038 712C      		mov r7、__zero_reg__
+  69 003a 2224      		clr r2
+  70 003c 3324      		clr r3
+  71               	.LM3:
+  72 003e 81E0      		ldi r24、lo8(1)
+  73 0040 88AB      		std Y+48、r24
+  74               	.LM4:
+  75 0042 B101      		movw r22、r2
+  76 0044 80E5      		ldi r24、lo8(80)
+  77 0046 90E0      		ldi r25、hi8(80)
+  78 0048 0E94 0000 		call LCD_WR_REG
+  79               	.LM5:
+  80 004c 6FEE      		ldi r22、lo8(239)
+  81 004e 70E0      		ldi r23、hi8(239)
+  82 0050 81E5      		ldi r24、lo8(81)
+  83 0052 90E0      		ldi r25、hi8(81)
+  84 0054 0E94 0000 		call LCD_WR_REG
+  85               	.LM6:
+  86 0058 B101      		movw r22、r2
+  87 005a 82E5      		ldi r24、lo8(82)
+  88 005c 90E0      		ldi r25、hi8(82)
+  89 005e 0E94 0000 		call LCD_WR_REG
+  90               	.LM7:
+  91 0062 6FE3      		ldi r22、lo8(319)
+  92 0064 71E0      		ldi r23、hi8(319)
+  93 0066 83E5      		ldi r24、lo8(83)
+  94 0068 90E0      		ldi r25、hi8(83)
+  95 006a 0E94 0000 		call LCD_WR_REG
+  96               	.LM8:
+  97 006e 8091 0000 		lds r24、image_all
+  98 0072 9091 0000 		lds r25、(image_all)+1
+  99 0076 9E01      		movw r18、r28
+ 100 0078 205F      		subi r18、lo8(-(16))
+ 101 007a 3F4F      		sbci r19、hi8(-(16))
+ 102 007c 892B      		or r24、r25
+ 103 007e D1F4      		brne .L2
+ 104               	.LM9:
+ 105 0080 3092 0000 		sts (image_count)+1、r3
+ 106 0084 2092 0000 		sts image_count、r2
+ 107               	.LM10:
+ 108 0088 AE01      		movw r20、r28
+ 109 008a 405D      		subi r20、lo8(-(48))
+ 110 008c 5F4F      		sbci r21、hi8(-(48))
+ 111 008e 60E0      		ldi r22、lo8(image_count)
+ 112 0090 70E0      		ldi r23、hi8(image_count)
+ 113 0092 C901      		movw r24、r18
+ 114 0094 0E94 0000 		call Search
+ 115 0098 8BAB      		std Y+51、r24
+ 116               	.LM11:
+ 117 009a 8091 0000 		lds r24、image_count
+ 118 009e 9091 0000 		lds r25、(image_count)+1
+ 119 00a2 9093 0000 		sts (image_all)+1、r25
+ 120 00a6 8093 0000 		sts image_all、r24
+ 121               	.LM12:
+ 122 00aa 7092 0000 		sts (image_count)+1、r7
+ 123 00ae 6092 0000 		sts image_count、r6
+ 124 00b2 09C0      		rjmp .L3
+ 125               	.L2:
+ 126               	.LM13:
+ 127 00b4 AE01      		movw r20、r28
+ 128 00b6 405D      		subi r20、lo8(-(48))
+ 129 00b8 5F4F      		sbci r21、hi8(-(48))
+ 130 00ba 60E0      		ldi r22、lo8(image_count)
+ 131 00bc 70E0      		ldi r23、hi8(image_count)
+ 132 00be C901      		movw r24、r18
+ 133 00c0 0E94 0000 		call Search
+ 134 00c4 8BAB      		std Y+51、r24
+ 135               	.L3:
+ 136               	.LM14:
+ 137 00c6 8AA5      		ldd r24、Y+42
+ 138 00c8 9BA5      		ldd r25、Y+43
+ 139 00ca 6C01      		movw r12、r24
+ 140 00cc EE24      		clr r14
+ 141 00ce FF24      		clr r15
+ 142 00d0 8CA1      		ldd r24、Y+36
+ 143 00d2 9DA1      		ldd r25、Y+37
+ 144 00d4 AA27      		clr r26
+ 145 00d6 BB27      		clr r27
+ 146 00d8 DC01      		movw r26、r24
+ 147 00da 9927      		clr r25
+ 148 00dc 8827      		clr r24
+ 149 00de C80E      		add r12、r24
+ 150 00e0 D91E      		adc r13、r25
+ 151 00e2 EA1E      		adc r14、r26
+ 152 00e4 FB1E      		adc r15、r27
+ 153               	.LM15:
+ 154 00e6 20EF      		ldi r18、lo8(-16)
+ 155 00e8 29AB      		std Y+49、r18
+ 156               	.LM16:
+ 157 00ea 1FAA      		std Y+55、__zero_reg__
+ 158 00ec 1EAA      		std Y+54、__zero_reg__
+ 159               	.LM17:
+ 160 00ee 5524      		clr r5
+ 161               	.LM18:
+ 162 00f0 5AAA      		std Y+50、r5
+ 163               	.LM19:
+ 164 00f2 80E0      		ldi r24、lo8(512)
+ 165 00f4 92E0      		ldi r25、hi8(512)
+ 166 00f6 0E94 0000 		call malloc
+ 167 00fa 4C01      		movw r8、r24
+ 168               	.L51:
+ 169               	.LM20:
+ 170 00fc 2224      		clr r2
+ 171 00fe 3324      		clr r3
+ 172               	.L47:
+ 173               	.LM21:
+ 174 0100 8091 0000 		lds r24、SectorsPerClust
+ 175 0104 9091 0000 		lds r25、(SectorsPerClust)+1
+ 176 0108 2816      		cp r2、r24
+ 177 010a 3906      		cpc r3、r25
+ 178 010c 08F0      		brlo .+2
+ 179 010e D6C0      		rjmp .L40
+ 180               	.LM22:
+ 181 0110 9401      		movw r18、r8
+ 182 0112 A101      		movw r20、r2
+ 183 0114 C701      		movw r24、r14
+ 184 0116 B601      		movw r22、r12
+ 185 0118 0E94 0000 		call FAT_LoadPartCluster
+ 186               	.LM23:
+ 187 011c 2114      		cp r2、__zero_reg__
+ 188 011e 3104      		cpc r3、__zero_reg__
+ 189 0120 71F4      		brne .L9
+ 190 0122 8AA9      		ldd r24、Y+50
+ 191 0124 8823      		tst r24
+ 192 0126 59F4      		brne .L9
+ 193 0128 F401      		movw r30、r8
+ 194 012a 8285      		ldd r24、Z+10
+ 195 012c 682E      		mov r6、r24
+ 196 012e 7724      		clr r7
+ 197 0130 448C      		ldd r4、Z+28
+ 198 0132 4694      		lsr r4
+ 199 0134 4694      		lsr r4
+ 200 0136 4694      		lsr r4
+ 201 0138 F1E0      		ldi r31、lo8(1)
+ 202 013a FAAB      		std Y+50、r31
+ 203 013c 02C0      		rjmp .L10
+ 204               	.L9:
+ 205               	.LM24:
+ 206 013e 6624      		clr r6
+ 207 0140 7724      		clr r7
+ 208               	.L10:
+ 209               	.LM25:
+ 210 0142 20E0      		ldi r18、lo8(512)
+ 211 0144 6216      		cp r6、r18
+ 212 0146 22E0      		ldi r18、hi8(512)
+ 213 0148 7206      		cpc r7、r18
+ 214 014a 08F0      		brlo .+2
+ 215 014c B3C0      		rjmp .L42
+ 216 014e 5301      		movw r10、r6
+ 217 0150 A80C      		add r10、r8
+ 218 0152 B91C      		adc r11、r9
+ 219               	.L35:
+ 220               	.LM26:
+ 221 0154 83E0      		ldi r24、lo8(3)
+ 222 0156 4816      		cp r4、r24
+ 223 0158 19F5      		brne .L13
+ 224               	.LM27:
+ 225 015a 852D      		mov r24、r5
+ 226 015c 9927      		clr r25
+ 227 015e 8130      		cpi r24、1
+ 228 0160 9105      		cpc r25、__zero_reg__
+ 229 0162 81F0      		breq .L16
+ 230 0164 8230      		cpi r24、2
+ 231 0166 9105      		cpc r25、__zero_reg__
+ 232 0168 1CF4      		brge .L18
+ 233 016a 892B      		or r24、r25
+ 234 016c 21F0      		breq .L15
+ 235 016e 6AC0      		rjmp .L26
+ 236               	.L18:
+ 237 0170 0297      		sbiw r24、2
+ 238 0172 99F0      		breq .L17
+ 239 0174 67C0      		rjmp .L26
+ 240               	.L15:
+ 241               	.LM28:
+ 242 0176 F501      		movw r30、r10
+ 243 0178 8081      		ld r24、Z
+ 244 017a 8695      		lsr r24
+ 245 017c 8695      		lsr r24
+ 246 017e 8695      		lsr r24
+ 247 0180 9927      		clr r25
+ 248 0182 5EC0      		rjmp .L49
+ 249               	.L16:
+ 250               	.LM29:
+ 251 0184 F501      		movw r30、r10
+ 252 0186 8081      		ld r24、Z
+ 253 0188 8695      		lsr r24
+ 254 018a 8695      		lsr r24
+ 255 018c 9927      		clr r25
+ 256               	.LM30:
+ 257 018e 55E0      		ldi r21、5
+ 258 0190 880F      	1:	lsl r24
+ 259 0192 991F      		rol r25
+ 260 0194 5A95      		dec r21
+ 261 0196 E1F7      		brne 1b
+ 262 0198 53C0      		rjmp .L49
+ 263               	.L17:
+ 264               	.LM31:
+ 265 019a F501      		movw r30、r10
+ 266 019c 8081      		ld r24、Z
+ 267 019e 47C0      		rjmp .L50
+ 268               	.L13:
+ 269               	.LM32:
+ 270 01a0 F2E0      		ldi r31、lo8(2)
+ 271 01a2 4F16      		cp r4、r31
+ 272 01a4 89F4      		brne .L20
+ 273               	.LM33:
+ 274 01a6 852D      		mov r24、r5
+ 275 01a8 9927      		clr r25
+ 276 01aa 0097      		sbiw r24、0
+ 277 01ac 09F1      		breq .L27
+ 278 01ae 0197      		sbiw r24、1
+ 279 01b0 09F0      		breq .+2
+ 280 01b2 48C0      		rjmp .L26
+ 281               	.LM34:
+ 282 01b4 F501      		movw r30、r10
+ 283 01b6 8081      		ld r24、Z
+ 284 01b8 082F      		mov r16、r24
+ 285 01ba 1127      		clr r17
+ 286               	.LM35:
+ 287 01bc 102F      		mov r17、r16
+ 288 01be 0027      		clr r16
+ 289               	.LM36:
+ 290 01c0 FBA9      		ldd r31、Y+51
+ 291 01c2 8F2F      		mov r24、r31
+ 292 01c4 9927      		clr r25
+ 293 01c6 3CC0      		rjmp .L49
+ 294               	.L20:
+ 295               	.LM37:
+ 296 01c8 24E0      		ldi r18、lo8(4)
+ 297 01ca 4216      		cp r4、r18
+ 298 01cc E1F5      		brne .L19
+ 299               	.LM38:
+ 300 01ce 852D      		mov r24、r5
+ 301 01d0 9927      		clr r25
+ 302 01d2 8130      		cpi r24、1
+ 303 01d4 9105      		cpc r25、__zero_reg__
+ 304 01d6 81F0      		breq .L28
+ 305 01d8 8230      		cpi r24、2
+ 306 01da 9105      		cpc r25、__zero_reg__
+ 307 01dc 1CF4      		brge .L31
+ 308 01de 892B      		or r24、r25
+ 309 01e0 39F0      		breq .L27
+ 310 01e2 30C0      		rjmp .L26
+ 311               	.L31:
+ 312 01e4 8230      		cpi r24、2
+ 313 01e6 9105      		cpc r25、__zero_reg__
+ 314 01e8 59F0      		breq .L29
+ 315 01ea 0397      		sbiw r24、3
+ 316 01ec 69F0      		breq .L30
+ 317 01ee 2AC0      		rjmp .L26
+ 318               	.L27:
+ 319               	.LM39:
+ 320 01f0 F501      		movw r30、r10
+ 321 01f2 F081      		ld r31、Z
+ 322 01f4 FBAB      		std Y+51、r31
+ 323               	.LM40:
+ 324 01f6 26C0      		rjmp .L26
+ 325               	.L28:
+ 326               	.LM41:
+ 327 01f8 F501      		movw r30、r10
+ 328 01fa F081      		ld r31、Z
+ 329 01fc FCAB      		std Y+52、r31
+ 330               	.LM42:
+ 331 01fe 22C0      		rjmp .L26
+ 332               	.L29:
+ 333               	.LM43:
+ 334 0200 F501      		movw r30、r10
+ 335 0202 F081      		ld r31、Z
+ 336 0204 FDAB      		std Y+53、r31
+ 337               	.LM44:
+ 338 0206 1EC0      		rjmp .L26
+ 339               	.L30:
+ 340               	.LM45:
+ 341 0208 8BA9      		ldd r24、Y+51
+ 342 020a 8695      		lsr r24
+ 343 020c 8695      		lsr r24
+ 344 020e 8695      		lsr r24
+ 345 0210 9927      		clr r25
+ 346               	.LM46:
+ 347 0212 082B      		or r16、r24
+ 348 0214 192B      		or r17、r25
+ 349               	.LM47:
+ 350 0216 8CA9      		ldd r24、Y+52
+ 351 0218 8695      		lsr r24
+ 352 021a 8695      		lsr r24
+ 353 021c 9927      		clr r25
+ 354               	.LM48:
+ 355 021e 35E0      		ldi r19、5
+ 356 0220 880F      	1:	lsl r24
+ 357 0222 991F      		rol r25
+ 358 0224 3A95      		dec r19
+ 359 0226 E1F7      		brne 1b
+ 360               	.LM49:
+ 361 0228 082B      		or r16、r24
+ 362 022a 192B      		or r17、r25
+ 363               	.LM50:
+ 364 022c 8DA9      		ldd r24、Y+53
+ 365               	.L50:
+ 366 022e 8695      		lsr r24
+ 367 0230 8695      		lsr r24
+ 368 0232 8695      		lsr r24
+ 369 0234 9927      		clr r25
+ 370               	.LM51:
+ 371 0236 982F      		mov r25、r24
+ 372 0238 8827      		clr r24
+ 373 023a 990F      		lsl r25
+ 374 023c 990F      		lsl r25
+ 375 023e 990F      		lsl r25
+ 376               	.L49:
+ 377               	.LM52:
+ 378 0240 082B      		or r16、r24
+ 379 0242 192B      		or r17、r25
+ 380               	.L26:
+ 381               	.LM53:
+ 382 0244 5394      		inc r5
+ 383               	.L19:
+ 384               	.LM54:
+ 385 0246 0894      		sec
+ 386 0248 611C      		adc r6、__zero_reg__
+ 387 024a 711C      		adc r7、__zero_reg__
+ 388 024c 0894      		sec
+ 389 024e A11C      		adc r10、__zero_reg__
+ 390 0250 B11C      		adc r11、__zero_reg__
+ 391               	.LM55:
+ 392 0252 5414      		cp r5、r4
+ 393 0254 49F5      		brne .L11
+ 394               	.LM56:
+ 395 0256 8FEE      		ldi r24、lo8(239)
+ 396 0258 90E0      		ldi r25、hi8(239)
+ 397 025a 29A9      		ldd r18、Y+49
+ 398 025c 821B      		sub r24、r18
+ 399 025e 9109      		sbc r25、__zero_reg__
+ 400 0260 BC01      		movw r22、r24
+ 401 0262 80E2      		ldi r24、lo8(32)
+ 402 0264 90E0      		ldi r25、hi8(32)
+ 403 0266 0E94 0000 		call LCD_WR_REG
+ 404               	.LM57:
+ 405 026a 6EA9      		ldd r22、Y+54
+ 406 026c 7FA9      		ldd r23、Y+55
+ 407 026e 81E2      		ldi r24、lo8(33)
+ 408 0270 90E0      		ldi r25、hi8(33)
+ 409 0272 0E94 0000 		call LCD_WR_REG
+ 410               	.LM58:
+ 411 0276 82E2      		ldi r24、lo8(34)
+ 412 0278 90E0      		ldi r25、hi8(34)
+ 413 027a 0E94 0000 		call LCD_WR_REG16
+ 414               	.LM59:
+ 415 027e C801      		movw r24、r16
+ 416 0280 0E94 0000 		call LCD_WR_DATA16
+ 417               	.LM60:
+ 418 0284 00E0      		ldi r16、lo8(0)
+ 419 0286 10E0      		ldi r17、hi8(0)
+ 420               	.LM61:
+ 421 0288 8EA9      		ldd r24、Y+54
+ 422 028a 9FA9      		ldd r25、Y+55
+ 423 028c 0196      		adiw r24、1
+ 424 028e 9FAB      		std Y+55、r25
+ 425 0290 8EAB      		std Y+54、r24
+ 426               	.LM62:
+ 427 0292 8054      		subi r24、lo8(320)
+ 428 0294 9140      		sbci r25、hi8(320)
+ 429 0296 38F0      		brlo .L33
+ 430               	.LM63:
+ 431 0298 F9A9      		ldd r31、Y+49
+ 432 029a F150      		subi r31、lo8(-(-1))
+ 433 029c F9AB      		std Y+49、r31
+ 434               	.LM64:
+ 435 029e FF23      		tst r31
+ 436 02a0 E1F1      		breq .L38
+ 437               	.LM65:
+ 438 02a2 1FAB      		std Y+55、r17
+ 439 02a4 0EAB      		std Y+54、r16
+ 440               	.L33:
+ 441               	.LM66:
+ 442 02a6 5524      		clr r5
+ 443               	.L11:
+ 444 02a8 20E0      		ldi r18、lo8(512)
+ 445 02aa 6216      		cp r6、r18
+ 446 02ac 22E0      		ldi r18、hi8(512)
+ 447 02ae 7206      		cpc r7、r18
+ 448 02b0 08F4      		brsh .+2
+ 449 02b2 50CF      		rjmp .L35
+ 450               	.L42:
+ 451               	.LM67:
+ 452 02b4 0894      		sec
+ 453 02b6 211C      		adc r2、__zero_reg__
+ 454 02b8 311C      		adc r3、__zero_reg__
+ 455 02ba 22CF      		rjmp .L47
+ 456               	.L40:
+ 457               	.LM68:
+ 458 02bc C401      		movw r24、r8
+ 459 02be 0E94 0000 		call free
+ 460               	.LM69:
+ 461 02c2 C701      		movw r24、r14
+ 462 02c4 B601      		movw r22、r12
+ 463 02c6 0E94 0000 		call FAT_NextCluster
+ 464 02ca 6B01      		movw r12、r22
+ 465 02cc 7C01      		movw r14、r24
+ 466               	.LM70:
+ 467 02ce 80E0      		ldi r24、lo8(512)
+ 468 02d0 92E0      		ldi r25、hi8(512)
+ 469 02d2 0E94 0000 		call malloc
+ 470 02d6 4C01      		movw r8、r24
+ 471               	.LM71:
+ 472 02d8 8FEF      		ldi r24、lo8(268435455)
+ 473 02da C816      		cp r12、r24
+ 474 02dc 8FEF      		ldi r24、hi8(268435455)
+ 475 02de D806      		cpc r13、r24
+ 476 02e0 8FEF      		ldi r24、hlo8(268435455)
+ 477 02e2 E806      		cpc r14、r24
+ 478 02e4 8FE0      		ldi r24、hhi8(268435455)
+ 479 02e6 F806      		cpc r15、r24
+ 480 02e8 C1F0      		breq .L38
+ 481 02ea 98EF      		ldi r25、lo8(268435448)
+ 482 02ec C916      		cp r12、r25
+ 483 02ee 9FEF      		ldi r25、hi8(268435448)
+ 484 02f0 D906      		cpc r13、r25
+ 485 02f2 9FEF      		ldi r25、hlo8(268435448)
+ 486 02f4 E906      		cpc r14、r25
+ 487 02f6 9FE0      		ldi r25、hhi8(268435448)
+ 488 02f8 F906      		cpc r15、r25
+ 489 02fa 79F0      		breq .L38
+ 490 02fc 8091 0000 		lds r24、FAT32_Enable
+ 491 0300 8823      		tst r24
+ 492 0302 09F0      		breq .+2
+ 493 0304 FBCE      		rjmp .L51
+ 494 0306 EFEF      		ldi r30、lo8(65535)
+ 495 0308 CE16      		cp r12、r30
+ 496 030a EFEF      		ldi r30、hi8(65535)
+ 497 030c DE06      		cpc r13、r30
+ 498 030e E0E0      		ldi r30、hlo8(65535)
+ 499 0310 EE06      		cpc r14、r30
+ 500 0312 E0E0      		ldi r30、hhi8(65535)
+ 501 0314 FE06      		cpc r15、r30
+ 502 0316 09F0      		breq .+2
+ 503 0318 F1CE      		rjmp .L51
+ 504               	.L38:
+ 505               	.LM72:
+ 506 031a C401      		movw r24、r8
+ 507 031c 0E94 0000 		call free
+ 508               	/* epilogue: frame size=55 */
+ 509 0320 E796      		adiw r28、55
+ 510 0322 0FB6      		in __tmp_reg__、__SREG__
+ 511 0324 F894      		cli
+ 512 0326 DEBF      		out __SP_H__、r29
+ 513 0328 0FBE      		out __SREG__、__tmp_reg__
+ 514 032a CDBF      		out __SP_L__、r28
+ 515 032c DF91      		pop r29
+ 516 032e CF91      		pop r28
+ 517 0330 1F91      		pop r17
+ 518 0332 0F91      		pop r16
+ 519 0334 FF90      		pop r15
+ 520 0336 EF90      		pop r14
+ 521 0338 DF90      		pop r13
+ 522 033a CF90      		pop r12
+ 523 033c BF90      		pop r11
+ 524 033e AF90      		pop r10
+ 525 0340 9F90      		pop r9
+ 526 0342 8F90      		pop r8
+ 527 0344 7F90      		pop r7
+ 528 0346 6F90      		pop r6
+ 529 0348 5F90      		pop r5
+ 530 034a 4F90      		pop r4
+ 531 034c 3F90      		pop r3
+ 532 034e 2F90      		pop r2
+ 533 0350 0895      		ret
+ 534               	/* epilogue end (size=25) */
+ 535               	/* function disp_image size 429 (378) */
+ 536               	.LFE11:
+ 538               		.data
+ 539               	.LC0:
+ 540 0000 4775 616E 		.string	"Guanfu_wang  20110412"
+ 540      6675 5F77 
+ 540      616E 6720 
+ 540      2032 3031 
+ 540      3130 3431 
+ 541               	.LC1:
+ 542 0016 4174 6D65 		.string	"Atmega32 & ILI9328 FOR OV7670 REV4.2"
+ 542      6761 3332 
+ 542      2026 2049 
+ 542      4C49 3933 
+ 542      3238 2046 
+ 543               	.LC2:
+ 544 003b 4F56 3736 		.string	"OV7670 Init......"
+ 544      3730 2049 
+ 544      6E69 742E 
+ 544      2E2E 2E2E 
+ 544      2E00 
+ 545               	.LC3:
+ 546 004d 4F56 3736 		.string	"OV7670 Init  0K  "
+ 546      3730 2049 
+ 546      6E69 7420 
+ 546      2030 4B20 
+ 546      2000 
+ 547               	.LC4:
+ 548 005f 5446 2043 		.string	"TF Card Init......"
+ 548      6172 6420 
+ 548      496E 6974 
+ 548      2E2E 2E2E 
+ 548      2E2E 00
+ 549               	.LC5:
+ 550 0072 5446 2043 		.string	"TF Card Init....NG"
+ 550      6172 6420 
+ 550      496E 6974 
+ 550      2E2E 2E2E 
+ 550      4E47 00
+ 551               	.LC6:
+ 552 0085 5446 2043 		.string	"TF Card Init....OK"
+ 552      6172 6420 
+ 552      496E 6974 
+ 552      2E2E 2E2E 
+ 552      4F4B 00
+ 553               	.LC7:
+ 554 0098 4641 5420 		.string	"FAT Init......"
+ 554      496E 6974 
+ 554      2E2E 2E2E 
+ 554      2E2E 00
+ 555               	.LC8:
+ 556 00a7 4641 5420 		.string	"FAT Init....OK"
+ 556      496E 6974 
+ 556      2E2E 2E2E 
+ 556      4F4B 00
+ 557               		.text
+ 558               	.global	main
+ 560               	main:
+ 561               	.LFB12:
+ 562               	.LM73:
+ 563               	/* prologue: frame size=0 */
+ 564 0352 C0E0      		ldi r28、lo8(__stack - 0)
+ 565 0354 D0E0      		ldi r29、hi8(__stack - 0)
+ 566 0356 DEBF      		out __SP_H__、r29
+ 567 0358 CDBF      		out __SP_L__、r28
+ 568               	/* prologue end (size=4) */
+ 569               	.LM74:
+ 570 035a FF24      		clr r15
+ 571 035c CF2D      		mov r28、r15
+ 572               	.LM75:
+ 573 035e B89A      		sbi 55-0x20、0
+ 574               	.LM76:
+ 575 0360 8E9A      		sbi 49-0x20、6
+ 576               	.LM77:
+ 577 0362 8D98      		cbi 49-0x20、5
+ 578               	.LM78:
+ 579 0364 959A      		sbi 50-0x20、5
+ 580               	.LM79:
+ 581 0366 C098      		cbi 56-0x20、0
+ 582               	.LM80:
+ 583 0368 969A      		sbi 50-0x20、6
+ 584               	.LM81:
+ 585 036a 88EB      		ldi r24、lo8(3000)
+ 586 036c 9BE0      		ldi r25、hi8(3000)
+ 587 036e 0E94 0000 		call delay_ms
+ 588               	.LM82:
+ 589 0372 8FEF      		ldi r24、lo8(-1)
+ 590 0374 84BB      		out 52-0x20、r24
+ 591               	.LM83:
+ 592 0376 0E94 0000 		call LCD_Init
+ 593               	.LM84:
+ 594 037a 0E94 0000 		call MMC_SD_Init
+ 595               	.LM85:
+ 596 037e 00E0      		ldi r16、lo8(0)
+ 597 0380 10E0      		ldi r17、hi8(0)
+ 598 0382 20E0      		ldi r18、lo8(-2048)
+ 599 0384 38EF      		ldi r19、hi8(-2048)
+ 600 0386 40E0      		ldi r20、lo8(.LC0)
+ 601 0388 50E0      		ldi r21、hi8(.LC0)
+ 602 038a 66E9      		ldi r22、lo8(150)
+ 603 038c 70E0      		ldi r23、hi8(150)
+ 604 038e 84E1      		ldi r24、lo8(20)
+ 605 0390 90E0      		ldi r25、hi8(20)
+ 606 0392 0E94 0000 		call LCD_write_english_string
+ 607               	.LM86:
+ 608 0396 20EE      		ldi r18、lo8(2016)
+ 609 0398 37E0      		ldi r19、hi8(2016)
+ 610 039a 40E0      		ldi r20、lo8(.LC1)
+ 611 039c 50E0      		ldi r21、hi8(.LC1)
+ 612 039e 6AEA      		ldi r22、lo8(170)
+ 613 03a0 70E0      		ldi r23、hi8(170)
+ 614 03a2 84E1      		ldi r24、lo8(20)
+ 615 03a4 90E0      		ldi r25、hi8(20)
+ 616 03a6 0E94 0000 		call LCD_write_english_string
+ 617               	.LM87:
+ 618 03aa 80B3      		in r24、48-0x20
+ 619 03ac 9927      		clr r25
+ 620 03ae 8C01      		movw r16、r24
+ 621 03b0 0072      		andi r16、lo8(32)
+ 622 03b2 1070      		andi r17、hi8(32)
+ 623 03b4 85FF      		sbrs r24、5
+ 624 03b6 27C0      		rjmp .L53
+ 625               	.LM88:
+ 626 03b8 00E0      		ldi r16、lo8(0)
+ 627 03ba 10E0      		ldi r17、hi8(0)
+ 628 03bc 2FE1      		ldi r18、lo8(31)
+ 629 03be 30E0      		ldi r19、hi8(31)
+ 630 03c0 40E0      		ldi r20、lo8(.LC2)
+ 631 03c2 50E0      		ldi r21、hi8(.LC2)
+ 632 03c4 6EEB      		ldi r22、lo8(190)
+ 633 03c6 70E0      		ldi r23、hi8(190)
+ 634 03c8 84E1      		ldi r24、lo8(20)
+ 635 03ca 90E0      		ldi r25、hi8(20)
+ 636 03cc 0E94 0000 		call LCD_write_english_string
+ 637               	.L54:
+ 638               	.LM89:
+ 639 03d0 0E94 0000 		call OV7670_init
+ 640 03d4 8130      		cpi r24、lo8(1)
+ 641 03d6 E1F7      		brne .L54
+ 642               	.LM90:
+ 643 03d8 00E0      		ldi r16、lo8(0)
+ 644 03da 10E0      		ldi r17、hi8(0)
+ 645 03dc 20E0      		ldi r18、lo8(-2048)
+ 646 03de 38EF      		ldi r19、hi8(-2048)
+ 647 03e0 40E0      		ldi r20、lo8(.LC3)
+ 648 03e2 50E0      		ldi r21、hi8(.LC3)
+ 649 03e4 6EEB      		ldi r22、lo8(190)
+ 650 03e6 70E0      		ldi r23、hi8(190)
+ 651 03e8 84E1      		ldi r24、lo8(20)
+ 652 03ea 90E0      		ldi r25、hi8(20)
+ 653 03ec 0E94 0000 		call LCD_write_english_string
+ 654               	.LM91:
+ 655 03f0 88EE      		ldi r24、lo8(1000)
+ 656 03f2 93E0      		ldi r25、hi8(1000)
+ 657 03f4 0E94 0000 		call delay_ms
+ 658               	.LM92:
+ 659 03f8 C801      		movw r24、r16
+ 660 03fa 0E94 0000 		call LCD_Clear
+ 661               	.LM93:
+ 662 03fe 14BA      		out 52-0x20、__zero_reg__
+ 663               	.LM94:
+ 664 0400 0E94 0000 		call Init_INT0
+ 665 0404 44C0      		rjmp .L79
+ 666               	.L53:
+ 667               	.LM95:
+ 668 0406 E1E0      		ldi r30、lo8(1)
+ 669 0408 FE2E      		mov r15、r30
+ 670               	.LM96:
+ 671 040a 2FE1      		ldi r18、lo8(31)
+ 672 040c 30E0      		ldi r19、hi8(31)
+ 673 040e 40E0      		ldi r20、lo8(.LC4)
+ 674 0410 50E0      		ldi r21、hi8(.LC4)
+ 675 0412 09C0      		rjmp .L78
+ 676               	.L63:
+ 677               	.LBB2:
+ 678               	.LM97:
+ 679 0414 CF5F      		subi r28、lo8(-(1))
+ 680               	.LM98:
+ 681 0416 C531      		cpi r28、lo8(21)
+ 682 0418 60F0      		brlo .L76
+ 683               	.LM99:
+ 684 041a 00E0      		ldi r16、lo8(0)
+ 685 041c 10E0      		ldi r17、hi8(0)
+ 686 041e 2FE1      		ldi r18、lo8(31)
+ 687 0420 30E0      		ldi r19、hi8(31)
+ 688 0422 40E0      		ldi r20、lo8(.LC5)
+ 689 0424 50E0      		ldi r21、hi8(.LC5)
+ 690               	.L78:
+ 691 0426 6EEB      		ldi r22、lo8(190)
+ 692 0428 70E0      		ldi r23、hi8(190)
+ 693 042a 84E1      		ldi r24、lo8(20)
+ 694 042c 90E0      		ldi r25、hi8(20)
+ 695 042e 0E94 0000 		call LCD_write_english_string
+ 696               	.L76:
+ 697 0432 0E94 0000 		call MMC_SD_Reset
+ 698 0436 C531      		cpi r28、lo8(21)
+ 699 0438 10F4      		brsh .L59
+ 700 043a 80FD      		sbrc r24、0
+ 701 043c EBCF      		rjmp .L63
+ 702               	.L59:
+ 703               	.LBE2:
+ 704               	.LM100:
+ 705 043e 00E0      		ldi r16、lo8(0)
+ 706 0440 10E0      		ldi r17、hi8(0)
+ 707 0442 2FE1      		ldi r18、lo8(31)
+ 708 0444 30E0      		ldi r19、hi8(31)
+ 709 0446 40E0      		ldi r20、lo8(.LC6)
+ 710 0448 50E0      		ldi r21、hi8(.LC6)
+ 711 044a 6EEB      		ldi r22、lo8(190)
+ 712 044c 70E0      		ldi r23、hi8(190)
+ 713 044e 84E1      		ldi r24、lo8(20)
+ 714 0450 90E0      		ldi r25、hi8(20)
+ 715 0452 0E94 0000 		call LCD_write_english_string
+ 716               	.LM101:
+ 717 0456 2FE1      		ldi r18、lo8(31)
+ 718 0458 30E0      		ldi r19、hi8(31)
+ 719 045a 40E0      		ldi r20、lo8(.LC7)
+ 720 045c 50E0      		ldi r21、hi8(.LC7)
+ 721 045e 62ED      		ldi r22、lo8(210)
+ 722 0460 70E0      		ldi r23、hi8(210)
+ 723 0462 84E1      		ldi r24、lo8(20)
+ 724 0464 90E0      		ldi r25、hi8(20)
+ 725 0466 0E94 0000 		call LCD_write_english_string
+ 726               	.L64:
+ 727               	.LM102:
+ 728 046a 0E94 0000 		call FAT_Init
+ 729 046e 8823      		tst r24
+ 730 0470 E1F7      		brne .L64
+ 731               	.LM103:
+ 732 0472 0E94 0000 		call SearchInit
+ 733               	.LM104:
+ 734 0476 00E0      		ldi r16、lo8(0)
+ 735 0478 10E0      		ldi r17、hi8(0)
+ 736 047a 2FE1      		ldi r18、lo8(31)
+ 737 047c 30E0      		ldi r19、hi8(31)
+ 738 047e 40E0      		ldi r20、lo8(.LC8)
+ 739 0480 50E0      		ldi r21、hi8(.LC8)
+ 740 0482 62ED      		ldi r22、lo8(210)
+ 741 0484 70E0      		ldi r23、hi8(210)
+ 742 0486 84E1      		ldi r24、lo8(20)
+ 743 0488 90E0      		ldi r25、hi8(20)
+ 744 048a 0E94 0000 		call LCD_write_english_string
+ 745               	.L79:
+ 746               	.LM105:
+ 747 048e FF20      		tst r15
+ 748 0490 F1F3      		breq .L79
+ 749               	.LM106:
+ 750 0492 0E94 0000 		call disp_image
+ 751               	.LM107:
+ 752 0496 80E2      		ldi r24、lo8(20000)
+ 753 0498 9EE4      		ldi r25、hi8(20000)
+ 754 049a 0E94 0000 		call delay_ms
+ 755               	.LM108:
+ 756 049e 80E2      		ldi r24、lo8(20000)
+ 757 04a0 9EE4      		ldi r25、hi8(20000)
+ 758 04a2 0E94 0000 		call delay_ms
+ 759               	.LM109:
+ 760 04a6 2091 0000 		lds r18、image_count
+ 761 04aa 3091 0000 		lds r19、(image_count)+1
+ 762 04ae 8091 0000 		lds r24、image_all
+ 763 04b2 9091 0000 		lds r25、(image_all)+1
+ 764 04b6 2817      		cp r18、r24
+ 765 04b8 3907      		cpc r19、r25
+ 766 04ba 38F4      		brsh .L70
+ 767               	.LM110:
+ 768 04bc 2F5F      		subi r18、lo8(-(1))
+ 769 04be 3F4F      		sbci r19、hi8(-(1))
+ 770 04c0 3093 0000 		sts (image_count)+1、r19
+ 771 04c4 2093 0000 		sts image_count、r18
+ 772 04c8 E2CF      		rjmp .L79
+ 773               	.L70:
+ 774               	.LM111:
+ 775 04ca 81E0      		ldi r24、lo8(1)
+ 776 04cc 90E0      		ldi r25、hi8(1)
+ 777 04ce 9093 0000 		sts (image_count)+1、r25
+ 778 04d2 8093 0000 		sts image_count、r24
+ 779 04d6 DBCF      		rjmp .L79
+ 780               	/* epilogue: frame size=0 */
+ 781               	/* epilogue: noreturn */
+ 782               	/* epilogue end (size=0) */
+ 783               	/* function main size 195 (191) */
+ 784               	.LFE12:
+ 786               	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 main.c
+C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp/cckVaaaa.s:3      *ABS*:0000003f __SREG__
+C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp/cckVaaaa.s:4      *ABS*:0000003e __SP_H__
+C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp/cckVaaaa.s:5      *ABS*:0000003d __SP_L__
+C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp/cckVaaaa.s:6      *ABS*:00000000 __tmp_reg__
+C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp/cckVaaaa.s:7      *ABS*:00000001 __zero_reg__
+C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp/cckVaaaa.s:23     .bss:00000000 image_all
+C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp/cckVaaaa.s:29     .bss:00000002 image_count
+C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp/cckVaaaa.s:34     .text:00000000 disp_image
+C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp/cckVaaaa.s:560    .text:00000352 main
+
+UNDEFINED SYMBOLS
+__do_copy_data
+__do_clear_bss
+LCD_WR_REG
+Search
+malloc
+SectorsPerClust
+FAT_LoadPartCluster
+LCD_WR_REG16
+LCD_WR_DATA16
+free
+FAT_NextCluster
+FAT32_Enable
+__stack
+delay_ms
+LCD_Init
+MMC_SD_Init
+LCD_write_english_string
+OV7670_init
+LCD_Clear
+Init_INT0
+MMC_SD_Reset
+FAT_Init
+SearchInit

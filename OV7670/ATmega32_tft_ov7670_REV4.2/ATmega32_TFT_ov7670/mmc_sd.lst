@@ -1,0 +1,727 @@
+   1               		.file	"mmc_sd.c"
+   2               		.arch atmega32
+   3               	__SREG__ = 0x3f
+   4               	__SP_H__ = 0x3e
+   5               	__SP_L__ = 0x3d
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.global __do_copy_data
+   9               		.global __do_clear_bss
+  17               	.Ltext0:
+  18               	.global	SPI_Low
+  20               	SPI_Low:
+  21               	.LFB2:
+  22               	.LM1:
+  23               	/* prologue: frame size=0 */
+  24               	/* prologue end (size=0) */
+  25               	.LM2:
+  26 0000 83E5      		ldi r24、lo8(83)
+  27 0002 8DB9      		out 45-0x20、r24
+  28               	.LM3:
+  29 0004 7098      		cbi 46-0x20、0
+  30               	/* epilogue: frame size=0 */
+  31 0006 0895      		ret
+  32               	/* epilogue end (size=1) */
+  33               	/* function SPI_Low size 4 (3) */
+  34               	.LFE2:
+  36               	.global	SPI_High
+  38               	SPI_High:
+  39               	.LFB3:
+  40               	.LM4:
+  41               	/* prologue: frame size=0 */
+  42               	/* prologue end (size=0) */
+  43               	.LM5:
+  44 0008 80E5      		ldi r24、lo8(80)
+  45 000a 8DB9      		out 45-0x20、r24
+  46               	.LM6:
+  47 000c 709A      		sbi 46-0x20、0
+  48               	/* epilogue: frame size=0 */
+  49 000e 0895      		ret
+  50               	/* epilogue end (size=1) */
+  51               	/* function SPI_High size 4 (3) */
+  52               	.LFE3:
+  54               	.global	SPI_Init
+  56               	SPI_Init:
+  57               	.LFB4:
+  58               	.LM7:
+  59               	/* prologue: frame size=0 */
+  60               	/* prologue end (size=0) */
+  61               	.LM8:
+  62 0010 D49A      		sbi 58-0x20、4
+  63               	.LM9:
+  64 0012 87B3      		in r24、55-0x20
+  65 0014 806A      		ori r24、lo8(-96)
+  66 0016 87BB      		out 55-0x20、r24
+  67               	.LM10:
+  68 0018 0E94 0000 		call SPI_Low
+  69               	/* epilogue: frame size=0 */
+  70 001c 0895      		ret
+  71               	/* epilogue end (size=1) */
+  72               	/* function SPI_Init size 7 (6) */
+  73               	.LFE4:
+  75               	.global	SPI_WriteByte
+  77               	SPI_WriteByte:
+  78               	.LFB5:
+  79               	.LM11:
+  80               	/* prologue: frame size=0 */
+  81               	/* prologue end (size=0) */
+  82               	.LM12:
+  83 001e 8FB9      		out 47-0x20、r24
+  84               	.L5:
+  85               	.LM13:
+  86 0020 779B      		sbis 46-0x20、7
+  87 0022 FECF      		rjmp .L5
+  88               	.LM14:
+  89 0024 8FB1      		in r24、47-0x20
+  90               	.LM15:
+  91 0026 9927      		clr r25
+  92               	/* epilogue: frame size=0 */
+  93 0028 0895      		ret
+  94               	/* epilogue end (size=1) */
+  95               	/* function SPI_WriteByte size 6 (5) */
+  96               	.LFE5:
+  98               	.global	MMC_SD_Init
+ 100               	MMC_SD_Init:
+ 101               	.LFB6:
+ 102               	.LM16:
+ 103               	/* prologue: frame size=0 */
+ 104               	/* prologue end (size=0) */
+ 105               	.LM17:
+ 106 002a 0E94 0000 		call SPI_Init
+ 107               	.LM18:
+ 108 002e DC9A      		sbi 59-0x20、4
+ 109               	/* epilogue: frame size=0 */
+ 110 0030 0895      		ret
+ 111               	/* epilogue end (size=1) */
+ 112               	/* function MMC_SD_Init size 4 (3) */
+ 113               	.LFE6:
+ 115               	.global	MMC_SD_SendCommand
+ 117               	MMC_SD_SendCommand:
+ 118               	.LFB7:
+ 119               	.LM19:
+ 120               	/* prologue: frame size=0 */
+ 121 0032 CF92      		push r12
+ 122 0034 DF92      		push r13
+ 123 0036 EF92      		push r14
+ 124 0038 FF92      		push r15
+ 125 003a 0F93      		push r16
+ 126 003c 1F93      		push r17
+ 127 003e CF93      		push r28
+ 128               	/* prologue end (size=7) */
+ 129 0040 D82E      		mov r13、r24
+ 130 0042 7A01      		movw r14、r20
+ 131 0044 8B01      		movw r16、r22
+ 132               	.LM20:
+ 133 0046 CC24      		clr r12
+ 134               	.LM21:
+ 135 0048 8FEF      		ldi r24、lo8(-1)
+ 136 004a 0E94 0000 		call SPI_WriteByte
+ 137               	.LM22:
+ 138 004e DC98      		cbi 59-0x20、4
+ 139               	.LM23:
+ 140 0050 8D2D      		mov r24、r13
+ 141 0052 8064      		ori r24、lo8(64)
+ 142 0054 0E94 0000 		call SPI_WriteByte
+ 143               	.LM24:
+ 144 0058 812F      		mov r24、r17
+ 145 005a 9927      		clr r25
+ 146 005c AA27      		clr r26
+ 147 005e BB27      		clr r27
+ 148 0060 0E94 0000 		call SPI_WriteByte
+ 149               	.LM25:
+ 150 0064 C801      		movw r24、r16
+ 151 0066 AA27      		clr r26
+ 152 0068 BB27      		clr r27
+ 153 006a 0E94 0000 		call SPI_WriteByte
+ 154               	.LM26:
+ 155 006e BB27      		clr r27
+ 156 0070 A12F      		mov r26、r17
+ 157 0072 902F      		mov r25、r16
+ 158 0074 8F2D      		mov r24、r15
+ 159 0076 0E94 0000 		call SPI_WriteByte
+ 160               	.LM27:
+ 161 007a 8E2D      		mov r24、r14
+ 162 007c 0E94 0000 		call SPI_WriteByte
+ 163               	.LM28:
+ 164 0080 85E9      		ldi r24、lo8(-107)
+ 165 0082 0E94 0000 		call SPI_WriteByte
+ 166               	.LM29:
+ 167 0086 02C0      		rjmp .L10
+ 168               	.L13:
+ 169               	.LM30:
+ 170 0088 C394      		inc r12
+ 171 008a 31F0      		breq .L11
+ 172               	.L10:
+ 173 008c 8FEF      		ldi r24、lo8(-1)
+ 174 008e 0E94 0000 		call SPI_WriteByte
+ 175 0092 C82F      		mov r28、r24
+ 176 0094 8F3F      		cpi r24、lo8(-1)
+ 177 0096 C1F3      		breq .L13
+ 178               	.L11:
+ 179               	.LM31:
+ 180 0098 DC9A      		sbi 59-0x20、4
+ 181               	.LM32:
+ 182 009a 8FEF      		ldi r24、lo8(-1)
+ 183 009c 0E94 0000 		call SPI_WriteByte
+ 184               	.LM33:
+ 185 00a0 8C2F      		mov r24、r28
+ 186 00a2 9927      		clr r25
+ 187               	/* epilogue: frame size=0 */
+ 188 00a4 CF91      		pop r28
+ 189 00a6 1F91      		pop r17
+ 190 00a8 0F91      		pop r16
+ 191 00aa FF90      		pop r15
+ 192 00ac EF90      		pop r14
+ 193 00ae DF90      		pop r13
+ 194 00b0 CF90      		pop r12
+ 195 00b2 0895      		ret
+ 196               	/* epilogue end (size=8) */
+ 197               	/* function MMC_SD_SendCommand size 66 (51) */
+ 198               	.LFE7:
+ 200               	.global	MMC_SD_Reset
+ 202               	MMC_SD_Reset:
+ 203               	.LFB8:
+ 204               	.LM34:
+ 205               	/* prologue: frame size=0 */
+ 206 00b4 1F93      		push r17
+ 207 00b6 CF93      		push r28
+ 208               	/* prologue end (size=2) */
+ 209               	.LM35:
+ 210 00b8 10E0      		ldi r17、lo8(0)
+ 211               	.LM36:
+ 212 00ba 0E94 0000 		call SPI_Low
+ 213               	.L15:
+ 214 00be C9E0      		ldi r28、lo8(9)
+ 215               	.L21:
+ 216               	.LM37:
+ 217 00c0 8FEF      		ldi r24、lo8(-1)
+ 218 00c2 0E94 0000 		call SPI_WriteByte
+ 219 00c6 C150      		subi r28、lo8(-(-1))
+ 220 00c8 C7FF      		sbrs r28、7
+ 221 00ca FACF      		rjmp .L21
+ 222               	.LM38:
+ 223 00cc 40E0      		ldi r20、lo8(0)
+ 224 00ce 50E0      		ldi r21、hi8(0)
+ 225 00d0 60E0      		ldi r22、hlo8(0)
+ 226 00d2 70E0      		ldi r23、hhi8(0)
+ 227 00d4 80E0      		ldi r24、lo8(0)
+ 228 00d6 0E94 0000 		call MMC_SD_SendCommand
+ 229               	.LM39:
+ 230 00da 1F5F      		subi r17、lo8(-(1))
+ 231               	.LM40:
+ 232 00dc 1F3F      		cpi r17、lo8(-1)
+ 233 00de 69F0      		breq .L29
+ 234               	.LM41:
+ 235 00e0 8130      		cpi r24、lo8(1)
+ 236 00e2 69F7      		brne .L15
+ 237 00e4 10E0      		ldi r17、lo8(0)
+ 238               	.L23:
+ 239               	.LM42:
+ 240 00e6 40E0      		ldi r20、lo8(0)
+ 241 00e8 50E0      		ldi r21、hi8(0)
+ 242 00ea 60E0      		ldi r22、hlo8(0)
+ 243 00ec 70E0      		ldi r23、hhi8(0)
+ 244 00ee 81E0      		ldi r24、lo8(1)
+ 245 00f0 0E94 0000 		call MMC_SD_SendCommand
+ 246               	.LM43:
+ 247 00f4 1F5F      		subi r17、lo8(-(1))
+ 248               	.LM44:
+ 249 00f6 1F3F      		cpi r17、lo8(-1)
+ 250 00f8 19F4      		brne .L25
+ 251               	.L29:
+ 252 00fa 81E0      		ldi r24、lo8(1)
+ 253 00fc 90E0      		ldi r25、hi8(1)
+ 254 00fe 14C0      		rjmp .L14
+ 255               	.L25:
+ 256               	.LM45:
+ 257 0100 8823      		tst r24
+ 258 0102 89F7      		brne .L23
+ 259               	.LM46:
+ 260 0104 0E94 0000 		call SPI_High
+ 261               	.LM47:
+ 262 0108 40E0      		ldi r20、lo8(0)
+ 263 010a 50E0      		ldi r21、hi8(0)
+ 264 010c 60E0      		ldi r22、hlo8(0)
+ 265 010e 70E0      		ldi r23、hhi8(0)
+ 266 0110 8BE3      		ldi r24、lo8(59)
+ 267 0112 0E94 0000 		call MMC_SD_SendCommand
+ 268               	.LM48:
+ 269 0116 40E0      		ldi r20、lo8(512)
+ 270 0118 52E0      		ldi r21、hi8(512)
+ 271 011a 60E0      		ldi r22、hlo8(512)
+ 272 011c 70E0      		ldi r23、hhi8(512)
+ 273 011e 80E1      		ldi r24、lo8(16)
+ 274 0120 0E94 0000 		call MMC_SD_SendCommand
+ 275               	.LM49:
+ 276 0124 80E0      		ldi r24、lo8(0)
+ 277 0126 90E0      		ldi r25、hi8(0)
+ 278               	.L14:
+ 279               	/* epilogue: frame size=0 */
+ 280 0128 CF91      		pop r28
+ 281 012a 1F91      		pop r17
+ 282 012c 0895      		ret
+ 283               	/* epilogue end (size=3) */
+ 284               	/* function MMC_SD_Reset size 61 (56) */
+ 285               	.LFE8:
+ 287               	.global	MMC_SD_ReadSingleBlock
+ 289               	MMC_SD_ReadSingleBlock:
+ 290               	.LFB9:
+ 291               	.LM50:
+ 292               	/* prologue: frame size=0 */
+ 293 012e 0F93      		push r16
+ 294 0130 1F93      		push r17
+ 295 0132 CF93      		push r28
+ 296 0134 DF93      		push r29
+ 297               	/* prologue end (size=4) */
+ 298 0136 DC01      		movw r26、r24
+ 299 0138 CB01      		movw r24、r22
+ 300 013a 8A01      		movw r16、r20
+ 301               	.LM51:
+ 302 013c C0E0      		ldi r28、lo8(0)
+ 303 013e D0E0      		ldi r29、hi8(0)
+ 304               	.LM52:
+ 305 0140 39E0      		ldi r19、9
+ 306 0142 880F      	1:	lsl r24
+ 307 0144 991F      		rol r25
+ 308 0146 AA1F      		rol r26
+ 309 0148 BB1F      		rol r27
+ 310 014a 3A95      		dec r19
+ 311 014c D1F7      		brne 1b
+ 312 014e AC01      		movw r20、r24
+ 313 0150 BD01      		movw r22、r26
+ 314 0152 81E1      		ldi r24、lo8(17)
+ 315 0154 0E94 0000 		call MMC_SD_SendCommand
+ 316               	.LM53:
+ 317 0158 8823      		tst r24
+ 318 015a 31F0      		breq .L31
+ 319               	.LM54:
+ 320 015c 9927      		clr r25
+ 321 015e 24C0      		rjmp .L30
+ 322               	.L42:
+ 323               	.LM55:
+ 324 0160 DC9A      		sbi 59-0x20、4
+ 325 0162 81E0      		ldi r24、lo8(1)
+ 326 0164 90E0      		ldi r25、hi8(1)
+ 327 0166 20C0      		rjmp .L30
+ 328               	.L31:
+ 329               	.LM56:
+ 330 0168 DC98      		cbi 59-0x20、4
+ 331               	.LM57:
+ 332 016a 02C0      		rjmp .L32
+ 333               	.L35:
+ 334 016c 2196      		adiw r28、1
+ 335 016e C1F3      		breq .L42
+ 336               	.L32:
+ 337 0170 8FEF      		ldi r24、lo8(-1)
+ 338 0172 0E94 0000 		call SPI_WriteByte
+ 339 0176 8E3F      		cpi r24、lo8(-2)
+ 340 0178 C9F7      		brne .L35
+ 341 017a CFEF      		ldi r28、lo8(511)
+ 342 017c D1E0      		ldi r29、hi8(511)
+ 343               	.L39:
+ 344               	.LM58:
+ 345 017e 8FEF      		ldi r24、lo8(-1)
+ 346 0180 0E94 0000 		call SPI_WriteByte
+ 347 0184 F801      		movw r30、r16
+ 348 0186 8193      		st Z+、r24
+ 349 0188 8F01      		movw r16、r30
+ 350               	.LM59:
+ 351 018a 2197      		sbiw r28、1
+ 352 018c D7FF      		sbrs r29、7
+ 353 018e F7CF      		rjmp .L39
+ 354               	.LM60:
+ 355 0190 8FEF      		ldi r24、lo8(-1)
+ 356 0192 0E94 0000 		call SPI_WriteByte
+ 357               	.LM61:
+ 358 0196 8FEF      		ldi r24、lo8(-1)
+ 359 0198 0E94 0000 		call SPI_WriteByte
+ 360               	.LM62:
+ 361 019c DC9A      		sbi 59-0x20、4
+ 362               	.LM63:
+ 363 019e 8FEF      		ldi r24、lo8(-1)
+ 364 01a0 0E94 0000 		call SPI_WriteByte
+ 365               	.LM64:
+ 366 01a4 80E0      		ldi r24、lo8(0)
+ 367 01a6 90E0      		ldi r25、hi8(0)
+ 368               	.L30:
+ 369               	/* epilogue: frame size=0 */
+ 370 01a8 DF91      		pop r29
+ 371 01aa CF91      		pop r28
+ 372 01ac 1F91      		pop r17
+ 373 01ae 0F91      		pop r16
+ 374 01b0 0895      		ret
+ 375               	/* epilogue end (size=5) */
+ 376               	/* function MMC_SD_ReadSingleBlock size 67 (58) */
+ 377               	.LFE9:
+ 379               	.global	MMC_SD_WriteSingleBlock
+ 381               	MMC_SD_WriteSingleBlock:
+ 382               	.LFB10:
+ 383               	.LM65:
+ 384               	/* prologue: frame size=0 */
+ 385 01b2 EF92      		push r14
+ 386 01b4 FF92      		push r15
+ 387 01b6 0F93      		push r16
+ 388 01b8 1F93      		push r17
+ 389 01ba CF93      		push r28
+ 390 01bc DF93      		push r29
+ 391               	/* prologue end (size=6) */
+ 392 01be DC01      		movw r26、r24
+ 393 01c0 CB01      		movw r24、r22
+ 394 01c2 8A01      		movw r16、r20
+ 395               	.LM66:
+ 396 01c4 EE24      		clr r14
+ 397 01c6 FF24      		clr r15
+ 398               	.LM67:
+ 399 01c8 49E0      		ldi r20、9
+ 400 01ca 880F      	1:	lsl r24
+ 401 01cc 991F      		rol r25
+ 402 01ce AA1F      		rol r26
+ 403 01d0 BB1F      		rol r27
+ 404 01d2 4A95      		dec r20
+ 405 01d4 D1F7      		brne 1b
+ 406 01d6 AC01      		movw r20、r24
+ 407 01d8 BD01      		movw r22、r26
+ 408 01da 88E1      		ldi r24、lo8(24)
+ 409 01dc 0E94 0000 		call MMC_SD_SendCommand
+ 410               	.LM68:
+ 411 01e0 8823      		tst r24
+ 412 01e2 11F0      		breq .L44
+ 413               	.LM69:
+ 414 01e4 9927      		clr r25
+ 415 01e6 3FC0      		rjmp .L43
+ 416               	.L44:
+ 417               	.LM70:
+ 418 01e8 DC98      		cbi 59-0x20、4
+ 419               	.LM71:
+ 420 01ea 8FEF      		ldi r24、lo8(-1)
+ 421 01ec 0E94 0000 		call SPI_WriteByte
+ 422               	.LM72:
+ 423 01f0 8FEF      		ldi r24、lo8(-1)
+ 424 01f2 0E94 0000 		call SPI_WriteByte
+ 425               	.LM73:
+ 426 01f6 8FEF      		ldi r24、lo8(-1)
+ 427 01f8 0E94 0000 		call SPI_WriteByte
+ 428               	.LM74:
+ 429 01fc 8EEF      		ldi r24、lo8(-2)
+ 430 01fe 0E94 0000 		call SPI_WriteByte
+ 431 0202 CFEF      		ldi r28、lo8(511)
+ 432 0204 D1E0      		ldi r29、hi8(511)
+ 433               	.L48:
+ 434               	.LM75:
+ 435 0206 F801      		movw r30、r16
+ 436 0208 8191      		ld r24、Z+
+ 437 020a 8F01      		movw r16、r30
+ 438 020c 0E94 0000 		call SPI_WriteByte
+ 439               	.LM76:
+ 440 0210 2197      		sbiw r28、1
+ 441 0212 D7FF      		sbrs r29、7
+ 442 0214 F8CF      		rjmp .L48
+ 443               	.LM77:
+ 444 0216 8FEF      		ldi r24、lo8(-1)
+ 445 0218 0E94 0000 		call SPI_WriteByte
+ 446               	.LM78:
+ 447 021c 8FEF      		ldi r24、lo8(-1)
+ 448 021e 0E94 0000 		call SPI_WriteByte
+ 449               	.LM79:
+ 450 0222 8FEF      		ldi r24、lo8(-1)
+ 451 0224 0E94 0000 		call SPI_WriteByte
+ 452               	.LM80:
+ 453 0228 282F      		mov r18、r24
+ 454 022a 3327      		clr r19
+ 455 022c C901      		movw r24、r18
+ 456 022e 8F71      		andi r24、lo8(31)
+ 457 0230 9070      		andi r25、hi8(31)
+ 458 0232 0597      		sbiw r24、5
+ 459 0234 69F0      		breq .L50
+ 460               	.LM81:
+ 461 0236 DC9A      		sbi 59-0x20、4
+ 462               	.LM82:
+ 463 0238 C901      		movw r24、r18
+ 464 023a 15C0      		rjmp .L43
+ 465               	.L56:
+ 466               	.LM83:
+ 467 023c DC9A      		sbi 59-0x20、4
+ 468 023e 81E0      		ldi r24、lo8(1)
+ 469 0240 90E0      		ldi r25、hi8(1)
+ 470 0242 11C0      		rjmp .L43
+ 471               	.L53:
+ 472 0244 0894      		sec
+ 473 0246 E11C      		adc r14、__zero_reg__
+ 474 0248 F11C      		adc r15、__zero_reg__
+ 475 024a E114      		cp r14、__zero_reg__
+ 476 024c F104      		cpc r15、__zero_reg__
+ 477 024e B1F3      		breq .L56
+ 478               	.L50:
+ 479 0250 8FEF      		ldi r24、lo8(-1)
+ 480 0252 0E94 0000 		call SPI_WriteByte
+ 481 0256 8823      		tst r24
+ 482 0258 A9F3      		breq .L53
+ 483               	.LM84:
+ 484 025a DC9A      		sbi 59-0x20、4
+ 485               	.LM85:
+ 486 025c 8FEF      		ldi r24、lo8(-1)
+ 487 025e 0E94 0000 		call SPI_WriteByte
+ 488               	.LM86:
+ 489 0262 80E0      		ldi r24、lo8(0)
+ 490 0264 90E0      		ldi r25、hi8(0)
+ 491               	.L43:
+ 492               	/* epilogue: frame size=0 */
+ 493 0266 DF91      		pop r29
+ 494 0268 CF91      		pop r28
+ 495 026a 1F91      		pop r17
+ 496 026c 0F91      		pop r16
+ 497 026e FF90      		pop r15
+ 498 0270 EF90      		pop r14
+ 499 0272 0895      		ret
+ 500               	/* epilogue end (size=7) */
+ 501               	/* function MMC_SD_WriteSingleBlock size 98 (85) */
+ 502               	.LFE10:
+ 504               	.global	MMC_SD_ReadCapacity
+ 506               	MMC_SD_ReadCapacity:
+ 507               	.LFB11:
+ 508               	.LM87:
+ 509               	/* prologue: frame size=16 */
+ 510 0274 AF92      		push r10
+ 511 0276 BF92      		push r11
+ 512 0278 CF92      		push r12
+ 513 027a DF92      		push r13
+ 514 027c EF92      		push r14
+ 515 027e FF92      		push r15
+ 516 0280 0F93      		push r16
+ 517 0282 1F93      		push r17
+ 518 0284 CF93      		push r28
+ 519 0286 DF93      		push r29
+ 520 0288 CDB7      		in r28、__SP_L__
+ 521 028a DEB7      		in r29、__SP_H__
+ 522 028c 6097      		sbiw r28、16
+ 523 028e 0FB6      		in __tmp_reg__、__SREG__
+ 524 0290 F894      		cli
+ 525 0292 DEBF      		out __SP_H__、r29
+ 526 0294 0FBE      		out __SREG__、__tmp_reg__
+ 527 0296 CDBF      		out __SP_L__、r28
+ 528               	/* prologue end (size=18) */
+ 529               	.LM88:
+ 530 0298 00E0      		ldi r16、lo8(0)
+ 531 029a 10E0      		ldi r17、hi8(0)
+ 532               	.LM89:
+ 533 029c 40E0      		ldi r20、lo8(0)
+ 534 029e 50E0      		ldi r21、hi8(0)
+ 535 02a0 60E0      		ldi r22、hlo8(0)
+ 536 02a2 70E0      		ldi r23、hhi8(0)
+ 537 02a4 89E0      		ldi r24、lo8(9)
+ 538 02a6 0E94 0000 		call MMC_SD_SendCommand
+ 539 02aa 682F      		mov r22、r24
+ 540               	.LM90:
+ 541 02ac 8823      		tst r24
+ 542 02ae 51F0      		breq .L58
+ 543               	.LM91:
+ 544 02b0 7727      		clr r23
+ 545 02b2 8827      		clr r24
+ 546 02b4 9927      		clr r25
+ 547 02b6 81C0      		rjmp .L57
+ 548               	.L79:
+ 549               	.LM92:
+ 550 02b8 DC9A      		sbi 59-0x20、4
+ 551 02ba 61E0      		ldi r22、lo8(1)
+ 552 02bc 70E0      		ldi r23、hi8(1)
+ 553 02be 80E0      		ldi r24、hlo8(1)
+ 554 02c0 90E0      		ldi r25、hhi8(1)
+ 555 02c2 7BC0      		rjmp .L57
+ 556               	.L58:
+ 557               	.LM93:
+ 558 02c4 DC98      		cbi 59-0x20、4
+ 559               	.LM94:
+ 560 02c6 03C0      		rjmp .L59
+ 561               	.L62:
+ 562 02c8 0F5F      		subi r16、lo8(-(1))
+ 563 02ca 1F4F      		sbci r17、hi8(-(1))
+ 564 02cc A9F3      		breq .L79
+ 565               	.L59:
+ 566 02ce 8FEF      		ldi r24、lo8(-1)
+ 567 02d0 0E94 0000 		call SPI_WriteByte
+ 568 02d4 8E3F      		cpi r24、lo8(-2)
+ 569 02d6 C1F7      		brne .L62
+ 570               	.LM95:
+ 571 02d8 EE24      		clr r14
+ 572 02da FF24      		clr r15
+ 573               	.L66:
+ 574               	.LM96:
+ 575 02dc 8E01      		movw r16、r28
+ 576 02de 0F5F      		subi r16、lo8(-(1))
+ 577 02e0 1F4F      		sbci r17、hi8(-(1))
+ 578 02e2 0E0D      		add r16、r14
+ 579 02e4 1F1D      		adc r17、r15
+ 580 02e6 8FEF      		ldi r24、lo8(-1)
+ 581 02e8 0E94 0000 		call SPI_WriteByte
+ 582 02ec F801      		movw r30、r16
+ 583 02ee 8083      		st Z、r24
+ 584               	.LM97:
+ 585 02f0 0894      		sec
+ 586 02f2 E11C      		adc r14、__zero_reg__
+ 587 02f4 F11C      		adc r15、__zero_reg__
+ 588 02f6 F0E1      		ldi r31、lo8(16)
+ 589 02f8 EF16      		cp r14、r31
+ 590 02fa F104      		cpc r15、__zero_reg__
+ 591 02fc 78F3      		brlo .L66
+ 592               	.LM98:
+ 593 02fe 8FEF      		ldi r24、lo8(-1)
+ 594 0300 0E94 0000 		call SPI_WriteByte
+ 595               	.LM99:
+ 596 0304 8FEF      		ldi r24、lo8(-1)
+ 597 0306 0E94 0000 		call SPI_WriteByte
+ 598               	.LM100:
+ 599 030a 8FEF      		ldi r24、lo8(-1)
+ 600 030c 0E94 0000 		call SPI_WriteByte
+ 601               	.LM101:
+ 602 0310 DC9A      		sbi 59-0x20、4
+ 603               	.LM102:
+ 604 0312 8FEF      		ldi r24、lo8(-1)
+ 605 0314 0E94 0000 		call SPI_WriteByte
+ 606               	.LM103:
+ 607 0318 8F81      		ldd r24、Y+7
+ 608 031a E82E      		mov r14、r24
+ 609 031c FF24      		clr r15
+ 610 031e 83E0      		ldi r24、lo8(3)
+ 611 0320 E822      		and r14、r24
+ 612 0322 FF24      		clr r15
+ 613               	.LM104:
+ 614 0324 FE2C      		mov r15、r14
+ 615 0326 EE24      		clr r14
+ 616               	.LM105:
+ 617 0328 8885      		ldd r24、Y+8
+ 618 032a E80E      		add r14、r24
+ 619 032c F11C      		adc r15、__zero_reg__
+ 620               	.LM106:
+ 621 032e EE0C      		lsl r14
+ 622 0330 FF1C      		rol r15
+ 623 0332 EE0C      		lsl r14
+ 624 0334 FF1C      		rol r15
+ 625               	.LM107:
+ 626 0336 8985      		ldd r24、Y+9
+ 627 0338 9927      		clr r25
+ 628 033a 66E0      		ldi r22、6
+ 629 033c 9695      	1:	lsr r25
+ 630 033e 8795      		ror r24
+ 631 0340 6A95      		dec r22
+ 632 0342 E1F7      		brne 1b
+ 633 0344 E80E      		add r14、r24
+ 634 0346 F91E      		adc r15、r25
+ 635               	.LM108:
+ 636 0348 6A85      		ldd r22、Y+10
+ 637 034a 6370      		andi r22、lo8(3)
+ 638               	.LM109:
+ 639 034c 660F      		lsl r22
+ 640               	.LM110:
+ 641 034e 8B85      		ldd r24、Y+11
+ 642 0350 9927      		clr r25
+ 643 0352 880F      		lsl r24
+ 644 0354 892F      		mov r24、r25
+ 645 0356 881F      		rol r24
+ 646 0358 990B      		sbc r25、r25
+ 647 035a 9195      		neg r25
+ 648 035c 680F      		add r22、r24
+ 649               	.LM111:
+ 650 035e 6E5F      		subi r22、lo8(-(2))
+ 651               	.LM112:
+ 652 0360 21E0      		ldi r18、lo8(1)
+ 653 0362 30E0      		ldi r19、hi8(1)
+ 654               	.L80:
+ 655               	.LM113:
+ 656 0364 6623      		tst r22
+ 657 0366 21F0      		breq .L76
+ 658               	.LM114:
+ 659 0368 220F      		add r18、r18
+ 660 036a 331F      		adc r19、r19
+ 661               	.LM115:
+ 662 036c 6150      		subi r22、lo8(-(-1))
+ 663 036e FACF      		rjmp .L80
+ 664               	.L76:
+ 665               	.LM116:
+ 666 0370 0894      		sec
+ 667 0372 E11C      		adc r14、__zero_reg__
+ 668 0374 F11C      		adc r15、__zero_reg__
+ 669 0376 C701      		movw r24、r14
+ 670 0378 AA27      		clr r26
+ 671 037a BB27      		clr r27
+ 672 037c 4427      		clr r20
+ 673 037e 5527      		clr r21
+ 674 0380 BC01      		movw r22、r24
+ 675 0382 CD01      		movw r24、r26
+ 676 0384 0E94 0000 		call __mulsi3
+ 677 0388 5B01      		movw r10、r22
+ 678 038a 6C01      		movw r12、r24
+ 679               	.LM117:
+ 680 038c 8E81      		ldd r24、Y+6
+ 681 038e E82E      		mov r14、r24
+ 682 0390 FF24      		clr r15
+ 683 0392 EFE0      		ldi r30、lo8(15)
+ 684 0394 EE22      		and r14、r30
+ 685 0396 FF24      		clr r15
+ 686               	.LM118:
+ 687 0398 21E0      		ldi r18、lo8(1)
+ 688 039a 30E0      		ldi r19、hi8(1)
+ 689               	.L81:
+ 690               	.LM119:
+ 691 039c E114      		cp r14、__zero_reg__
+ 692 039e F104      		cpc r15、__zero_reg__
+ 693 03a0 31F0      		breq .L78
+ 694               	.LM120:
+ 695 03a2 220F      		add r18、r18
+ 696 03a4 331F      		adc r19、r19
+ 697               	.LM121:
+ 698 03a6 0894      		sec
+ 699 03a8 E108      		sbc r14、__zero_reg__
+ 700 03aa F108      		sbc r15、__zero_reg__
+ 701 03ac F7CF      		rjmp .L81
+ 702               	.L78:
+ 703               	.LM122:
+ 704 03ae 4427      		clr r20
+ 705 03b0 5527      		clr r21
+ 706 03b2 C601      		movw r24、r12
+ 707 03b4 B501      		movw r22、r10
+ 708 03b6 0E94 0000 		call __mulsi3
+ 709               	.L57:
+ 710               	/* epilogue: frame size=16 */
+ 711 03ba 6096      		adiw r28、16
+ 712 03bc 0FB6      		in __tmp_reg__、__SREG__
+ 713 03be F894      		cli
+ 714 03c0 DEBF      		out __SP_H__、r29
+ 715 03c2 0FBE      		out __SREG__、__tmp_reg__
+ 716 03c4 CDBF      		out __SP_L__、r28
+ 717 03c6 DF91      		pop r29
+ 718 03c8 CF91      		pop r28
+ 719 03ca 1F91      		pop r17
+ 720 03cc 0F91      		pop r16
+ 721 03ce FF90      		pop r15
+ 722 03d0 EF90      		pop r14
+ 723 03d2 DF90      		pop r13
+ 724 03d4 CF90      		pop r12
+ 725 03d6 BF90      		pop r11
+ 726 03d8 AF90      		pop r10
+ 727 03da 0895      		ret
+ 728               	/* epilogue end (size=17) */
+ 729               	/* function MMC_SD_ReadCapacity size 182 (147) */
+ 730               	.LFE11:
+ 732               	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 mmc_sd.c
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:3      *ABS*:0000003f __SREG__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:4      *ABS*:0000003e __SP_H__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:5      *ABS*:0000003d __SP_L__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:6      *ABS*:00000000 __tmp_reg__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:7      *ABS*:00000001 __zero_reg__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:20     .text:00000000 SPI_Low
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:38     .text:00000008 SPI_High
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:56     .text:00000010 SPI_Init
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:77     .text:0000001e SPI_WriteByte
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:100    .text:0000002a MMC_SD_Init
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:117    .text:00000032 MMC_SD_SendCommand
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:202    .text:000000b4 MMC_SD_Reset
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:289    .text:0000012e MMC_SD_ReadSingleBlock
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:381    .text:000001b2 MMC_SD_WriteSingleBlock
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/ccElaaaa.s:506    .text:00000274 MMC_SD_ReadCapacity
+
+UNDEFINED SYMBOLS
+__do_copy_data
+__do_clear_bss
+__mulsi3

@@ -1,0 +1,1899 @@
+   1               		.file	"FAT.c"
+   2               		.arch atmega32
+   3               	__SREG__ = 0x3f
+   4               	__SP_H__ = 0x3e
+   5               	__SP_L__ = 0x3d
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.global __do_copy_data
+   9               		.global __do_clear_bss
+  17               	.Ltext0:
+  18               	.global	FAT_WriteSector
+  19               		.data
+  22               	FAT_WriteSector:
+  23 0000 0000      		.word	pm(MMC_SD_WriteSingleBlock)
+  24               	.global	FAT_ReadSector
+  27               	FAT_ReadSector:
+  28 0002 0000      		.word	pm(MMC_SD_ReadSingleBlock)
+  29               		.text
+  30               	.global	FAT_Init
+  32               	FAT_Init:
+  33               	.LFB11:
+  34               	.LM1:
+  35               	/* prologue: frame size=512 */
+  36 0000 8F92      		push r8
+  37 0002 9F92      		push r9
+  38 0004 AF92      		push r10
+  39 0006 BF92      		push r11
+  40 0008 CF92      		push r12
+  41 000a DF92      		push r13
+  42 000c EF92      		push r14
+  43 000e FF92      		push r15
+  44 0010 0F93      		push r16
+  45 0012 1F93      		push r17
+  46 0014 CF93      		push r28
+  47 0016 DF93      		push r29
+  48 0018 CDB7      		in r28、__SP_L__
+  49 001a DEB7      		in r29、__SP_H__
+  50 001c C050      		subi r28、lo8(512)
+  51 001e D240      		sbci r29、hi8(512)
+  52 0020 0FB6      		in __tmp_reg__、__SREG__
+  53 0022 F894      		cli
+  54 0024 DEBF      		out __SP_H__、r29
+  55 0026 0FBE      		out __SREG__、__tmp_reg__
+  56 0028 CDBF      		out __SP_L__、r28
+  57               	/* prologue end (size=21) */
+  58               	.LM2:
+  59 002a AA24      		clr r10
+  60 002c BB24      		clr r11
+  61 002e 6501      		movw r12、r10
+  62               	.LM3:
+  63 0030 0E94 0000 		call MMC_SD_ReadCapacity
+  64 0034 7B01      		movw r14、r22
+  65 0036 8C01      		movw r16、r24
+  66               	.LM4:
+  67 0038 8FEF      		ldi r24、lo8(255)
+  68 003a E816      		cp r14、r24
+  69 003c F104      		cpc r15、__zero_reg__
+  70 003e 0105      		cpc r16、__zero_reg__
+  71 0040 1105      		cpc r17、__zero_reg__
+  72 0042 08F4      		brsh .+2
+  73 0044 49C0      		rjmp .L13
+  74               	.LM5:
+  75 0046 E091 0000 		lds r30、FAT_ReadSector
+  76 004a F091 0000 		lds r31、(FAT_ReadSector)+1
+  77 004e AE01      		movw r20、r28
+  78 0050 4F5F      		subi r20、lo8(-(1))
+  79 0052 5F4F      		sbci r21、hi8(-(1))
+  80 0054 C601      		movw r24、r12
+  81 0056 B501      		movw r22、r10
+  82 0058 0995      		icall
+  83 005a 8823      		tst r24
+  84 005c E9F5      		brne .L13
+  85               	.LM6:
+  86 005e 4E01      		movw r8、r28
+  87 0060 0894      		sec
+  88 0062 811C      		adc r8、__zero_reg__
+  89 0064 911C      		adc r9、__zero_reg__
+  90               	.LM7:
+  91 0066 FE01      		movw r30、r28
+  92 0068 E154      		subi r30、lo8(-(447))
+  93 006a FE4F      		sbci r31、hi8(-(447))
+  94 006c A084      		ldd r10、Z+8
+  95 006e B184      		ldd r11、Z+9
+  96 0070 C284      		ldd r12、Z+10
+  97 0072 D384      		ldd r13、Z+11
+  98               	.LM8:
+  99 0074 99E0      		ldi r25、9
+ 100 0076 1695      	1:	lsr r17
+ 101 0078 0795      		ror r16
+ 102 007a F794      		ror r15
+ 103 007c E794      		ror r14
+ 104 007e 9A95      		dec r25
+ 105 0080 D1F7      		brne 1b
+ 106 0082 AE14      		cp r10、r14
+ 107 0084 BF04      		cpc r11、r15
+ 108 0086 C006      		cpc r12、r16
+ 109 0088 D106      		cpc r13、r17
+ 110 008a 20F0      		brlo .L4
+ 111               	.LM9:
+ 112 008c AA24      		clr r10
+ 113 008e BB24      		clr r11
+ 114 0090 6501      		movw r12、r10
+ 115 0092 1CC0      		rjmp .L5
+ 116               	.L4:
+ 117               	.LM10:
+ 118 0094 E091 0000 		lds r30、FAT_ReadSector
+ 119 0098 F091 0000 		lds r31、(FAT_ReadSector)+1
+ 120 009c A401      		movw r20、r8
+ 121 009e C601      		movw r24、r12
+ 122 00a0 B501      		movw r22、r10
+ 123 00a2 0995      		icall
+ 124 00a4 8823      		tst r24
+ 125 00a6 C1F4      		brne .L13
+ 126               	.LM11:
+ 127 00a8 8981      		ldd r24、Y+1
+ 128 00aa 893E      		cpi r24、lo8(-23)
+ 129 00ac 79F0      		breq .L5
+ 130 00ae 8B3E      		cpi r24、lo8(-21)
+ 131 00b0 69F0      		breq .L5
+ 132               	.LM12:
+ 133 00b2 AA24      		clr r10
+ 134 00b4 BB24      		clr r11
+ 135 00b6 6501      		movw r12、r10
+ 136               	.LM13:
+ 137 00b8 E091 0000 		lds r30、FAT_ReadSector
+ 138 00bc F091 0000 		lds r31、(FAT_ReadSector)+1
+ 139 00c0 A401      		movw r20、r8
+ 140 00c2 C601      		movw r24、r12
+ 141 00c4 B501      		movw r22、r10
+ 142 00c6 0995      		icall
+ 143 00c8 8823      		tst r24
+ 144 00ca 31F4      		brne .L13
+ 145               	.L5:
+ 146               	.LM14:
+ 147 00cc F401      		movw r30、r8
+ 148 00ce 8081      		ld r24、Z
+ 149 00d0 893E      		cpi r24、lo8(-23)
+ 150 00d2 29F0      		breq .L9
+ 151 00d4 8B3E      		cpi r24、lo8(-21)
+ 152 00d6 19F0      		breq .L9
+ 153               	.L13:
+ 154               	.LM15:
+ 155 00d8 81E0      		ldi r24、lo8(1)
+ 156 00da 90E0      		ldi r25、hi8(1)
+ 157 00dc 8DC0      		rjmp .L1
+ 158               	.L9:
+ 159               	.LM16:
+ 160 00de F401      		movw r30、r8
+ 161 00e0 3B96      		adiw r30、11
+ 162               	.LM17:
+ 163 00e2 8385      		ldd r24、Z+11
+ 164 00e4 9485      		ldd r25、Z+12
+ 165 00e6 892B      		or r24、r25
+ 166 00e8 69F0      		breq .L10
+ 167               	.LM18:
+ 168 00ea 1092 0000 		sts FAT32_Enable、__zero_reg__
+ 169               	.LM19:
+ 170 00ee 8385      		ldd r24、Z+11
+ 171 00f0 9485      		ldd r25、Z+12
+ 172 00f2 9093 0000 		sts (FATsectors)+1、r25
+ 173 00f6 8093 0000 		sts FATsectors、r24
+ 174               	.LM20:
+ 175 00fa 82E0      		ldi r24、lo8(2)
+ 176 00fc 90E0      		ldi r25、hi8(2)
+ 177 00fe A0E0      		ldi r26、hlo8(2)
+ 178 0100 B0E0      		ldi r27、hhi8(2)
+ 179 0102 0DC0      		rjmp .L12
+ 180               	.L10:
+ 181               	.LM21:
+ 182 0104 81E0      		ldi r24、lo8(1)
+ 183 0106 8093 0000 		sts FAT32_Enable、r24
+ 184               	.LM22:
+ 185 010a 818D      		ldd r24、Z+25
+ 186 010c 928D      		ldd r25、Z+26
+ 187 010e 9093 0000 		sts (FATsectors)+1、r25
+ 188 0112 8093 0000 		sts FATsectors、r24
+ 189               	.LM23:
+ 190 0116 81A1      		ldd r24、Z+33
+ 191 0118 92A1      		ldd r25、Z+34
+ 192 011a A3A1      		ldd r26、Z+35
+ 193 011c B4A1      		ldd r27、Z+36
+ 194               	.L12:
+ 195 011e 8093 0000 		sts FirstDirClust、r24
+ 196 0122 9093 0000 		sts (FirstDirClust)+1、r25
+ 197 0126 A093 0000 		sts (FirstDirClust)+2、r26
+ 198 012a B093 0000 		sts (FirstDirClust)+3、r27
+ 199               	.LM24:
+ 200 012e 8081      		ld r24、Z
+ 201 0130 9181      		ldd r25、Z+1
+ 202 0132 9093 0000 		sts (BytesPerSector)+1、r25
+ 203 0136 8093 0000 		sts BytesPerSector、r24
+ 204               	.LM25:
+ 205 013a 8281      		ldd r24、Z+2
+ 206 013c 9927      		clr r25
+ 207 013e 9093 0000 		sts (SectorsPerClust)+1、r25
+ 208 0142 8093 0000 		sts SectorsPerClust、r24
+ 209               	.LM26:
+ 210 0146 8381      		ldd r24、Z+3
+ 211 0148 9481      		ldd r25、Z+4
+ 212 014a 9C01      		movw r18、r24
+ 213 014c 4427      		clr r20
+ 214 014e 5527      		clr r21
+ 215 0150 2A0D      		add r18、r10
+ 216 0152 3B1D      		adc r19、r11
+ 217 0154 4C1D      		adc r20、r12
+ 218 0156 5D1D      		adc r21、r13
+ 219 0158 2093 0000 		sts FirstFATSector、r18
+ 220 015c 3093 0000 		sts (FirstFATSector)+1、r19
+ 221 0160 4093 0000 		sts (FirstFATSector)+2、r20
+ 222 0164 5093 0000 		sts (FirstFATSector)+3、r21
+ 223               	.LM27:
+ 224 0168 8681      		ldd r24、Z+6
+ 225 016a 9781      		ldd r25、Z+7
+ 226 016c AA27      		clr r26
+ 227 016e BB27      		clr r27
+ 228 0170 8093 0000 		sts RootDirCount、r24
+ 229 0174 9093 0000 		sts (RootDirCount)+1、r25
+ 230 0178 A093 0000 		sts (RootDirCount)+2、r26
+ 231 017c B093 0000 		sts (RootDirCount)+3、r27
+ 232               	.LM28:
+ 233 0180 7C01      		movw r14、r24
+ 234 0182 8D01      		movw r16、r26
+ 235 0184 84E0      		ldi r24、4
+ 236 0186 1695      	1:	lsr r17
+ 237 0188 0795      		ror r16
+ 238 018a F794      		ror r15
+ 239 018c E794      		ror r14
+ 240 018e 8A95      		dec r24
+ 241 0190 D1F7      		brne 1b
+ 242 0192 E092 0000 		sts RootDirSectors、r14
+ 243 0196 F092 0000 		sts (RootDirSectors)+1、r15
+ 244 019a 0093 0000 		sts (RootDirSectors)+2、r16
+ 245 019e 1093 0000 		sts (RootDirSectors)+3、r17
+ 246               	.LM29:
+ 247 01a2 8581      		ldd r24、Z+5
+ 248 01a4 682F      		mov r22、r24
+ 249 01a6 7727      		clr r23
+ 250 01a8 8091 0000 		lds r24、FATsectors
+ 251 01ac 9091 0000 		lds r25、(FATsectors)+1
+ 252 01b0 689F      		mul r22、r24
+ 253 01b2 F001      		movw r30、r0
+ 254 01b4 699F      		mul r22、r25
+ 255 01b6 F00D      		add r31、r0
+ 256 01b8 789F      		mul r23、r24
+ 257 01ba F00D      		add r31、r0
+ 258 01bc 1124      		clr r1
+ 259 01be CF01      		movw r24、r30
+ 260 01c0 AA27      		clr r26
+ 261 01c2 BB27      		clr r27
+ 262 01c4 820F      		add r24、r18
+ 263 01c6 931F      		adc r25、r19
+ 264 01c8 A41F      		adc r26、r20
+ 265 01ca B51F      		adc r27、r21
+ 266 01cc 8093 0000 		sts FirstDirSector、r24
+ 267 01d0 9093 0000 		sts (FirstDirSector)+1、r25
+ 268 01d4 A093 0000 		sts (FirstDirSector)+2、r26
+ 269 01d8 B093 0000 		sts (FirstDirSector)+3、r27
+ 270               	.LM30:
+ 271 01dc 8E0D      		add r24、r14
+ 272 01de 9F1D      		adc r25、r15
+ 273 01e0 A01F      		adc r26、r16
+ 274 01e2 B11F      		adc r27、r17
+ 275 01e4 8093 0000 		sts FirstDataSector、r24
+ 276 01e8 9093 0000 		sts (FirstDataSector)+1、r25
+ 277 01ec A093 0000 		sts (FirstDataSector)+2、r26
+ 278 01f0 B093 0000 		sts (FirstDataSector)+3、r27
+ 279               	.LM31:
+ 280 01f4 80E0      		ldi r24、lo8(0)
+ 281 01f6 90E0      		ldi r25、hi8(0)
+ 282               	.L1:
+ 283               	/* epilogue: frame size=512 */
+ 284 01f8 C050      		subi r28、lo8(-512)
+ 285 01fa DE4F      		sbci r29、hi8(-512)
+ 286 01fc 0FB6      		in __tmp_reg__、__SREG__
+ 287 01fe F894      		cli
+ 288 0200 DEBF      		out __SP_H__、r29
+ 289 0202 0FBE      		out __SREG__、__tmp_reg__
+ 290 0204 CDBF      		out __SP_L__、r28
+ 291 0206 DF91      		pop r29
+ 292 0208 CF91      		pop r28
+ 293 020a 1F91      		pop r17
+ 294 020c 0F91      		pop r16
+ 295 020e FF90      		pop r15
+ 296 0210 EF90      		pop r14
+ 297 0212 DF90      		pop r13
+ 298 0214 CF90      		pop r12
+ 299 0216 BF90      		pop r11
+ 300 0218 AF90      		pop r10
+ 301 021a 9F90      		pop r9
+ 302 021c 8F90      		pop r8
+ 303 021e 0895      		ret
+ 304               	/* epilogue end (size=20) */
+ 305               	/* function FAT_Init size 272 (231) */
+ 306               	.LFE11:
+ 308               	.global	FAT_LoadPartCluster
+ 310               	FAT_LoadPartCluster:
+ 311               	.LFB12:
+ 312               	.LM32:
+ 313               	/* prologue: frame size=0 */
+ 314 0220 EF92      		push r14
+ 315 0222 FF92      		push r15
+ 316 0224 0F93      		push r16
+ 317 0226 1F93      		push r17
+ 318               	/* prologue end (size=4) */
+ 319 0228 DC01      		movw r26、r24
+ 320 022a CB01      		movw r24、r22
+ 321 022c 8A01      		movw r16、r20
+ 322 022e 7901      		movw r14、r18
+ 323               	.LM33:
+ 324 0230 0297      		sbiw r24、2
+ 325 0232 A109      		sbc r26、__zero_reg__
+ 326 0234 B109      		sbc r27、__zero_reg__
+ 327 0236 2091 0000 		lds r18、SectorsPerClust
+ 328 023a 3091 0000 		lds r19、(SectorsPerClust)+1
+ 329 023e 4427      		clr r20
+ 330 0240 5527      		clr r21
+ 331 0242 BC01      		movw r22、r24
+ 332 0244 CD01      		movw r24、r26
+ 333 0246 0E94 0000 		call __mulsi3
+ 334 024a 9B01      		movw r18、r22
+ 335 024c AC01      		movw r20、r24
+ 336 024e 8091 0000 		lds r24、FirstDataSector
+ 337 0252 9091 0000 		lds r25、(FirstDataSector)+1
+ 338 0256 A091 0000 		lds r26、(FirstDataSector)+2
+ 339 025a B091 0000 		lds r27、(FirstDataSector)+3
+ 340 025e 820F      		add r24、r18
+ 341 0260 931F      		adc r25、r19
+ 342 0262 A41F      		adc r26、r20
+ 343 0264 B51F      		adc r27、r21
+ 344               	.LM34:
+ 345 0266 9801      		movw r18、r16
+ 346 0268 4427      		clr r20
+ 347 026a 5527      		clr r21
+ 348 026c 820F      		add r24、r18
+ 349 026e 931F      		adc r25、r19
+ 350 0270 A41F      		adc r26、r20
+ 351 0272 B51F      		adc r27、r21
+ 352 0274 E091 0000 		lds r30、FAT_ReadSector
+ 353 0278 F091 0000 		lds r31、(FAT_ReadSector)+1
+ 354 027c A701      		movw r20、r14
+ 355 027e BC01      		movw r22、r24
+ 356 0280 CD01      		movw r24、r26
+ 357 0282 0995      		icall
+ 358 0284 8823      		tst r24
+ 359 0286 19F0      		breq .L15
+ 360               	.LM35:
+ 361 0288 81E0      		ldi r24、lo8(1)
+ 362 028a 90E0      		ldi r25、hi8(1)
+ 363 028c 02C0      		rjmp .L14
+ 364               	.L15:
+ 365               	.LM36:
+ 366 028e 80E0      		ldi r24、lo8(0)
+ 367 0290 90E0      		ldi r25、hi8(0)
+ 368               	.L14:
+ 369               	/* epilogue: frame size=0 */
+ 370 0292 1F91      		pop r17
+ 371 0294 0F91      		pop r16
+ 372 0296 FF90      		pop r15
+ 373 0298 EF90      		pop r14
+ 374 029a 0895      		ret
+ 375               	/* epilogue end (size=5) */
+ 376               	/* function FAT_LoadPartCluster size 62 (53) */
+ 377               	.LFE12:
+ 379               	.global	FAT_NextCluster
+ 381               	FAT_NextCluster:
+ 382               	.LFB13:
+ 383               	.LM37:
+ 384               	/* prologue: frame size=512 */
+ 385 029c EF92      		push r14
+ 386 029e FF92      		push r15
+ 387 02a0 0F93      		push r16
+ 388 02a2 1F93      		push r17
+ 389 02a4 CF93      		push r28
+ 390 02a6 DF93      		push r29
+ 391 02a8 CDB7      		in r28、__SP_L__
+ 392 02aa DEB7      		in r29、__SP_H__
+ 393 02ac C050      		subi r28、lo8(512)
+ 394 02ae D240      		sbci r29、hi8(512)
+ 395 02b0 0FB6      		in __tmp_reg__、__SREG__
+ 396 02b2 F894      		cli
+ 397 02b4 DEBF      		out __SP_H__、r29
+ 398 02b6 0FBE      		out __SREG__、__tmp_reg__
+ 399 02b8 CDBF      		out __SP_L__、r28
+ 400               	/* prologue end (size=15) */
+ 401 02ba 7B01      		movw r14、r22
+ 402 02bc 8C01      		movw r16、r24
+ 403               	.LM38:
+ 404 02be 8091 0000 		lds r24、FAT32_Enable
+ 405 02c2 8823      		tst r24
+ 406 02c4 51F0      		breq .L18
+ 407               	.LM39:
+ 408 02c6 A801      		movw r20、r16
+ 409 02c8 9701      		movw r18、r14
+ 410 02ca 67E0      		ldi r22、7
+ 411 02cc 5695      	1:	lsr r21
+ 412 02ce 4795      		ror r20
+ 413 02d0 3795      		ror r19
+ 414 02d2 2795      		ror r18
+ 415 02d4 6A95      		dec r22
+ 416 02d6 D1F7      		brne 1b
+ 417 02d8 04C0      		rjmp .L19
+ 418               	.L18:
+ 419               	.LM40:
+ 420 02da 5527      		clr r21
+ 421 02dc 412F      		mov r20、r17
+ 422 02de 302F      		mov r19、r16
+ 423 02e0 2F2D      		mov r18、r15
+ 424               	.L19:
+ 425               	.LM41:
+ 426 02e2 82E0      		ldi r24、lo8(2)
+ 427 02e4 E816      		cp r14、r24
+ 428 02e6 F104      		cpc r15、__zero_reg__
+ 429 02e8 0105      		cpc r16、__zero_reg__
+ 430 02ea 1105      		cpc r17、__zero_reg__
+ 431 02ec C0F0      		brlo .L24
+ 432               	.LM42:
+ 433 02ee 8091 0000 		lds r24、FirstFATSector
+ 434 02f2 9091 0000 		lds r25、(FirstFATSector)+1
+ 435 02f6 A091 0000 		lds r26、(FirstFATSector)+2
+ 436 02fa B091 0000 		lds r27、(FirstFATSector)+3
+ 437 02fe 820F      		add r24、r18
+ 438 0300 931F      		adc r25、r19
+ 439 0302 A41F      		adc r26、r20
+ 440 0304 B51F      		adc r27、r21
+ 441               	.LM43:
+ 442 0306 E091 0000 		lds r30、FAT_ReadSector
+ 443 030a F091 0000 		lds r31、(FAT_ReadSector)+1
+ 444 030e AE01      		movw r20、r28
+ 445 0310 4F5F      		subi r20、lo8(-(1))
+ 446 0312 5F4F      		sbci r21、hi8(-(1))
+ 447 0314 BC01      		movw r22、r24
+ 448 0316 CD01      		movw r24、r26
+ 449 0318 0995      		icall
+ 450 031a 8823      		tst r24
+ 451 031c 29F0      		breq .L21
+ 452               	.L24:
+ 453 031e 68EF      		ldi r22、lo8(268435448)
+ 454 0320 7FEF      		ldi r23、hi8(268435448)
+ 455 0322 8FEF      		ldi r24、hlo8(268435448)
+ 456 0324 9FE0      		ldi r25、hhi8(268435448)
+ 457 0326 2FC0      		rjmp .L17
+ 458               	.L21:
+ 459               	.LM44:
+ 460 0328 8091 0000 		lds r24、FAT32_Enable
+ 461 032c 9E01      		movw r18、r28
+ 462 032e 2F5F      		subi r18、lo8(-(1))
+ 463 0330 3F4F      		sbci r19、hi8(-(1))
+ 464 0332 8823      		tst r24
+ 465 0334 A1F0      		breq .L22
+ 466               	.LM45:
+ 467 0336 8FE7      		ldi r24、lo8(127)
+ 468 0338 90E0      		ldi r25、hi8(127)
+ 469 033a A0E0      		ldi r26、hlo8(127)
+ 470 033c B0E0      		ldi r27、hhi8(127)
+ 471 033e E822      		and r14、r24
+ 472 0340 F922      		and r15、r25
+ 473 0342 0A23      		and r16、r26
+ 474 0344 1B23      		and r17、r27
+ 475               	.LM46:
+ 476 0346 F701      		movw r30、r14
+ 477 0348 EE0F      		lsl r30
+ 478 034a FF1F      		rol r31
+ 479 034c EE0F      		lsl r30
+ 480 034e FF1F      		rol r31
+ 481 0350 E20F      		add r30、r18
+ 482 0352 F31F      		adc r31、r19
+ 483 0354 6081      		ld r22、Z
+ 484 0356 7181      		ldd r23、Z+1
+ 485 0358 8281      		ldd r24、Z+2
+ 486 035a 9381      		ldd r25、Z+3
+ 487 035c 14C0      		rjmp .L17
+ 488               	.L22:
+ 489               	.LM47:
+ 490 035e 8FEF      		ldi r24、lo8(255)
+ 491 0360 90E0      		ldi r25、hi8(255)
+ 492 0362 A0E0      		ldi r26、hlo8(255)
+ 493 0364 B0E0      		ldi r27、hhi8(255)
+ 494 0366 E822      		and r14、r24
+ 495 0368 F922      		and r15、r25
+ 496 036a 0A23      		and r16、r26
+ 497 036c 1B23      		and r17、r27
+ 498               	.LM48:
+ 499 036e F701      		movw r30、r14
+ 500 0370 EE0D      		add r30、r14
+ 501 0372 FF1D      		adc r31、r15
+ 502 0374 E20F      		add r30、r18
+ 503 0376 F31F      		adc r31、r19
+ 504 0378 8081      		ld r24、Z
+ 505 037a 9181      		ldd r25、Z+1
+ 506 037c 9C01      		movw r18、r24
+ 507 037e 4427      		clr r20
+ 508 0380 5527      		clr r21
+ 509 0382 CA01      		movw r24、r20
+ 510 0384 B901      		movw r22、r18
+ 511               	.L17:
+ 512               	/* epilogue: frame size=512 */
+ 513 0386 C050      		subi r28、lo8(-512)
+ 514 0388 DE4F      		sbci r29、hi8(-512)
+ 515 038a 0FB6      		in __tmp_reg__、__SREG__
+ 516 038c F894      		cli
+ 517 038e DEBF      		out __SP_H__、r29
+ 518 0390 0FBE      		out __SREG__、__tmp_reg__
+ 519 0392 CDBF      		out __SP_L__、r28
+ 520 0394 DF91      		pop r29
+ 521 0396 CF91      		pop r28
+ 522 0398 1F91      		pop r17
+ 523 039a 0F91      		pop r16
+ 524 039c FF90      		pop r15
+ 525 039e EF90      		pop r14
+ 526 03a0 0895      		ret
+ 527               	/* epilogue end (size=14) */
+ 528               	/* function FAT_NextCluster size 131 (102) */
+ 529               	.LFE13:
+ 531               	.global	CopyDirentruyItem
+ 533               	CopyDirentruyItem:
+ 534               	.LFB14:
+ 535               	.LM49:
+ 536               	/* prologue: frame size=0 */
+ 537 03a2 CF93      		push r28
+ 538 03a4 DF93      		push r29
+ 539               	/* prologue end (size=2) */
+ 540 03a6 EC01      		movw r28、r24
+ 541 03a8 FB01      		movw r30、r22
+ 542 03aa 9C01      		movw r18、r24
+ 543 03ac AB01      		movw r20、r22
+ 544 03ae 97E0      		ldi r25、lo8(7)
+ 545               	.L29:
+ 546               	.LM50:
+ 547 03b0 DA01      		movw r26、r20
+ 548 03b2 8D91      		ld r24、X+
+ 549 03b4 AD01      		movw r20、r26
+ 550 03b6 D901      		movw r26、r18
+ 551 03b8 8D93      		st X+、r24
+ 552 03ba 9D01      		movw r18、r26
+ 553 03bc 9150      		subi r25、lo8(-(-1))
+ 554 03be 97FF      		sbrs r25、7
+ 555 03c0 F7CF      		rjmp .L29
+ 556 03c2 9E01      		movw r18、r28
+ 557 03c4 285F      		subi r18、lo8(-(8))
+ 558 03c6 3F4F      		sbci r19、hi8(-(8))
+ 559 03c8 AF01      		movw r20、r30
+ 560 03ca 485F      		subi r20、lo8(-(8))
+ 561 03cc 5F4F      		sbci r21、hi8(-(8))
+ 562 03ce 92E0      		ldi r25、lo8(2)
+ 563               	.L33:
+ 564               	.LM51:
+ 565 03d0 DA01      		movw r26、r20
+ 566 03d2 8D91      		ld r24、X+
+ 567 03d4 AD01      		movw r20、r26
+ 568 03d6 D901      		movw r26、r18
+ 569 03d8 8D93      		st X+、r24
+ 570 03da 9D01      		movw r18、r26
+ 571 03dc 9150      		subi r25、lo8(-(-1))
+ 572 03de 97FF      		sbrs r25、7
+ 573 03e0 F7CF      		rjmp .L33
+ 574               	.LM52:
+ 575 03e2 8385      		ldd r24、Z+11
+ 576 03e4 8B87      		std Y+11、r24
+ 577               	.LM53:
+ 578 03e6 8485      		ldd r24、Z+12
+ 579 03e8 8C87      		std Y+12、r24
+ 580               	.LM54:
+ 581 03ea 8585      		ldd r24、Z+13
+ 582 03ec 8D87      		std Y+13、r24
+ 583 03ee 9E01      		movw r18、r28
+ 584 03f0 225F      		subi r18、lo8(-(14))
+ 585 03f2 3F4F      		sbci r19、hi8(-(14))
+ 586 03f4 AF01      		movw r20、r30
+ 587 03f6 425F      		subi r20、lo8(-(14))
+ 588 03f8 5F4F      		sbci r21、hi8(-(14))
+ 589 03fa 91E0      		ldi r25、lo8(1)
+ 590               	.L37:
+ 591               	.LM55:
+ 592 03fc DA01      		movw r26、r20
+ 593 03fe 8D91      		ld r24、X+
+ 594 0400 AD01      		movw r20、r26
+ 595 0402 D901      		movw r26、r18
+ 596 0404 8D93      		st X+、r24
+ 597 0406 9D01      		movw r18、r26
+ 598 0408 9150      		subi r25、lo8(-(-1))
+ 599 040a 97FF      		sbrs r25、7
+ 600 040c F7CF      		rjmp .L37
+ 601 040e 9E01      		movw r18、r28
+ 602 0410 205F      		subi r18、lo8(-(16))
+ 603 0412 3F4F      		sbci r19、hi8(-(16))
+ 604 0414 AF01      		movw r20、r30
+ 605 0416 405F      		subi r20、lo8(-(16))
+ 606 0418 5F4F      		sbci r21、hi8(-(16))
+ 607 041a 91E0      		ldi r25、lo8(1)
+ 608               	.L41:
+ 609               	.LM56:
+ 610 041c DA01      		movw r26、r20
+ 611 041e 8D91      		ld r24、X+
+ 612 0420 AD01      		movw r20、r26
+ 613 0422 D901      		movw r26、r18
+ 614 0424 8D93      		st X+、r24
+ 615 0426 9D01      		movw r18、r26
+ 616 0428 9150      		subi r25、lo8(-(-1))
+ 617 042a 97FF      		sbrs r25、7
+ 618 042c F7CF      		rjmp .L41
+ 619 042e 9E01      		movw r18、r28
+ 620 0430 2E5E      		subi r18、lo8(-(18))
+ 621 0432 3F4F      		sbci r19、hi8(-(18))
+ 622 0434 AF01      		movw r20、r30
+ 623 0436 4E5E      		subi r20、lo8(-(18))
+ 624 0438 5F4F      		sbci r21、hi8(-(18))
+ 625 043a 91E0      		ldi r25、lo8(1)
+ 626               	.L45:
+ 627               	.LM57:
+ 628 043c DA01      		movw r26、r20
+ 629 043e 8D91      		ld r24、X+
+ 630 0440 AD01      		movw r20、r26
+ 631 0442 D901      		movw r26、r18
+ 632 0444 8D93      		st X+、r24
+ 633 0446 9D01      		movw r18、r26
+ 634 0448 9150      		subi r25、lo8(-(-1))
+ 635 044a 97FF      		sbrs r25、7
+ 636 044c F7CF      		rjmp .L45
+ 637               	.LM58:
+ 638 044e 8489      		ldd r24、Z+20
+ 639 0450 9589      		ldd r25、Z+21
+ 640 0452 9D8B      		std Y+21、r25
+ 641 0454 8C8B      		std Y+20、r24
+ 642 0456 9E01      		movw r18、r28
+ 643 0458 2A5E      		subi r18、lo8(-(22))
+ 644 045a 3F4F      		sbci r19、hi8(-(22))
+ 645 045c AF01      		movw r20、r30
+ 646 045e 4A5E      		subi r20、lo8(-(22))
+ 647 0460 5F4F      		sbci r21、hi8(-(22))
+ 648 0462 91E0      		ldi r25、lo8(1)
+ 649               	.L49:
+ 650               	.LM59:
+ 651 0464 DA01      		movw r26、r20
+ 652 0466 8D91      		ld r24、X+
+ 653 0468 AD01      		movw r20、r26
+ 654 046a D901      		movw r26、r18
+ 655 046c 8D93      		st X+、r24
+ 656 046e 9D01      		movw r18、r26
+ 657 0470 9150      		subi r25、lo8(-(-1))
+ 658 0472 97FF      		sbrs r25、7
+ 659 0474 F7CF      		rjmp .L49
+ 660 0476 9E01      		movw r18、r28
+ 661 0478 285E      		subi r18、lo8(-(24))
+ 662 047a 3F4F      		sbci r19、hi8(-(24))
+ 663 047c AF01      		movw r20、r30
+ 664 047e 485E      		subi r20、lo8(-(24))
+ 665 0480 5F4F      		sbci r21、hi8(-(24))
+ 666 0482 91E0      		ldi r25、lo8(1)
+ 667               	.L53:
+ 668               	.LM60:
+ 669 0484 DA01      		movw r26、r20
+ 670 0486 8D91      		ld r24、X+
+ 671 0488 AD01      		movw r20、r26
+ 672 048a D901      		movw r26、r18
+ 673 048c 8D93      		st X+、r24
+ 674 048e 9D01      		movw r18、r26
+ 675 0490 9150      		subi r25、lo8(-(-1))
+ 676 0492 97FF      		sbrs r25、7
+ 677 0494 F7CF      		rjmp .L53
+ 678               	.LM61:
+ 679 0496 828D      		ldd r24、Z+26
+ 680 0498 938D      		ldd r25、Z+27
+ 681 049a 9B8F      		std Y+27、r25
+ 682 049c 8A8F      		std Y+26、r24
+ 683               	.LM62:
+ 684 049e 848D      		ldd r24、Z+28
+ 685 04a0 958D      		ldd r25、Z+29
+ 686 04a2 A68D      		ldd r26、Z+30
+ 687 04a4 B78D      		ldd r27、Z+31
+ 688 04a6 8C8F      		std Y+28、r24
+ 689 04a8 9D8F      		std Y+29、r25
+ 690 04aa AE8F      		std Y+30、r26
+ 691 04ac BF8F      		std Y+31、r27
+ 692               	/* epilogue: frame size=0 */
+ 693 04ae DF91      		pop r29
+ 694 04b0 CF91      		pop r28
+ 695 04b2 0895      		ret
+ 696               	/* epilogue end (size=3) */
+ 697               	/* function CopyDirentruyItem size 137 (132) */
+ 698               	.LFE14:
+ 700               	.global	WriteFolderCluster
+ 702               	WriteFolderCluster:
+ 703               	.LFB15:
+ 704               	.LM63:
+ 705               	/* prologue: frame size=0 */
+ 706 04b4 EF92      		push r14
+ 707 04b6 FF92      		push r15
+ 708 04b8 0F93      		push r16
+ 709 04ba 1F93      		push r17
+ 710               	/* prologue end (size=4) */
+ 711 04bc FC01      		movw r30、r24
+ 712               	.LBB2:
+ 713               	.LM64:
+ 714 04be 872F      		mov r24、r23
+ 715 04c0 9927      		clr r25
+ 716 04c2 AA27      		clr r26
+ 717 04c4 BB27      		clr r27
+ 718               	.LBB3:
+ 719               	.LM65:
+ 720 04c6 DF01      		movw r26、r30
+ 721               	/* #APP */
+ 722 04c8 082E      		mov __tmp_reg__、r24
+ 723 04ca 0E94 0000 		call __eeprom_write_byte_1C1D1E
+ 724               	/* #NOAPP */
+ 725               	.LBE3:
+ 726               	.LBE2:
+ 727               	.LBB4:
+ 728               	.LM66:
+ 729 04ce 9F01      		movw r18、r30
+ 730 04d0 2F5F      		subi r18、lo8(-(1))
+ 731 04d2 3F4F      		sbci r19、hi8(-(1))
+ 732 04d4 7B01      		movw r14、r22
+ 733 04d6 0027      		clr r16
+ 734 04d8 1127      		clr r17
+ 735               	.LBB5:
+ 736               	.LM67:
+ 737 04da D901      		movw r26、r18
+ 738               	/* #APP */
+ 739 04dc 0E2C      		mov __tmp_reg__、r14
+ 740 04de 0E94 0000 		call __eeprom_write_byte_1C1D1E
+ 741               	/* #NOAPP */
+ 742               	.LBE5:
+ 743               	.LBE4:
+ 744               	.LBB6:
+ 745               	.LM68:
+ 746 04e2 9F01      		movw r18、r30
+ 747 04e4 2E5F      		subi r18、lo8(-(2))
+ 748 04e6 3F4F      		sbci r19、hi8(-(2))
+ 749 04e8 E52E      		mov r14、r21
+ 750 04ea F62E      		mov r15、r22
+ 751 04ec 072F      		mov r16、r23
+ 752 04ee 1127      		clr r17
+ 753               	.LBB7:
+ 754               	.LM69:
+ 755 04f0 D901      		movw r26、r18
+ 756               	/* #APP */
+ 757 04f2 0E2C      		mov __tmp_reg__、r14
+ 758 04f4 0E94 0000 		call __eeprom_write_byte_1C1D1E
+ 759               	/* #NOAPP */
+ 760               	.LBE7:
+ 761               	.LBE6:
+ 762               	.LBB8:
+ 763               	.LM70:
+ 764 04f8 DF01      		movw r26、r30
+ 765 04fa 1396      		adiw r26、3
+ 766               	.LBB9:
+ 767               	.LM71:
+ 768               	/* #APP */
+ 769 04fc 042E      		mov __tmp_reg__、r20
+ 770 04fe 0E94 0000 		call __eeprom_write_byte_1C1D1E
+ 771               	/* #NOAPP */
+ 772               	.LBE9:
+ 773               	.LBE8:
+ 774               	/* epilogue: frame size=0 */
+ 775 0502 1F91      		pop r17
+ 776 0504 0F91      		pop r16
+ 777 0506 FF90      		pop r15
+ 778 0508 EF90      		pop r14
+ 779 050a 0895      		ret
+ 780               	/* epilogue end (size=5) */
+ 781               	/* function WriteFolderCluster size 48 (39) */
+ 782               	.LFE15:
+ 784               	.global	GetFolderCluster
+ 786               	GetFolderCluster:
+ 787               	.LFB16:
+ 788               	.LM72:
+ 789               	/* prologue: frame size=0 */
+ 790               	/* prologue end (size=0) */
+ 791               	.LBB10:
+ 792               	.LBB11:
+ 793               	.LM73:
+ 794 050c DC01      		movw r26、r24
+ 795               	/* #APP */
+ 796 050e 0E94 0000 		call __eeprom_read_byte_1C1D1E
+ 797 0512 202D      		mov r18、__tmp_reg__
+ 798               	/* #NOAPP */
+ 799               	.LBE11:
+ 800               	.LBE10:
+ 801               	.LM74:
+ 802 0514 3327      		clr r19
+ 803 0516 4427      		clr r20
+ 804 0518 5527      		clr r21
+ 805               	.LM75:
+ 806 051a 542F      		mov r21、r20
+ 807 051c 432F      		mov r20、r19
+ 808 051e 322F      		mov r19、r18
+ 809 0520 2227      		clr r18
+ 810               	.LBB12:
+ 811               	.LM76:
+ 812 0522 DC01      		movw r26、r24
+ 813 0524 1196      		adiw r26、1
+ 814               	.LBB13:
+ 815               	.LM77:
+ 816               	/* #APP */
+ 817 0526 0E94 0000 		call __eeprom_read_byte_1C1D1E
+ 818 052a 602D      		mov r22、__tmp_reg__
+ 819               	/* #NOAPP */
+ 820               	.LBE13:
+ 821               	.LBE12:
+ 822               	.LM78:
+ 823 052c 260F      		add r18、r22
+ 824 052e 311D      		adc r19、__zero_reg__
+ 825 0530 411D      		adc r20、__zero_reg__
+ 826 0532 511D      		adc r21、__zero_reg__
+ 827               	.LM79:
+ 828 0534 542F      		mov r21、r20
+ 829 0536 432F      		mov r20、r19
+ 830 0538 322F      		mov r19、r18
+ 831 053a 2227      		clr r18
+ 832               	.LBB14:
+ 833               	.LM80:
+ 834 053c DC01      		movw r26、r24
+ 835 053e 1296      		adiw r26、2
+ 836               	.LBB15:
+ 837               	.LM81:
+ 838               	/* #APP */
+ 839 0540 0E94 0000 		call __eeprom_read_byte_1C1D1E
+ 840 0544 602D      		mov r22、__tmp_reg__
+ 841               	/* #NOAPP */
+ 842               	.LBE15:
+ 843               	.LBE14:
+ 844               	.LM82:
+ 845 0546 260F      		add r18、r22
+ 846 0548 311D      		adc r19、__zero_reg__
+ 847 054a 411D      		adc r20、__zero_reg__
+ 848 054c 511D      		adc r21、__zero_reg__
+ 849               	.LM83:
+ 850 054e 542F      		mov r21、r20
+ 851 0550 432F      		mov r20、r19
+ 852 0552 322F      		mov r19、r18
+ 853 0554 2227      		clr r18
+ 854               	.LBB16:
+ 855               	.LM84:
+ 856 0556 DC01      		movw r26、r24
+ 857 0558 1396      		adiw r26、3
+ 858               	.LBB17:
+ 859               	.LM85:
+ 860               	/* #APP */
+ 861 055a 0E94 0000 		call __eeprom_read_byte_1C1D1E
+ 862 055e 802D      		mov r24、__tmp_reg__
+ 863               	/* #NOAPP */
+ 864               	.LBE17:
+ 865               	.LBE16:
+ 866               	.LM86:
+ 867 0560 280F      		add r18、r24
+ 868 0562 311D      		adc r19、__zero_reg__
+ 869 0564 411D      		adc r20、__zero_reg__
+ 870 0566 511D      		adc r21、__zero_reg__
+ 871               	.LM87:
+ 872 0568 CA01      		movw r24、r20
+ 873 056a B901      		movw r22、r18
+ 874               	/* epilogue: frame size=0 */
+ 875 056c 0895      		ret
+ 876               	/* epilogue end (size=1) */
+ 877               	/* function GetFolderCluster size 53 (52) */
+ 878               	.LFE16:
+ 880               	.global	SearchFolder
+ 882               	SearchFolder:
+ 883               	.LFB17:
+ 884               	.LM88:
+ 885               	/* prologue: frame size=0 */
+ 886 056e 3F92      		push r3
+ 887 0570 4F92      		push r4
+ 888 0572 5F92      		push r5
+ 889 0574 6F92      		push r6
+ 890 0576 7F92      		push r7
+ 891 0578 8F92      		push r8
+ 892 057a 9F92      		push r9
+ 893 057c AF92      		push r10
+ 894 057e BF92      		push r11
+ 895 0580 CF92      		push r12
+ 896 0582 DF92      		push r13
+ 897 0584 EF92      		push r14
+ 898 0586 FF92      		push r15
+ 899 0588 0F93      		push r16
+ 900 058a 1F93      		push r17
+ 901 058c CF93      		push r28
+ 902 058e DF93      		push r29
+ 903               	/* prologue end (size=17) */
+ 904 0590 7B01      		movw r14、r22
+ 905 0592 8C01      		movw r16、r24
+ 906 0594 2A01      		movw r4、r20
+ 907               	.LM89:
+ 908 0596 6115      		cp r22、__zero_reg__
+ 909 0598 7105      		cpc r23、__zero_reg__
+ 910 059a 8105      		cpc r24、__zero_reg__
+ 911 059c 9105      		cpc r25、__zero_reg__
+ 912 059e 09F0      		breq .+2
+ 913 05a0 8BC0      		rjmp .L79
+ 914               	.LM90:
+ 915 05a2 D090 0000 		lds r13、FAT32_Enable
+ 916 05a6 DD20      		tst r13
+ 917 05a8 09F0      		breq .+2
+ 918 05aa 86C0      		rjmp .L79
+ 919               	.LM91:
+ 920 05ac 80E0      		ldi r24、lo8(512)
+ 921 05ae 92E0      		ldi r25、hi8(512)
+ 922 05b0 0E94 0000 		call malloc
+ 923 05b4 EC01      		movw r28、r24
+ 924               	.LM92:
+ 925 05b6 892B      		or r24、r25
+ 926 05b8 09F4      		brne .+2
+ 927 05ba 7BC0      		rjmp .L129
+ 928               	.LM93:
+ 929 05bc 3D2C      		mov r3、r13
+ 930 05be 8091 0000 		lds r24、RootDirSectors
+ 931 05c2 9091 0000 		lds r25、(RootDirSectors)+1
+ 932 05c6 A091 0000 		lds r26、(RootDirSectors)+2
+ 933 05ca B091 0000 		lds r27、(RootDirSectors)+3
+ 934 05ce E816      		cp r14、r24
+ 935 05d0 F906      		cpc r15、r25
+ 936 05d2 0A07      		cpc r16、r26
+ 937 05d4 1B07      		cpc r17、r27
+ 938 05d6 08F0      		brlo .+2
+ 939 05d8 65C0      		rjmp .L114
+ 940               	.L93:
+ 941               	.LM94:
+ 942 05da 8091 0000 		lds r24、FirstDirSector
+ 943 05de 9091 0000 		lds r25、(FirstDirSector)+1
+ 944 05e2 A091 0000 		lds r26、(FirstDirSector)+2
+ 945 05e6 B091 0000 		lds r27、(FirstDirSector)+3
+ 946 05ea 830D      		add r24、r3
+ 947 05ec 911D      		adc r25、__zero_reg__
+ 948 05ee A11D      		adc r26、__zero_reg__
+ 949 05f0 B11D      		adc r27、__zero_reg__
+ 950 05f2 E091 0000 		lds r30、FAT_ReadSector
+ 951 05f6 F091 0000 		lds r31、(FAT_ReadSector)+1
+ 952 05fa AE01      		movw r20、r28
+ 953 05fc BC01      		movw r22、r24
+ 954 05fe CD01      		movw r24、r26
+ 955 0600 0995      		icall
+ 956 0602 8823      		tst r24
+ 957 0604 09F0      		breq .+2
+ 958 0606 52C0      		rjmp .L124
+ 959               	.LM95:
+ 960 0608 6624      		clr r6
+ 961 060a 7724      		clr r7
+ 962               	.L92:
+ 963               	.LM96:
+ 964 060c FE01      		movw r30、r28
+ 965 060e E60D      		add r30、r6
+ 966 0610 F71D      		adc r31、r7
+ 967               	.LM97:
+ 968 0612 8081      		ld r24、Z
+ 969 0614 8E32      		cpi r24、lo8(46)
+ 970 0616 51F1      		breq .L87
+ 971 0618 8823      		tst r24
+ 972 061a 41F1      		breq .L87
+ 973 061c 853E      		cpi r24、lo8(-27)
+ 974 061e 31F1      		breq .L87
+ 975               	.LM98:
+ 976 0620 8385      		ldd r24、Z+11
+ 977 0622 84FF      		sbrs r24、4
+ 978 0624 23C0      		rjmp .L87
+ 979               	.LM99:
+ 980 0626 D201      		movw r26、r4
+ 981 0628 0D91      		ld r16、X+
+ 982 062a 1C91      		ld r17、X
+ 983 062c B2E0      		ldi r27、hi8(512)
+ 984 062e 0030      		cpi r16、lo8(512)
+ 985 0630 1B07      		cpc r17、r27
+ 986 0632 09F4      		brne .+2
+ 987 0634 F4C0      		rjmp .L94
+ 988               	.LM100:
+ 989 0636 828D      		ldd r24、Z+26
+ 990 0638 938D      		ldd r25、Z+27
+ 991 063a 9C01      		movw r18、r24
+ 992 063c 4427      		clr r20
+ 993 063e 5527      		clr r21
+ 994 0640 8489      		ldd r24、Z+20
+ 995 0642 9589      		ldd r25、Z+21
+ 996 0644 AA27      		clr r26
+ 997 0646 BB27      		clr r27
+ 998 0648 DC01      		movw r26、r24
+ 999 064a 9927      		clr r25
+ 1000 064c 8827      		clr r24
+ 1001 064e 280F      		add r18、r24
+ 1002 0650 391F      		adc r19、r25
+ 1003 0652 4A1F      		adc r20、r26
+ 1004 0654 5B1F      		adc r21、r27
+ 1005 0656 BA01      		movw r22、r20
+ 1006 0658 A901      		movw r20、r18
+ 1007 065a C801      		movw r24、r16
+ 1008 065c 0E94 0000 		call WriteFolderCluster
+ 1009               	.LM101:
+ 1010 0660 F201      		movw r30、r4
+ 1011 0662 8081      		ld r24、Z
+ 1012 0664 9181      		ldd r25、Z+1
+ 1013 0666 0496      		adiw r24、4
+ 1014 0668 9183      		std Z+1、r25
+ 1015 066a 8083      		st Z、r24
+ 1016               	.L87:
+ 1017               	.LM102:
+ 1018 066c 80E2      		ldi r24、lo8(32)
+ 1019 066e 90E0      		ldi r25、hi8(32)
+ 1020 0670 680E      		add r6、r24
+ 1021 0672 791E      		adc r7、r25
+ 1022 0674 90E0      		ldi r25、lo8(512)
+ 1023 0676 6916      		cp r6、r25
+ 1024 0678 92E0      		ldi r25、hi8(512)
+ 1025 067a 7906      		cpc r7、r25
+ 1026 067c 38F2      		brlo .L92
+ 1027               	.LM103:
+ 1028 067e 3394      		inc r3
+ 1029 0680 232D      		mov r18、r3
+ 1030 0682 3327      		clr r19
+ 1031 0684 4427      		clr r20
+ 1032 0686 5527      		clr r21
+ 1033 0688 8091 0000 		lds r24、RootDirSectors
+ 1034 068c 9091 0000 		lds r25、(RootDirSectors)+1
+ 1035 0690 A091 0000 		lds r26、(RootDirSectors)+2
+ 1036 0694 B091 0000 		lds r27、(RootDirSectors)+3
+ 1037 0698 2817      		cp r18、r24
+ 1038 069a 3907      		cpc r19、r25
+ 1039 069c 4A07      		cpc r20、r26
+ 1040 069e 5B07      		cpc r21、r27
+ 1041 06a0 08F4      		brsh .+2
+ 1042 06a2 9BCF      		rjmp .L93
+ 1043               	.L114:
+ 1044               	.LM104:
+ 1045 06a4 CE01      		movw r24、r28
+ 1046 06a6 0E94 0000 		call free
+ 1047 06aa B9C0      		rjmp .L94
+ 1048               	.L124:
+ 1049               	.LM105:
+ 1050 06ac CE01      		movw r24、r28
+ 1051 06ae 0E94 0000 		call free
+ 1052               	.L129:
+ 1053 06b2 81E0      		ldi r24、lo8(1)
+ 1054 06b4 90E0      		ldi r25、hi8(1)
+ 1055 06b6 B5C0      		rjmp .L78
+ 1056               	.L79:
+ 1057               	.LM106:
+ 1058 06b8 5701      		movw r10、r14
+ 1059 06ba 6801      		movw r12、r16
+ 1060               	.L130:
+ 1061               	.LM107:
+ 1062 06bc AEEF      		ldi r26、lo8(-2)
+ 1063 06be EA2E      		mov r14、r26
+ 1064 06c0 AFEF      		ldi r26、hi8(-2)
+ 1065 06c2 FA2E      		mov r15、r26
+ 1066 06c4 AFEF      		ldi r26、hlo8(-2)
+ 1067 06c6 0A2F      		mov r16、r26
+ 1068 06c8 AFEF      		ldi r26、hhi8(-2)
+ 1069 06ca 1A2F      		mov r17、r26
+ 1070 06cc EA0C      		add r14、r10
+ 1071 06ce FB1C      		adc r15、r11
+ 1072 06d0 0C1D      		adc r16、r12
+ 1073 06d2 1D1D      		adc r17、r13
+ 1074 06d4 8091 0000 		lds r24、SectorsPerClust
+ 1075 06d8 9091 0000 		lds r25、(SectorsPerClust)+1
+ 1076 06dc 9C01      		movw r18、r24
+ 1077 06de 4427      		clr r20
+ 1078 06e0 5527      		clr r21
+ 1079 06e2 C801      		movw r24、r16
+ 1080 06e4 B701      		movw r22、r14
+ 1081 06e6 0E94 0000 		call __mulsi3
+ 1082 06ea DC01      		movw r26、r24
+ 1083 06ec CB01      		movw r24、r22
+ 1084 06ee E090 0000 		lds r14、FirstDataSector
+ 1085 06f2 F090 0000 		lds r15、(FirstDataSector)+1
+ 1086 06f6 0091 0000 		lds r16、(FirstDataSector)+2
+ 1087 06fa 1091 0000 		lds r17、(FirstDataSector)+3
+ 1088 06fe E80E      		add r14、r24
+ 1089 0700 F91E      		adc r15、r25
+ 1090 0702 0A1F      		adc r16、r26
+ 1091 0704 1B1F      		adc r17、r27
+ 1092               	.LM108:
+ 1093 0706 80E0      		ldi r24、lo8(512)
+ 1094 0708 92E0      		ldi r25、hi8(512)
+ 1095 070a 0E94 0000 		call malloc
+ 1096 070e EC01      		movw r28、r24
+ 1097               	.LM109:
+ 1098 0710 892B      		or r24、r25
+ 1099 0712 79F2      		breq .L129
+ 1100               	.LM110:
+ 1101 0714 3324      		clr r3
+ 1102 0716 8091 0000 		lds r24、SectorsPerClust
+ 1103 071a 9091 0000 		lds r25、(SectorsPerClust)+1
+ 1104 071e 892B      		or r24、r25
+ 1105 0720 09F4      		brne .+2
+ 1106 0722 58C0      		rjmp .L118
+ 1107               	.L110:
+ 1108               	.LM111:
+ 1109 0724 D801      		movw r26、r16
+ 1110 0726 C701      		movw r24、r14
+ 1111 0728 830D      		add r24、r3
+ 1112 072a 911D      		adc r25、__zero_reg__
+ 1113 072c A11D      		adc r26、__zero_reg__
+ 1114 072e B11D      		adc r27、__zero_reg__
+ 1115 0730 E091 0000 		lds r30、FAT_ReadSector
+ 1116 0734 F091 0000 		lds r31、(FAT_ReadSector)+1
+ 1117 0738 AE01      		movw r20、r28
+ 1118 073a BC01      		movw r22、r24
+ 1119 073c CD01      		movw r24、r26
+ 1120 073e 0995      		icall
+ 1121 0740 8823      		tst r24
+ 1122 0742 09F0      		breq .+2
+ 1123 0744 B3CF      		rjmp .L124
+ 1124               	.LM112:
+ 1125 0746 6624      		clr r6
+ 1126 0748 7724      		clr r7
+ 1127               	.L109:
+ 1128               	.LM113:
+ 1129 074a FE01      		movw r30、r28
+ 1130 074c E60D      		add r30、r6
+ 1131 074e F71D      		adc r31、r7
+ 1132               	.LM114:
+ 1133 0750 8081      		ld r24、Z
+ 1134 0752 8E32      		cpi r24、lo8(46)
+ 1135 0754 59F1      		breq .L104
+ 1136 0756 8823      		tst r24
+ 1137 0758 49F1      		breq .L104
+ 1138 075a 853E      		cpi r24、lo8(-27)
+ 1139 075c 39F1      		breq .L104
+ 1140               	.LM115:
+ 1141 075e 8385      		ldd r24、Z+11
+ 1142 0760 84FF      		sbrs r24、4
+ 1143 0762 24C0      		rjmp .L104
+ 1144               	.LM116:
+ 1145 0764 D201      		movw r26、r4
+ 1146 0766 8D90      		ld r8、X+
+ 1147 0768 9C90      		ld r9、X
+ 1148 076a B0E0      		ldi r27、lo8(512)
+ 1149 076c 8B16      		cp r8、r27
+ 1150 076e B2E0      		ldi r27、hi8(512)
+ 1151 0770 9B06      		cpc r9、r27
+ 1152 0772 09F4      		brne .+2
+ 1153 0774 54C0      		rjmp .L94
+ 1154               	.LM117:
+ 1155 0776 828D      		ldd r24、Z+26
+ 1156 0778 938D      		ldd r25、Z+27
+ 1157 077a 9C01      		movw r18、r24
+ 1158 077c 4427      		clr r20
+ 1159 077e 5527      		clr r21
+ 1160 0780 8489      		ldd r24、Z+20
+ 1161 0782 9589      		ldd r25、Z+21
+ 1162 0784 AA27      		clr r26
+ 1163 0786 BB27      		clr r27
+ 1164 0788 DC01      		movw r26、r24
+ 1165 078a 9927      		clr r25
+ 1166 078c 8827      		clr r24
+ 1167 078e 280F      		add r18、r24
+ 1168 0790 391F      		adc r19、r25
+ 1169 0792 4A1F      		adc r20、r26
+ 1170 0794 5B1F      		adc r21、r27
+ 1171 0796 BA01      		movw r22、r20
+ 1172 0798 A901      		movw r20、r18
+ 1173 079a C401      		movw r24、r8
+ 1174 079c 0E94 0000 		call WriteFolderCluster
+ 1175               	.LM118:
+ 1176 07a0 F201      		movw r30、r4
+ 1177 07a2 8081      		ld r24、Z
+ 1178 07a4 9181      		ldd r25、Z+1
+ 1179 07a6 0496      		adiw r24、4
+ 1180 07a8 9183      		std Z+1、r25
+ 1181 07aa 8083      		st Z、r24
+ 1182               	.L104:
+ 1183               	.LM119:
+ 1184 07ac 80E2      		ldi r24、lo8(32)
+ 1185 07ae 90E0      		ldi r25、hi8(32)
+ 1186 07b0 680E      		add r6、r24
+ 1187 07b2 791E      		adc r7、r25
+ 1188 07b4 90E0      		ldi r25、lo8(512)
+ 1189 07b6 6916      		cp r6、r25
+ 1190 07b8 92E0      		ldi r25、hi8(512)
+ 1191 07ba 7906      		cpc r7、r25
+ 1192 07bc 30F2      		brlo .L109
+ 1193               	.LM120:
+ 1194 07be 3394      		inc r3
+ 1195 07c0 232D      		mov r18、r3
+ 1196 07c2 3327      		clr r19
+ 1197 07c4 8091 0000 		lds r24、SectorsPerClust
+ 1198 07c8 9091 0000 		lds r25、(SectorsPerClust)+1
+ 1199 07cc 2817      		cp r18、r24
+ 1200 07ce 3907      		cpc r19、r25
+ 1201 07d0 08F4      		brsh .+2
+ 1202 07d2 A8CF      		rjmp .L110
+ 1203               	.L118:
+ 1204               	.LM121:
+ 1205 07d4 CE01      		movw r24、r28
+ 1206 07d6 0E94 0000 		call free
+ 1207               	.LM122:
+ 1208 07da C601      		movw r24、r12
+ 1209 07dc B501      		movw r22、r10
+ 1210 07de 0E94 0000 		call FAT_NextCluster
+ 1211 07e2 5B01      		movw r10、r22
+ 1212 07e4 6C01      		movw r12、r24
+ 1213               	.LM123:
+ 1214 07e6 6F3F      		cpi r22、lo8(268435455)
+ 1215 07e8 AFEF      		ldi r26、hi8(268435455)
+ 1216 07ea 7A07      		cpc r23、r26
+ 1217 07ec AFEF      		ldi r26、hlo8(268435455)
+ 1218 07ee 8A07      		cpc r24、r26
+ 1219 07f0 AFE0      		ldi r26、hhi8(268435455)
+ 1220 07f2 9A07      		cpc r25、r26
+ 1221 07f4 A1F0      		breq .L94
+ 1222 07f6 685F      		subi r22、lo8(268435448)
+ 1223 07f8 7F4F      		sbci r23、hi8(268435448)
+ 1224 07fa 8F4F      		sbci r24、hlo8(268435448)
+ 1225 07fc 9F40      		sbci r25、hhi8(268435448)
+ 1226 07fe 79F0      		breq .L94
+ 1227 0800 8091 0000 		lds r24、FAT32_Enable
+ 1228 0804 8823      		tst r24
+ 1229 0806 09F0      		breq .+2
+ 1230 0808 59CF      		rjmp .L130
+ 1231 080a EFEF      		ldi r30、lo8(65535)
+ 1232 080c AE16      		cp r10、r30
+ 1233 080e EFEF      		ldi r30、hi8(65535)
+ 1234 0810 BE06      		cpc r11、r30
+ 1235 0812 E0E0      		ldi r30、hlo8(65535)
+ 1236 0814 CE06      		cpc r12、r30
+ 1237 0816 E0E0      		ldi r30、hhi8(65535)
+ 1238 0818 DE06      		cpc r13、r30
+ 1239 081a 09F0      		breq .+2
+ 1240 081c 4FCF      		rjmp .L130
+ 1241               	.L94:
+ 1242               	.LM124:
+ 1243 081e 80E0      		ldi r24、lo8(0)
+ 1244 0820 90E0      		ldi r25、hi8(0)
+ 1245               	.L78:
+ 1246               	/* epilogue: frame size=0 */
+ 1247 0822 DF91      		pop r29
+ 1248 0824 CF91      		pop r28
+ 1249 0826 1F91      		pop r17
+ 1250 0828 0F91      		pop r16
+ 1251 082a FF90      		pop r15
+ 1252 082c EF90      		pop r14
+ 1253 082e DF90      		pop r13
+ 1254 0830 CF90      		pop r12
+ 1255 0832 BF90      		pop r11
+ 1256 0834 AF90      		pop r10
+ 1257 0836 9F90      		pop r9
+ 1258 0838 8F90      		pop r8
+ 1259 083a 7F90      		pop r7
+ 1260 083c 6F90      		pop r6
+ 1261 083e 5F90      		pop r5
+ 1262 0840 4F90      		pop r4
+ 1263 0842 3F90      		pop r3
+ 1264 0844 0895      		ret
+ 1265               	/* epilogue end (size=18) */
+ 1266               	/* function SearchFolder size 367 (332) */
+ 1267               	.LFE17:
+ 1269               	.global	SearchInit
+ 1271               	SearchInit:
+ 1272               	.LFB18:
+ 1273               	.LM125:
+ 1274               	/* prologue: frame size=2 */
+ 1275 0846 0F93      		push r16
+ 1276 0848 1F93      		push r17
+ 1277 084a CF93      		push r28
+ 1278 084c DF93      		push r29
+ 1279 084e CDB7      		in r28、__SP_L__
+ 1280 0850 DEB7      		in r29、__SP_H__
+ 1281 0852 2297      		sbiw r28、2
+ 1282 0854 0FB6      		in __tmp_reg__、__SREG__
+ 1283 0856 F894      		cli
+ 1284 0858 DEBF      		out __SP_H__、r29
+ 1285 085a 0FBE      		out __SREG__、__tmp_reg__
+ 1286 085c CDBF      		out __SP_L__、r28
+ 1287               	/* prologue end (size=12) */
+ 1288               	.LM126:
+ 1289 085e 00E0      		ldi r16、lo8(0)
+ 1290 0860 10E0      		ldi r17、hi8(0)
+ 1291               	.LM127:
+ 1292 0862 8091 0000 		lds r24、FAT32_Enable
+ 1293 0866 8823      		tst r24
+ 1294 0868 71F0      		breq .L132
+ 1295               	.LM128:
+ 1296 086a 8091 0000 		lds r24、FirstDirClust
+ 1297 086e 9091 0000 		lds r25、(FirstDirClust)+1
+ 1298 0872 A091 0000 		lds r26、(FirstDirClust)+2
+ 1299 0876 B091 0000 		lds r27、(FirstDirClust)+3
+ 1300 087a AC01      		movw r20、r24
+ 1301 087c BD01      		movw r22、r26
+ 1302 087e 07C0      		rjmp .L143
+ 1303               	.L142:
+ 1304               	.LM129:
+ 1305 0880 80E0      		ldi r24、lo8(0)
+ 1306 0882 90E0      		ldi r25、hi8(0)
+ 1307 0884 47C0      		rjmp .L131
+ 1308               	.L132:
+ 1309               	.LM130:
+ 1310 0886 40E0      		ldi r20、lo8(0)
+ 1311 0888 50E0      		ldi r21、hi8(0)
+ 1312 088a 60E0      		ldi r22、hlo8(0)
+ 1313 088c 70E0      		ldi r23、hhi8(0)
+ 1314               	.L143:
+ 1315 088e C801      		movw r24、r16
+ 1316 0890 0E94 0000 		call WriteFolderCluster
+ 1317               	.LM131:
+ 1318 0894 04E0      		ldi r16、lo8(4)
+ 1319 0896 10E0      		ldi r17、hi8(4)
+ 1320               	.LM132:
+ 1321 0898 4FEF      		ldi r20、lo8(-1)
+ 1322 089a 5FEF      		ldi r21、hi8(-1)
+ 1323 089c 6FEF      		ldi r22、hlo8(-1)
+ 1324 089e 7FEF      		ldi r23、hhi8(-1)
+ 1325 08a0 C801      		movw r24、r16
+ 1326 08a2 0E94 0000 		call WriteFolderCluster
+ 1327               	.LM133:
+ 1328 08a6 1A83      		std Y+2、r17
+ 1329 08a8 0983      		std Y+1、r16
+ 1330               	.LM134:
+ 1331 08aa 00E0      		ldi r16、lo8(0)
+ 1332 08ac 10E0      		ldi r17、hi8(0)
+ 1333               	.L134:
+ 1334               	.LM135:
+ 1335 08ae C801      		movw r24、r16
+ 1336 08b0 0E94 0000 		call GetFolderCluster
+ 1337               	.LM136:
+ 1338 08b4 6F3F      		cpi r22、lo8(-1)
+ 1339 08b6 2FEF      		ldi r18、hi8(-1)
+ 1340 08b8 7207      		cpc r23、r18
+ 1341 08ba 2FEF      		ldi r18、hlo8(-1)
+ 1342 08bc 8207      		cpc r24、r18
+ 1343 08be 2FEF      		ldi r18、hhi8(-1)
+ 1344 08c0 9207      		cpc r25、r18
+ 1345 08c2 F1F2      		breq .L142
+ 1346               	.LM137:
+ 1347 08c4 AE01      		movw r20、r28
+ 1348 08c6 4F5F      		subi r20、lo8(-(1))
+ 1349 08c8 5F4F      		sbci r21、hi8(-(1))
+ 1350 08ca 0E94 0000 		call SearchFolder
+ 1351               	.LM138:
+ 1352 08ce 8981      		ldd r24、Y+1
+ 1353 08d0 9A81      		ldd r25、Y+2
+ 1354 08d2 0E94 0000 		call GetFolderCluster
+ 1355 08d6 DC01      		movw r26、r24
+ 1356 08d8 CB01      		movw r24、r22
+ 1357 08da 8F5F      		subi r24、lo8(-1)
+ 1358 08dc 9F4F      		sbci r25、hi8(-1)
+ 1359 08de AF4F      		sbci r26、hlo8(-1)
+ 1360 08e0 BF4F      		sbci r27、hhi8(-1)
+ 1361 08e2 41F0      		breq .L139
+ 1362               	.LM139:
+ 1363 08e4 4FEF      		ldi r20、lo8(-1)
+ 1364 08e6 5FEF      		ldi r21、hi8(-1)
+ 1365 08e8 6FEF      		ldi r22、hlo8(-1)
+ 1366 08ea 7FEF      		ldi r23、hhi8(-1)
+ 1367 08ec 8981      		ldd r24、Y+1
+ 1368 08ee 9A81      		ldd r25、Y+2
+ 1369 08f0 0E94 0000 		call WriteFolderCluster
+ 1370               	.L139:
+ 1371               	.LM140:
+ 1372 08f4 8981      		ldd r24、Y+1
+ 1373 08f6 9A81      		ldd r25、Y+2
+ 1374 08f8 22E0      		ldi r18、hi8(512)
+ 1375 08fa 8030      		cpi r24、lo8(512)
+ 1376 08fc 9207      		cpc r25、r18
+ 1377 08fe 19F0      		breq .L141
+ 1378               	.LM141:
+ 1379 0900 0C5F      		subi r16、lo8(-(4))
+ 1380 0902 1F4F      		sbci r17、hi8(-(4))
+ 1381 0904 D4CF      		rjmp .L134
+ 1382               	.L141:
+ 1383               	.LM142:
+ 1384 0906 4FEF      		ldi r20、lo8(-1)
+ 1385 0908 5FEF      		ldi r21、hi8(-1)
+ 1386 090a 6FEF      		ldi r22、hlo8(-1)
+ 1387 090c 7FEF      		ldi r23、hhi8(-1)
+ 1388 090e 0497      		sbiw r24、4
+ 1389 0910 0E94 0000 		call WriteFolderCluster
+ 1390               	.L131:
+ 1391               	/* epilogue: frame size=2 */
+ 1392 0914 2296      		adiw r28、2
+ 1393 0916 0FB6      		in __tmp_reg__、__SREG__
+ 1394 0918 F894      		cli
+ 1395 091a DEBF      		out __SP_H__、r29
+ 1396 091c 0FBE      		out __SREG__、__tmp_reg__
+ 1397 091e CDBF      		out __SP_L__、r28
+ 1398 0920 DF91      		pop r29
+ 1399 0922 CF91      		pop r28
+ 1400 0924 1F91      		pop r17
+ 1401 0926 0F91      		pop r16
+ 1402 0928 0895      		ret
+ 1403               	/* epilogue end (size=11) */
+ 1404               	/* function SearchInit size 117 (94) */
+ 1405               	.LFE18:
+ 1407               	.global	Search
+ 1409               	Search:
+ 1410               	.LFB19:
+ 1411               	.LM143:
+ 1412               	/* prologue: frame size=9 */
+ 1413 092a 2F92      		push r2
+ 1414 092c 3F92      		push r3
+ 1415 092e 5F92      		push r5
+ 1416 0930 6F92      		push r6
+ 1417 0932 7F92      		push r7
+ 1418 0934 8F92      		push r8
+ 1419 0936 9F92      		push r9
+ 1420 0938 AF92      		push r10
+ 1421 093a BF92      		push r11
+ 1422 093c CF92      		push r12
+ 1423 093e DF92      		push r13
+ 1424 0940 EF92      		push r14
+ 1425 0942 FF92      		push r15
+ 1426 0944 0F93      		push r16
+ 1427 0946 1F93      		push r17
+ 1428 0948 CF93      		push r28
+ 1429 094a DF93      		push r29
+ 1430 094c CDB7      		in r28、__SP_L__
+ 1431 094e DEB7      		in r29、__SP_H__
+ 1432 0950 2997      		sbiw r28、9
+ 1433 0952 0FB6      		in __tmp_reg__、__SREG__
+ 1434 0954 F894      		cli
+ 1435 0956 DEBF      		out __SP_H__、r29
+ 1436 0958 0FBE      		out __SREG__、__tmp_reg__
+ 1437 095a CDBF      		out __SP_L__、r28
+ 1438               	/* prologue end (size=25) */
+ 1439 095c 9D83      		std Y+5、r25
+ 1440 095e 8C83      		std Y+4、r24
+ 1441 0960 7F83      		std Y+7、r23
+ 1442 0962 6E83      		std Y+6、r22
+ 1443 0964 FA01      		movw r30、r20
+ 1444               	.LM144:
+ 1445 0966 2224      		clr r2
+ 1446 0968 3324      		clr r3
+ 1447               	.LM145:
+ 1448 096a 8081      		ld r24、Z
+ 1449 096c 9927      		clr r25
+ 1450 096e 8130      		cpi r24、1
+ 1451 0970 9105      		cpc r25、__zero_reg__
+ 1452 0972 19F0      		breq .L146
+ 1453               	.LM146:
+ 1454 0974 0297      		sbiw r24、2
+ 1455 0976 89F0      		breq .L147
+ 1456 0978 16C0      		rjmp .L145
+ 1457               	.L146:
+ 1458               	.LM147:
+ 1459 097a 82E4      		ldi r24、lo8(66)
+ 1460 097c 8983      		std Y+1、r24
+ 1461               	.LM148:
+ 1462 097e 8DE4      		ldi r24、lo8(77)
+ 1463 0980 8A83      		std Y+2、r24
+ 1464               	.LM149:
+ 1465 0982 80E5      		ldi r24、lo8(80)
+ 1466 0984 0FC0      		rjmp .L205
+ 1467               	.L197:
+ 1468               	.LM150:
+ 1469 0986 C601      		movw r24、r12
+ 1470 0988 0E94 0000 		call free
+ 1471               	.L206:
+ 1472 098c 81E0      		ldi r24、lo8(1)
+ 1473 098e 90E0      		ldi r25、hi8(1)
+ 1474 0990 5DC1      		rjmp .L144
+ 1475               	.L198:
+ 1476               	.LM151:
+ 1477 0992 C601      		movw r24、r12
+ 1478 0994 0E94 0000 		call free
+ 1479 0998 57C1      		rjmp .L184
+ 1480               	.L147:
+ 1481               	.LM152:
+ 1482 099a 82E4      		ldi r24、lo8(66)
+ 1483 099c 8983      		std Y+1、r24
+ 1484               	.LM153:
+ 1485 099e 89E4      		ldi r24、lo8(73)
+ 1486 09a0 8A83      		std Y+2、r24
+ 1487               	.LM154:
+ 1488 09a2 8EE4      		ldi r24、lo8(78)
+ 1489               	.L205:
+ 1490 09a4 8B83      		std Y+3、r24
+ 1491               	.L145:
+ 1492               	.LM155:
+ 1493 09a6 1986      		std Y+9、__zero_reg__
+ 1494 09a8 1886      		std Y+8、__zero_reg__
+ 1495               	.L207:
+ 1496               	.LM156:
+ 1497 09aa 8885      		ldd r24、Y+8
+ 1498 09ac 9985      		ldd r25、Y+9
+ 1499 09ae 0E94 0000 		call GetFolderCluster
+ 1500 09b2 7B01      		movw r14、r22
+ 1501 09b4 8C01      		movw r16、r24
+ 1502               	.LM157:
+ 1503 09b6 8885      		ldd r24、Y+8
+ 1504 09b8 9985      		ldd r25、Y+9
+ 1505 09ba 0496      		adiw r24、4
+ 1506 09bc 9987      		std Y+9、r25
+ 1507 09be 8887      		std Y+8、r24
+ 1508               	.LM158:
+ 1509 09c0 9FEF      		ldi r25、lo8(-1)
+ 1510 09c2 E916      		cp r14、r25
+ 1511 09c4 9FEF      		ldi r25、hi8(-1)
+ 1512 09c6 F906      		cpc r15、r25
+ 1513 09c8 9FEF      		ldi r25、hlo8(-1)
+ 1514 09ca 0907      		cpc r16、r25
+ 1515 09cc 9FEF      		ldi r25、hhi8(-1)
+ 1516 09ce 1907      		cpc r17、r25
+ 1517 09d0 09F4      		brne .+2
+ 1518 09d2 32C1      		rjmp .L149
+ 1519               	.LM159:
+ 1520 09d4 E114      		cp r14、__zero_reg__
+ 1521 09d6 F104      		cpc r15、__zero_reg__
+ 1522 09d8 0105      		cpc r16、__zero_reg__
+ 1523 09da 1105      		cpc r17、__zero_reg__
+ 1524 09dc 09F0      		breq .+2
+ 1525 09de 7DC0      		rjmp .L152
+ 1526 09e0 B090 0000 		lds r11、FAT32_Enable
+ 1527 09e4 BB20      		tst r11
+ 1528 09e6 09F0      		breq .+2
+ 1529 09e8 78C0      		rjmp .L152
+ 1530               	.LM160:
+ 1531 09ea 80E0      		ldi r24、lo8(512)
+ 1532 09ec 92E0      		ldi r25、hi8(512)
+ 1533 09ee 0E94 0000 		call malloc
+ 1534 09f2 6C01      		movw r12、r24
+ 1535               	.LM161:
+ 1536 09f4 892B      		or r24、r25
+ 1537 09f6 51F2      		breq .L206
+ 1538               	.LM162:
+ 1539 09f8 5B2C      		mov r5、r11
+ 1540 09fa 8091 0000 		lds r24、RootDirSectors
+ 1541 09fe 9091 0000 		lds r25、(RootDirSectors)+1
+ 1542 0a02 A091 0000 		lds r26、(RootDirSectors)+2
+ 1543 0a06 B091 0000 		lds r27、(RootDirSectors)+3
+ 1544 0a0a E816      		cp r14、r24
+ 1545 0a0c F906      		cpc r15、r25
+ 1546 0a0e 0A07      		cpc r16、r26
+ 1547 0a10 1B07      		cpc r17、r27
+ 1548 0a12 08F0      		brlo .+2
+ 1549 0a14 5EC0      		rjmp .L186
+ 1550               	.L165:
+ 1551               	.LM163:
+ 1552 0a16 8091 0000 		lds r24、FirstDirSector
+ 1553 0a1a 9091 0000 		lds r25、(FirstDirSector)+1
+ 1554 0a1e A091 0000 		lds r26、(FirstDirSector)+2
+ 1555 0a22 B091 0000 		lds r27、(FirstDirSector)+3
+ 1556 0a26 850D      		add r24、r5
+ 1557 0a28 911D      		adc r25、__zero_reg__
+ 1558 0a2a A11D      		adc r26、__zero_reg__
+ 1559 0a2c B11D      		adc r27、__zero_reg__
+ 1560 0a2e E091 0000 		lds r30、FAT_ReadSector
+ 1561 0a32 F091 0000 		lds r31、(FAT_ReadSector)+1
+ 1562 0a36 A601      		movw r20、r12
+ 1563 0a38 BC01      		movw r22、r24
+ 1564 0a3a CD01      		movw r24、r26
+ 1565 0a3c 0995      		icall
+ 1566 0a3e 8823      		tst r24
+ 1567 0a40 09F0      		breq .+2
+ 1568 0a42 A1CF      		rjmp .L197
+ 1569               	.LM164:
+ 1570 0a44 6624      		clr r6
+ 1571 0a46 7724      		clr r7
+ 1572               	.L164:
+ 1573               	.LM165:
+ 1574 0a48 F601      		movw r30、r12
+ 1575 0a4a E60D      		add r30、r6
+ 1576 0a4c F71D      		adc r31、r7
+ 1577               	.LM166:
+ 1578 0a4e 8081      		ld r24、Z
+ 1579 0a50 8E32      		cpi r24、lo8(46)
+ 1580 0a52 19F1      		breq .L160
+ 1581 0a54 8823      		tst r24
+ 1582 0a56 09F1      		breq .L160
+ 1583 0a58 853E      		cpi r24、lo8(-27)
+ 1584 0a5a F9F0      		breq .L160
+ 1585 0a5c 8385      		ldd r24、Z+11
+ 1586 0a5e 8F30      		cpi r24、lo8(15)
+ 1587 0a60 E1F0      		breq .L160
+ 1588               	.LM167:
+ 1589 0a62 9085      		ldd r25、Z+8
+ 1590 0a64 8981      		ldd r24、Y+1
+ 1591 0a66 9817      		cp r25、r24
+ 1592 0a68 C1F4      		brne .L160
+ 1593 0a6a 9185      		ldd r25、Z+9
+ 1594 0a6c 8A81      		ldd r24、Y+2
+ 1595 0a6e 9817      		cp r25、r24
+ 1596 0a70 A1F4      		brne .L160
+ 1597 0a72 9285      		ldd r25、Z+10
+ 1598 0a74 8B81      		ldd r24、Y+3
+ 1599 0a76 9817      		cp r25、r24
+ 1600 0a78 81F4      		brne .L160
+ 1601               	.LM168:
+ 1602 0a7a BF01      		movw r22、r30
+ 1603 0a7c 8C81      		ldd r24、Y+4
+ 1604 0a7e 9D81      		ldd r25、Y+5
+ 1605 0a80 0E94 0000 		call CopyDirentruyItem
+ 1606               	.LM169:
+ 1607 0a84 0894      		sec
+ 1608 0a86 211C      		adc r2、__zero_reg__
+ 1609 0a88 311C      		adc r3、__zero_reg__
+ 1610               	.LM170:
+ 1611 0a8a EE81      		ldd r30、Y+6
+ 1612 0a8c FF81      		ldd r31、Y+7
+ 1613 0a8e 8081      		ld r24、Z
+ 1614 0a90 9181      		ldd r25、Z+1
+ 1615 0a92 2816      		cp r2、r24
+ 1616 0a94 3906      		cpc r3、r25
+ 1617 0a96 09F4      		brne .+2
+ 1618 0a98 7CCF      		rjmp .L198
+ 1619               	.L160:
+ 1620               	.LM171:
+ 1621 0a9a 80E2      		ldi r24、lo8(32)
+ 1622 0a9c 90E0      		ldi r25、hi8(32)
+ 1623 0a9e 680E      		add r6、r24
+ 1624 0aa0 791E      		adc r7、r25
+ 1625 0aa2 90E0      		ldi r25、lo8(512)
+ 1626 0aa4 6916      		cp r6、r25
+ 1627 0aa6 92E0      		ldi r25、hi8(512)
+ 1628 0aa8 7906      		cpc r7、r25
+ 1629 0aaa 70F2      		brlo .L164
+ 1630               	.LM172:
+ 1631 0aac 5394      		inc r5
+ 1632 0aae 252D      		mov r18、r5
+ 1633 0ab0 3327      		clr r19
+ 1634 0ab2 4427      		clr r20
+ 1635 0ab4 5527      		clr r21
+ 1636 0ab6 8091 0000 		lds r24、RootDirSectors
+ 1637 0aba 9091 0000 		lds r25、(RootDirSectors)+1
+ 1638 0abe A091 0000 		lds r26、(RootDirSectors)+2
+ 1639 0ac2 B091 0000 		lds r27、(RootDirSectors)+3
+ 1640 0ac6 2817      		cp r18、r24
+ 1641 0ac8 3907      		cpc r19、r25
+ 1642 0aca 4A07      		cpc r20、r26
+ 1643 0acc 5B07      		cpc r21、r27
+ 1644 0ace 08F4      		brsh .+2
+ 1645 0ad0 A2CF      		rjmp .L165
+ 1646               	.L186:
+ 1647               	.LM173:
+ 1648 0ad2 C601      		movw r24、r12
+ 1649 0ad4 0E94 0000 		call free
+ 1650 0ad8 68CF      		rjmp .L207
+ 1651               	.L152:
+ 1652               	.LM174:
+ 1653 0ada 4701      		movw r8、r14
+ 1654 0adc 5801      		movw r10、r16
+ 1655               	.L208:
+ 1656               	.LM175:
+ 1657 0ade 7EEF      		ldi r23、lo8(-2)
+ 1658 0ae0 E72E      		mov r14、r23
+ 1659 0ae2 7FEF      		ldi r23、hi8(-2)
+ 1660 0ae4 F72E      		mov r15、r23
+ 1661 0ae6 7FEF      		ldi r23、hlo8(-2)
+ 1662 0ae8 072F      		mov r16、r23
+ 1663 0aea 7FEF      		ldi r23、hhi8(-2)
+ 1664 0aec 172F      		mov r17、r23
+ 1665 0aee E80C      		add r14、r8
+ 1666 0af0 F91C      		adc r15、r9
+ 1667 0af2 0A1D      		adc r16、r10
+ 1668 0af4 1B1D      		adc r17、r11
+ 1669 0af6 8091 0000 		lds r24、SectorsPerClust
+ 1670 0afa 9091 0000 		lds r25、(SectorsPerClust)+1
+ 1671 0afe 9C01      		movw r18、r24
+ 1672 0b00 4427      		clr r20
+ 1673 0b02 5527      		clr r21
+ 1674 0b04 C801      		movw r24、r16
+ 1675 0b06 B701      		movw r22、r14
+ 1676 0b08 0E94 0000 		call __mulsi3
+ 1677 0b0c DC01      		movw r26、r24
+ 1678 0b0e CB01      		movw r24、r22
+ 1679 0b10 E090 0000 		lds r14、FirstDataSector
+ 1680 0b14 F090 0000 		lds r15、(FirstDataSector)+1
+ 1681 0b18 0091 0000 		lds r16、(FirstDataSector)+2
+ 1682 0b1c 1091 0000 		lds r17、(FirstDataSector)+3
+ 1683 0b20 E80E      		add r14、r24
+ 1684 0b22 F91E      		adc r15、r25
+ 1685 0b24 0A1F      		adc r16、r26
+ 1686 0b26 1B1F      		adc r17、r27
+ 1687               	.LM176:
+ 1688 0b28 80E0      		ldi r24、lo8(512)
+ 1689 0b2a 92E0      		ldi r25、hi8(512)
+ 1690 0b2c 0E94 0000 		call malloc
+ 1691 0b30 6C01      		movw r12、r24
+ 1692               	.LM177:
+ 1693 0b32 892B      		or r24、r25
+ 1694 0b34 09F4      		brne .+2
+ 1695 0b36 2ACF      		rjmp .L206
+ 1696               	.LM178:
+ 1697 0b38 5524      		clr r5
+ 1698 0b3a 8091 0000 		lds r24、SectorsPerClust
+ 1699 0b3e 9091 0000 		lds r25、(SectorsPerClust)+1
+ 1700 0b42 892B      		or r24、r25
+ 1701 0b44 09F4      		brne .+2
+ 1702 0b46 50C0      		rjmp .L190
+ 1703               	.L181:
+ 1704               	.LM179:
+ 1705 0b48 D801      		movw r26、r16
+ 1706 0b4a C701      		movw r24、r14
+ 1707 0b4c 850D      		add r24、r5
+ 1708 0b4e 911D      		adc r25、__zero_reg__
+ 1709 0b50 A11D      		adc r26、__zero_reg__
+ 1710 0b52 B11D      		adc r27、__zero_reg__
+ 1711 0b54 E091 0000 		lds r30、FAT_ReadSector
+ 1712 0b58 F091 0000 		lds r31、(FAT_ReadSector)+1
+ 1713 0b5c A601      		movw r20、r12
+ 1714 0b5e BC01      		movw r22、r24
+ 1715 0b60 CD01      		movw r24、r26
+ 1716 0b62 0995      		icall
+ 1717 0b64 8823      		tst r24
+ 1718 0b66 09F0      		breq .+2
+ 1719 0b68 0ECF      		rjmp .L197
+ 1720               	.LM180:
+ 1721 0b6a 6624      		clr r6
+ 1722 0b6c 7724      		clr r7
+ 1723               	.L180:
+ 1724               	.LM181:
+ 1725 0b6e F601      		movw r30、r12
+ 1726 0b70 E60D      		add r30、r6
+ 1727 0b72 F71D      		adc r31、r7
+ 1728               	.LM182:
+ 1729 0b74 8081      		ld r24、Z
+ 1730 0b76 8E32      		cpi r24、lo8(46)
+ 1731 0b78 19F1      		breq .L176
+ 1732 0b7a 8823      		tst r24
+ 1733 0b7c 09F1      		breq .L176
+ 1734 0b7e 853E      		cpi r24、lo8(-27)
+ 1735 0b80 F9F0      		breq .L176
+ 1736 0b82 8385      		ldd r24、Z+11
+ 1737 0b84 8F30      		cpi r24、lo8(15)
+ 1738 0b86 E1F0      		breq .L176
+ 1739               	.LM183:
+ 1740 0b88 9085      		ldd r25、Z+8
+ 1741 0b8a 8981      		ldd r24、Y+1
+ 1742 0b8c 9817      		cp r25、r24
+ 1743 0b8e C1F4      		brne .L176
+ 1744 0b90 9185      		ldd r25、Z+9
+ 1745 0b92 8A81      		ldd r24、Y+2
+ 1746 0b94 9817      		cp r25、r24
+ 1747 0b96 A1F4      		brne .L176
+ 1748 0b98 9285      		ldd r25、Z+10
+ 1749 0b9a 8B81      		ldd r24、Y+3
+ 1750 0b9c 9817      		cp r25、r24
+ 1751 0b9e 81F4      		brne .L176
+ 1752               	.LM184:
+ 1753 0ba0 BF01      		movw r22、r30
+ 1754 0ba2 8C81      		ldd r24、Y+4
+ 1755 0ba4 9D81      		ldd r25、Y+5
+ 1756 0ba6 0E94 0000 		call CopyDirentruyItem
+ 1757               	.LM185:
+ 1758 0baa 0894      		sec
+ 1759 0bac 211C      		adc r2、__zero_reg__
+ 1760 0bae 311C      		adc r3、__zero_reg__
+ 1761               	.LM186:
+ 1762 0bb0 EE81      		ldd r30、Y+6
+ 1763 0bb2 FF81      		ldd r31、Y+7
+ 1764 0bb4 8081      		ld r24、Z
+ 1765 0bb6 9181      		ldd r25、Z+1
+ 1766 0bb8 2816      		cp r2、r24
+ 1767 0bba 3906      		cpc r3、r25
+ 1768 0bbc 09F4      		brne .+2
+ 1769 0bbe E9CE      		rjmp .L198
+ 1770               	.L176:
+ 1771               	.LM187:
+ 1772 0bc0 80E2      		ldi r24、lo8(32)
+ 1773 0bc2 90E0      		ldi r25、hi8(32)
+ 1774 0bc4 680E      		add r6、r24
+ 1775 0bc6 791E      		adc r7、r25
+ 1776 0bc8 90E0      		ldi r25、lo8(512)
+ 1777 0bca 6916      		cp r6、r25
+ 1778 0bcc 92E0      		ldi r25、hi8(512)
+ 1779 0bce 7906      		cpc r7、r25
+ 1780 0bd0 70F2      		brlo .L180
+ 1781               	.LM188:
+ 1782 0bd2 5394      		inc r5
+ 1783 0bd4 252D      		mov r18、r5
+ 1784 0bd6 3327      		clr r19
+ 1785 0bd8 8091 0000 		lds r24、SectorsPerClust
+ 1786 0bdc 9091 0000 		lds r25、(SectorsPerClust)+1
+ 1787 0be0 2817      		cp r18、r24
+ 1788 0be2 3907      		cpc r19、r25
+ 1789 0be4 08F4      		brsh .+2
+ 1790 0be6 B0CF      		rjmp .L181
+ 1791               	.L190:
+ 1792               	.LM189:
+ 1793 0be8 C601      		movw r24、r12
+ 1794 0bea 0E94 0000 		call free
+ 1795               	.LM190:
+ 1796 0bee C501      		movw r24、r10
+ 1797 0bf0 B401      		movw r22、r8
+ 1798 0bf2 0E94 0000 		call FAT_NextCluster
+ 1799 0bf6 4B01      		movw r8、r22
+ 1800 0bf8 5C01      		movw r10、r24
+ 1801               	.LM191:
+ 1802 0bfa 6F3F      		cpi r22、lo8(268435455)
+ 1803 0bfc EFEF      		ldi r30、hi8(268435455)
+ 1804 0bfe 7E07      		cpc r23、r30
+ 1805 0c00 EFEF      		ldi r30、hlo8(268435455)
+ 1806 0c02 8E07      		cpc r24、r30
+ 1807 0c04 EFE0      		ldi r30、hhi8(268435455)
+ 1808 0c06 9E07      		cpc r25、r30
+ 1809 0c08 09F4      		brne .+2
+ 1810 0c0a CFCE      		rjmp .L207
+ 1811 0c0c 685F      		subi r22、lo8(268435448)
+ 1812 0c0e 7F4F      		sbci r23、hi8(268435448)
+ 1813 0c10 8F4F      		sbci r24、hlo8(268435448)
+ 1814 0c12 9F40      		sbci r25、hhi8(268435448)
+ 1815 0c14 09F4      		brne .+2
+ 1816 0c16 C9CE      		rjmp .L207
+ 1817 0c18 8091 0000 		lds r24、FAT32_Enable
+ 1818 0c1c 8823      		tst r24
+ 1819 0c1e 09F0      		breq .+2
+ 1820 0c20 5ECF      		rjmp .L208
+ 1821 0c22 8FEF      		ldi r24、lo8(65535)
+ 1822 0c24 8816      		cp r8、r24
+ 1823 0c26 8FEF      		ldi r24、hi8(65535)
+ 1824 0c28 9806      		cpc r9、r24
+ 1825 0c2a 80E0      		ldi r24、hlo8(65535)
+ 1826 0c2c A806      		cpc r10、r24
+ 1827 0c2e 80E0      		ldi r24、hhi8(65535)
+ 1828 0c30 B806      		cpc r11、r24
+ 1829 0c32 09F0      		breq .+2
+ 1830 0c34 54CF      		rjmp .L208
+ 1831 0c36 B9CE      		rjmp .L207
+ 1832               	.L149:
+ 1833               	.LM192:
+ 1834 0c38 EE81      		ldd r30、Y+6
+ 1835 0c3a FF81      		ldd r31、Y+7
+ 1836 0c3c 8081      		ld r24、Z
+ 1837 0c3e 9181      		ldd r25、Z+1
+ 1838 0c40 892B      		or r24、r25
+ 1839 0c42 11F4      		brne .L184
+ 1840 0c44 3182      		std Z+1、r3
+ 1841 0c46 2082      		st Z、r2
+ 1842               	.L184:
+ 1843               	.LM193:
+ 1844 0c48 80E0      		ldi r24、lo8(0)
+ 1845 0c4a 90E0      		ldi r25、hi8(0)
+ 1846               	.L144:
+ 1847               	/* epilogue: frame size=9 */
+ 1848 0c4c 2996      		adiw r28、9
+ 1849 0c4e 0FB6      		in __tmp_reg__、__SREG__
+ 1850 0c50 F894      		cli
+ 1851 0c52 DEBF      		out __SP_H__、r29
+ 1852 0c54 0FBE      		out __SREG__、__tmp_reg__
+ 1853 0c56 CDBF      		out __SP_L__、r28
+ 1854 0c58 DF91      		pop r29
+ 1855 0c5a CF91      		pop r28
+ 1856 0c5c 1F91      		pop r17
+ 1857 0c5e 0F91      		pop r16
+ 1858 0c60 FF90      		pop r15
+ 1859 0c62 EF90      		pop r14
+ 1860 0c64 DF90      		pop r13
+ 1861 0c66 CF90      		pop r12
+ 1862 0c68 BF90      		pop r11
+ 1863 0c6a AF90      		pop r10
+ 1864 0c6c 9F90      		pop r9
+ 1865 0c6e 8F90      		pop r8
+ 1866 0c70 7F90      		pop r7
+ 1867 0c72 6F90      		pop r6
+ 1868 0c74 5F90      		pop r5
+ 1869 0c76 3F90      		pop r3
+ 1870 0c78 2F90      		pop r2
+ 1871 0c7a 0895      		ret
+ 1872               	/* epilogue end (size=24) */
+ 1873               	/* function Search size 429 (380) */
+ 1874               	.LFE19:
+ 1876               		.comm FirstDirClust、4、1
+ 1877               		.comm FirstDataSector、4、1
+ 1878               		.comm BytesPerSector、2、1
+ 1879               		.comm FATsectors、2、1
+ 1880               		.comm SectorsPerClust、2、1
+ 1881               		.comm FirstFATSector、4、1
+ 1882               		.comm FirstDirSector、4、1
+ 1883               		.comm RootDirSectors、4、1
+ 1884               		.comm RootDirCount、4、1
+ 1885               		.comm FAT32_Enable、1、1
+ 1886               		.comm FileInfo、15、1
+ 1887               	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 FAT.c
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:3      *ABS*:0000003f __SREG__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:4      *ABS*:0000003e __SP_H__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:5      *ABS*:0000003d __SP_L__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:6      *ABS*:00000000 __tmp_reg__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:7      *ABS*:00000001 __zero_reg__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:22     .data:00000000 FAT_WriteSector
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:27     .data:00000002 FAT_ReadSector
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:32     .text:00000000 FAT_Init
+                            *COM*:00000001 FAT32_Enable
+                            *COM*:00000002 FATsectors
+                            *COM*:00000004 FirstDirClust
+                            *COM*:00000002 BytesPerSector
+                            *COM*:00000002 SectorsPerClust
+                            *COM*:00000004 FirstFATSector
+                            *COM*:00000004 RootDirCount
+                            *COM*:00000004 RootDirSectors
+                            *COM*:00000004 FirstDirSector
+                            *COM*:00000004 FirstDataSector
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:310    .text:00000220 FAT_LoadPartCluster
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:381    .text:0000029c FAT_NextCluster
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:533    .text:000003a2 CopyDirentruyItem
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:702    .text:000004b4 WriteFolderCluster
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:786    .text:0000050c GetFolderCluster
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:882    .text:0000056e SearchFolder
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:1271   .text:00000846 SearchInit
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cc0cbaaa.s:1409   .text:0000092a Search
+                            *COM*:0000000f FileInfo
+
+UNDEFINED SYMBOLS
+__do_copy_data
+__do_clear_bss
+MMC_SD_WriteSingleBlock
+MMC_SD_ReadSingleBlock
+MMC_SD_ReadCapacity
+__mulsi3
+__eeprom_write_byte_1C1D1E
+__eeprom_read_byte_1C1D1E
+malloc
+free

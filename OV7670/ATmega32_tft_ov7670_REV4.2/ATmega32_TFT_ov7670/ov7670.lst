@@ -1,0 +1,737 @@
+   1               		.file	"ov7670.c"
+   2               		.arch atmega32
+   3               	__SREG__ = 0x3f
+   4               	__SP_H__ = 0x3e
+   5               	__SP_L__ = 0x3d
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.global __do_copy_data
+   9               		.global __do_clear_bss
+  17               	.Ltext0:
+  18               	.global	change_reg
+  19               		.section	.progmem.data、"a"、@progbits
+  22               	change_reg:
+  23 0000 3A        		.byte	58
+  24 0001 04        		.byte	4
+  25 0002 40        		.byte	64
+  26 0003 10        		.byte	16
+  27 0004 12        		.byte	18
+  28 0005 14        		.byte	20
+  29 0006 32        		.byte	50
+  30 0007 B6        		.byte	-74
+  31 0008 17        		.byte	23
+  32 0009 16        		.byte	22
+  33 000a 18        		.byte	24
+  34 000b 04        		.byte	4
+  35 000c 19        		.byte	25
+  36 000d 03        		.byte	3
+  37 000e 1A        		.byte	26
+  38 000f 7B        		.byte	123
+  39 0010 03        		.byte	3
+  40 0011 0A        		.byte	10
+  41 0012 0C        		.byte	12
+  42 0013 00        		.byte	0
+  43 0014 3E        		.byte	62
+  44 0015 00        		.byte	0
+  45 0016 70        		.byte	112
+  46 0017 00        		.byte	0
+  47 0018 71        		.byte	113
+  48 0019 00        		.byte	0
+  49 001a 72        		.byte	114
+  50 001b 11        		.byte	17
+  51 001c 73        		.byte	115
+  52 001d 00        		.byte	0
+  53 001e A2        		.byte	-94
+  54 001f 02        		.byte	2
+  55 0020 11        		.byte	17
+  56 0021 00        		.byte	0
+  57 0022 7A        		.byte	122
+  58 0023 20        		.byte	32
+  59 0024 7B        		.byte	123
+  60 0025 1C        		.byte	28
+  61 0026 7C        		.byte	124
+  62 0027 28        		.byte	40
+  63 0028 7D        		.byte	125
+  64 0029 3C        		.byte	60
+  65 002a 7E        		.byte	126
+  66 002b 55        		.byte	85
+  67 002c 7F        		.byte	127
+  68 002d 68        		.byte	104
+  69 002e 80        		.byte	-128
+  70 002f 76        		.byte	118
+  71 0030 81        		.byte	-127
+  72 0031 80        		.byte	-128
+  73 0032 82        		.byte	-126
+  74 0033 88        		.byte	-120
+  75 0034 83        		.byte	-125
+  76 0035 8F        		.byte	-113
+  77 0036 84        		.byte	-124
+  78 0037 96        		.byte	-106
+  79 0038 85        		.byte	-123
+  80 0039 A3        		.byte	-93
+  81 003a 86        		.byte	-122
+  82 003b AF        		.byte	-81
+  83 003c 87        		.byte	-121
+  84 003d C4        		.byte	-60
+  85 003e 88        		.byte	-120
+  86 003f D7        		.byte	-41
+  87 0040 89        		.byte	-119
+  88 0041 E8        		.byte	-24
+  89 0042 13        		.byte	19
+  90 0043 E0        		.byte	-32
+  91 0044 00        		.byte	0
+  92 0045 00        		.byte	0
+  93 0046 10        		.byte	16
+  94 0047 00        		.byte	0
+  95 0048 0D        		.byte	13
+  96 0049 00        		.byte	0
+  97 004a 14        		.byte	20
+  98 004b 20        		.byte	32
+  99 004c A5        		.byte	-91
+ 100 004d 05        		.byte	5
+ 101 004e AB        		.byte	-85
+ 102 004f 07        		.byte	7
+ 103 0050 24        		.byte	36
+ 104 0051 75        		.byte	117
+ 105 0052 25        		.byte	37
+ 106 0053 63        		.byte	99
+ 107 0054 26        		.byte	38
+ 108 0055 A5        		.byte	-91
+ 109 0056 9F        		.byte	-97
+ 110 0057 78        		.byte	120
+ 111 0058 A0        		.byte	-96
+ 112 0059 68        		.byte	104
+ 113 005a A1        		.byte	-95
+ 114 005b 03        		.byte	3
+ 115 005c A6        		.byte	-90
+ 116 005d DF        		.byte	-33
+ 117 005e A7        		.byte	-89
+ 118 005f DF        		.byte	-33
+ 119 0060 A8        		.byte	-88
+ 120 0061 F0        		.byte	-16
+ 121 0062 A9        		.byte	-87
+ 122 0063 90        		.byte	-112
+ 123 0064 AA        		.byte	-86
+ 124 0065 94        		.byte	-108
+ 125 0066 13        		.byte	19
+ 126 0067 E5        		.byte	-27
+ 127 0068 0E        		.byte	14
+ 128 0069 61        		.byte	97
+ 129 006a 0F        		.byte	15
+ 130 006b 4B        		.byte	75
+ 131 006c 16        		.byte	22
+ 132 006d 02        		.byte	2
+ 133 006e 1E        		.byte	30
+ 134 006f 37        		.byte	55
+ 135 0070 21        		.byte	33
+ 136 0071 02        		.byte	2
+ 137 0072 22        		.byte	34
+ 138 0073 91        		.byte	-111
+ 139 0074 29        		.byte	41
+ 140 0075 07        		.byte	7
+ 141 0076 33        		.byte	51
+ 142 0077 0B        		.byte	11
+ 143 0078 35        		.byte	53
+ 144 0079 0B        		.byte	11
+ 145 007a 37        		.byte	55
+ 146 007b 1D        		.byte	29
+ 147 007c 38        		.byte	56
+ 148 007d 71        		.byte	113
+ 149 007e 39        		.byte	57
+ 150 007f 2A        		.byte	42
+ 151 0080 3C        		.byte	60
+ 152 0081 78        		.byte	120
+ 153 0082 4D        		.byte	77
+ 154 0083 40        		.byte	64
+ 155 0084 4E        		.byte	78
+ 156 0085 20        		.byte	32
+ 157 0086 69        		.byte	105
+ 158 0087 0C        		.byte	12
+ 159 0088 6B        		.byte	107
+ 160 0089 40        		.byte	64
+ 161 008a 74        		.byte	116
+ 162 008b 19        		.byte	25
+ 163 008c 8D        		.byte	-115
+ 164 008d 4F        		.byte	79
+ 165 008e 8E        		.byte	-114
+ 166 008f 00        		.byte	0
+ 167 0090 8F        		.byte	-113
+ 168 0091 00        		.byte	0
+ 169 0092 90        		.byte	-112
+ 170 0093 00        		.byte	0
+ 171 0094 91        		.byte	-111
+ 172 0095 00        		.byte	0
+ 173 0096 92        		.byte	-110
+ 174 0097 00        		.byte	0
+ 175 0098 96        		.byte	-106
+ 176 0099 00        		.byte	0
+ 177 009a 9A        		.byte	-102
+ 178 009b 80        		.byte	-128
+ 179 009c B0        		.byte	-80
+ 180 009d 84        		.byte	-124
+ 181 009e B1        		.byte	-79
+ 182 009f 0C        		.byte	12
+ 183 00a0 B2        		.byte	-78
+ 184 00a1 0E        		.byte	14
+ 185 00a2 B3        		.byte	-77
+ 186 00a3 82        		.byte	-126
+ 187 00a4 B8        		.byte	-72
+ 188 00a5 0A        		.byte	10
+ 189 00a6 43        		.byte	67
+ 190 00a7 14        		.byte	20
+ 191 00a8 44        		.byte	68
+ 192 00a9 F0        		.byte	-16
+ 193 00aa 45        		.byte	69
+ 194 00ab 34        		.byte	52
+ 195 00ac 46        		.byte	70
+ 196 00ad 58        		.byte	88
+ 197 00ae 47        		.byte	71
+ 198 00af 28        		.byte	40
+ 199 00b0 48        		.byte	72
+ 200 00b1 3A        		.byte	58
+ 201 00b2 59        		.byte	89
+ 202 00b3 88        		.byte	-120
+ 203 00b4 5A        		.byte	90
+ 204 00b5 88        		.byte	-120
+ 205 00b6 5B        		.byte	91
+ 206 00b7 44        		.byte	68
+ 207 00b8 5C        		.byte	92
+ 208 00b9 67        		.byte	103
+ 209 00ba 5D        		.byte	93
+ 210 00bb 49        		.byte	73
+ 211 00bc 5E        		.byte	94
+ 212 00bd 0E        		.byte	14
+ 213 00be 64        		.byte	100
+ 214 00bf 04        		.byte	4
+ 215 00c0 65        		.byte	101
+ 216 00c1 20        		.byte	32
+ 217 00c2 66        		.byte	102
+ 218 00c3 05        		.byte	5
+ 219 00c4 94        		.byte	-108
+ 220 00c5 04        		.byte	4
+ 221 00c6 95        		.byte	-107
+ 222 00c7 08        		.byte	8
+ 223 00c8 6C        		.byte	108
+ 224 00c9 0A        		.byte	10
+ 225 00ca 6D        		.byte	109
+ 226 00cb 55        		.byte	85
+ 227 00cc 6E        		.byte	110
+ 228 00cd 11        		.byte	17
+ 229 00ce 6F        		.byte	111
+ 230 00cf 9F        		.byte	-97
+ 231 00d0 6A        		.byte	106
+ 232 00d1 40        		.byte	64
+ 233 00d2 01        		.byte	1
+ 234 00d3 40        		.byte	64
+ 235 00d4 02        		.byte	2
+ 236 00d5 40        		.byte	64
+ 237 00d6 13        		.byte	19
+ 238 00d7 E7        		.byte	-25
+ 239 00d8 15        		.byte	21
+ 240 00d9 00        		.byte	0
+ 241 00da 4F        		.byte	79
+ 242 00db 80        		.byte	-128
+ 243 00dc 50        		.byte	80
+ 244 00dd 80        		.byte	-128
+ 245 00de 51        		.byte	81
+ 246 00df 00        		.byte	0
+ 247 00e0 52        		.byte	82
+ 248 00e1 22        		.byte	34
+ 249 00e2 53        		.byte	83
+ 250 00e3 5E        		.byte	94
+ 251 00e4 54        		.byte	84
+ 252 00e5 80        		.byte	-128
+ 253 00e6 58        		.byte	88
+ 254 00e7 9E        		.byte	-98
+ 255 00e8 41        		.byte	65
+ 256 00e9 08        		.byte	8
+ 257 00ea 3F        		.byte	63
+ 258 00eb 00        		.byte	0
+ 259 00ec 75        		.byte	117
+ 260 00ed 05        		.byte	5
+ 261 00ee 76        		.byte	118
+ 262 00ef E1        		.byte	-31
+ 263 00f0 4C        		.byte	76
+ 264 00f1 00        		.byte	0
+ 265 00f2 77        		.byte	119
+ 266 00f3 01        		.byte	1
+ 267 00f4 3D        		.byte	61
+ 268 00f5 C2        		.byte	-62
+ 269 00f6 4B        		.byte	75
+ 270 00f7 09        		.byte	9
+ 271 00f8 C9        		.byte	-55
+ 272 00f9 CC        		.byte	-52
+ 273 00fa 41        		.byte	65
+ 274 00fb 38        		.byte	56
+ 275 00fc 56        		.byte	86
+ 276 00fd 40        		.byte	64
+ 277 00fe 34        		.byte	52
+ 278 00ff 11        		.byte	17
+ 279 0100 3B        		.byte	59
+ 280 0101 02        		.byte	2
+ 281 0102 A4        		.byte	-92
+ 282 0103 89        		.byte	-119
+ 283 0104 96        		.byte	-106
+ 284 0105 00        		.byte	0
+ 285 0106 97        		.byte	-105
+ 286 0107 30        		.byte	48
+ 287 0108 98        		.byte	-104
+ 288 0109 20        		.byte	32
+ 289 010a 99        		.byte	-103
+ 290 010b 30        		.byte	48
+ 291 010c 9A        		.byte	-102
+ 292 010d 84        		.byte	-124
+ 293 010e 9B        		.byte	-101
+ 294 010f 29        		.byte	41
+ 295 0110 9C        		.byte	-100
+ 296 0111 03        		.byte	3
+ 297 0112 9D        		.byte	-99
+ 298 0113 4C        		.byte	76
+ 299 0114 9E        		.byte	-98
+ 300 0115 3F        		.byte	63
+ 301 0116 78        		.byte	120
+ 302 0117 04        		.byte	4
+ 303 0118 79        		.byte	121
+ 304 0119 01        		.byte	1
+ 305 011a C8        		.byte	-56
+ 306 011b F0        		.byte	-16
+ 307 011c 79        		.byte	121
+ 308 011d 0F        		.byte	15
+ 309 011e C8        		.byte	-56
+ 310 011f 00        		.byte	0
+ 311 0120 79        		.byte	121
+ 312 0121 10        		.byte	16
+ 313 0122 C8        		.byte	-56
+ 314 0123 7E        		.byte	126
+ 315 0124 79        		.byte	121
+ 316 0125 0A        		.byte	10
+ 317 0126 C8        		.byte	-56
+ 318 0127 80        		.byte	-128
+ 319 0128 79        		.byte	121
+ 320 0129 0B        		.byte	11
+ 321 012a C8        		.byte	-56
+ 322 012b 01        		.byte	1
+ 323 012c 79        		.byte	121
+ 324 012d 0C        		.byte	12
+ 325 012e C8        		.byte	-56
+ 326 012f 0F        		.byte	15
+ 327 0130 79        		.byte	121
+ 328 0131 0D        		.byte	13
+ 329 0132 C8        		.byte	-56
+ 330 0133 20        		.byte	32
+ 331 0134 79        		.byte	121
+ 332 0135 09        		.byte	9
+ 333 0136 C8        		.byte	-56
+ 334 0137 80        		.byte	-128
+ 335 0138 79        		.byte	121
+ 336 0139 02        		.byte	2
+ 337 013a C8        		.byte	-56
+ 338 013b C0        		.byte	-64
+ 339 013c 79        		.byte	121
+ 340 013d 03        		.byte	3
+ 341 013e C8        		.byte	-56
+ 342 013f 40        		.byte	64
+ 343 0140 79        		.byte	121
+ 344 0141 05        		.byte	5
+ 345 0142 C8        		.byte	-56
+ 346 0143 30        		.byte	48
+ 347 0144 79        		.byte	121
+ 348 0145 26        		.byte	38
+ 349 0146 09        		.byte	9
+ 350 0147 03        		.byte	3
+ 351 0148 55        		.byte	85
+ 352 0149 00        		.byte	0
+ 353 014a 56        		.byte	86
+ 354 014b 40        		.byte	64
+ 355 014c 3B        		.byte	59
+ 356 014d 42        		.byte	66
+ 357 014e 0000 0000 		.skip 18、0
+ 357      0000 0000 
+ 357      0000 0000 
+ 357      0000 0000 
+ 357      0000 
+ 358               		.text
+ 359               	.global	wrOV7670Reg
+ 361               	wrOV7670Reg:
+ 362               	.LFB3:
+ 363               	.LM1:
+ 364               	/* prologue: frame size=0 */
+ 365 0000 1F93      		push r17
+ 366 0002 CF93      		push r28
+ 367               	/* prologue end (size=2) */
+ 368 0004 C82F      		mov r28、r24
+ 369 0006 162F      		mov r17、r22
+ 370               	.LM2:
+ 371 0008 0E94 0000 		call startSCCB
+ 372               	.LM3:
+ 373 000c 82E4      		ldi r24、lo8(66)
+ 374 000e 0E94 0000 		call SCCBwriteByte
+ 375 0012 8823      		tst r24
+ 376 0014 91F0      		breq .L5
+ 377               	.LM4:
+ 378 0016 84E6      		ldi r24、lo8(100)
+ 379 0018 90E0      		ldi r25、hi8(100)
+ 380 001a 0E94 0000 		call delay_us
+ 381               	.LM5:
+ 382 001e 8C2F      		mov r24、r28
+ 383 0020 0E94 0000 		call SCCBwriteByte
+ 384 0024 8823      		tst r24
+ 385 0026 49F0      		breq .L5
+ 386               	.LM6:
+ 387 0028 84E6      		ldi r24、lo8(100)
+ 388 002a 90E0      		ldi r25、hi8(100)
+ 389 002c 0E94 0000 		call delay_us
+ 390               	.LM7:
+ 391 0030 812F      		mov r24、r17
+ 392 0032 0E94 0000 		call SCCBwriteByte
+ 393 0036 8823      		tst r24
+ 394 0038 29F4      		brne .L4
+ 395               	.L5:
+ 396               	.LM8:
+ 397 003a 0E94 0000 		call stopSCCB
+ 398               	.LM9:
+ 399 003e 80E0      		ldi r24、lo8(0)
+ 400 0040 90E0      		ldi r25、hi8(0)
+ 401 0042 04C0      		rjmp .L1
+ 402               	.L4:
+ 403               	.LM10:
+ 404 0044 0E94 0000 		call stopSCCB
+ 405               	.LM11:
+ 406 0048 81E0      		ldi r24、lo8(1)
+ 407 004a 90E0      		ldi r25、hi8(1)
+ 408               	.L1:
+ 409               	/* epilogue: frame size=0 */
+ 410 004c CF91      		pop r28
+ 411 004e 1F91      		pop r17
+ 412 0050 0895      		ret
+ 413               	/* epilogue end (size=3) */
+ 414               	/* function wrOV7670Reg size 41 (36) */
+ 415               	.LFE3:
+ 417               	.global	rdOV7670Reg
+ 419               	rdOV7670Reg:
+ 420               	.LFB4:
+ 421               	.LM12:
+ 422               	/* prologue: frame size=0 */
+ 423 0052 0F93      		push r16
+ 424 0054 1F93      		push r17
+ 425 0056 CF93      		push r28
+ 426               	/* prologue end (size=3) */
+ 427 0058 C82F      		mov r28、r24
+ 428 005a 8B01      		movw r16、r22
+ 429               	.LM13:
+ 430 005c 0E94 0000 		call startSCCB
+ 431               	.LM14:
+ 432 0060 82E4      		ldi r24、lo8(66)
+ 433 0062 0E94 0000 		call SCCBwriteByte
+ 434 0066 8823      		tst r24
+ 435 0068 B1F0      		breq .L10
+ 436               	.LM15:
+ 437 006a 84E6      		ldi r24、lo8(100)
+ 438 006c 90E0      		ldi r25、hi8(100)
+ 439 006e 0E94 0000 		call delay_us
+ 440               	.LM16:
+ 441 0072 8C2F      		mov r24、r28
+ 442 0074 0E94 0000 		call SCCBwriteByte
+ 443 0078 8823      		tst r24
+ 444 007a 69F0      		breq .L10
+ 445               	.LM17:
+ 446 007c 0E94 0000 		call stopSCCB
+ 447               	.LM18:
+ 448 0080 84E6      		ldi r24、lo8(100)
+ 449 0082 90E0      		ldi r25、hi8(100)
+ 450 0084 0E94 0000 		call delay_us
+ 451               	.LM19:
+ 452 0088 0E94 0000 		call startSCCB
+ 453               	.LM20:
+ 454 008c 83E4      		ldi r24、lo8(67)
+ 455 008e 0E94 0000 		call SCCBwriteByte
+ 456 0092 8823      		tst r24
+ 457 0094 29F4      		brne .L9
+ 458               	.L10:
+ 459               	.LM21:
+ 460 0096 0E94 0000 		call stopSCCB
+ 461               	.LM22:
+ 462 009a 80E0      		ldi r24、lo8(0)
+ 463 009c 90E0      		ldi r25、hi8(0)
+ 464 009e 0EC0      		rjmp .L6
+ 465               	.L9:
+ 466               	.LM23:
+ 467 00a0 84E6      		ldi r24、lo8(100)
+ 468 00a2 90E0      		ldi r25、hi8(100)
+ 469 00a4 0E94 0000 		call delay_us
+ 470               	.LM24:
+ 471 00a8 0E94 0000 		call SCCBreadByte
+ 472 00ac F801      		movw r30、r16
+ 473 00ae 8083      		st Z、r24
+ 474               	.LM25:
+ 475 00b0 0E94 0000 		call noAck
+ 476               	.LM26:
+ 477 00b4 0E94 0000 		call stopSCCB
+ 478               	.LM27:
+ 479 00b8 81E0      		ldi r24、lo8(1)
+ 480 00ba 90E0      		ldi r25、hi8(1)
+ 481               	.L6:
+ 482               	/* epilogue: frame size=0 */
+ 483 00bc CF91      		pop r28
+ 484 00be 1F91      		pop r17
+ 485 00c0 0F91      		pop r16
+ 486 00c2 0895      		ret
+ 487               	/* epilogue end (size=4) */
+ 488               	/* function rdOV7670Reg size 57 (50) */
+ 489               	.LFE4:
+ 491               	.global	OV7670_config_window
+ 493               	OV7670_config_window:
+ 494               	.LFB2:
+ 495               	.LM28:
+ 496               	/* prologue: frame size=2 */
+ 497 00c4 AF92      		push r10
+ 498 00c6 BF92      		push r11
+ 499 00c8 CF92      		push r12
+ 500 00ca DF92      		push r13
+ 501 00cc EF92      		push r14
+ 502 00ce FF92      		push r15
+ 503 00d0 0F93      		push r16
+ 504 00d2 1F93      		push r17
+ 505 00d4 CF93      		push r28
+ 506 00d6 DF93      		push r29
+ 507 00d8 CDB7      		in r28、__SP_L__
+ 508 00da DEB7      		in r29、__SP_H__
+ 509 00dc 2297      		sbiw r28、2
+ 510 00de 0FB6      		in __tmp_reg__、__SREG__
+ 511 00e0 F894      		cli
+ 512 00e2 DEBF      		out __SP_H__、r29
+ 513 00e4 0FBE      		out __SREG__、__tmp_reg__
+ 514 00e6 CDBF      		out __SP_L__、r28
+ 515               	/* prologue end (size=18) */
+ 516 00e8 7C01      		movw r14、r24
+ 517 00ea 5B01      		movw r10、r22
+ 518 00ec 8A01      		movw r16、r20
+ 519               	.LM29:
+ 520 00ee 0E0D      		add r16、r14
+ 521 00f0 1F1D      		adc r17、r15
+ 522               	.LM30:
+ 523 00f2 6B01      		movw r12、r22
+ 524 00f4 C20E      		add r12、r18
+ 525 00f6 D31E      		adc r13、r19
+ 526 00f8 C20E      		add r12、r18
+ 527 00fa D31E      		adc r13、r19
+ 528               	.LM31:
+ 529 00fc BE01      		movw r22、r28
+ 530 00fe 6F5F      		subi r22、lo8(-(1))
+ 531 0100 7F4F      		sbci r23、hi8(-(1))
+ 532 0102 83E0      		ldi r24、lo8(3)
+ 533 0104 0E94 0000 		call rdOV7670Reg
+ 534               	.LM32:
+ 535 0108 8981      		ldd r24、Y+1
+ 536 010a 807F      		andi r24、lo8(-16)
+ 537 010c 8983      		std Y+1、r24
+ 538               	.LM33:
+ 539 010e BE01      		movw r22、r28
+ 540 0110 6E5F      		subi r22、lo8(-(2))
+ 541 0112 7F4F      		sbci r23、hi8(-(2))
+ 542 0114 82E3      		ldi r24、lo8(50)
+ 543 0116 0E94 0000 		call rdOV7670Reg
+ 544               	.LM34:
+ 545 011a 9A81      		ldd r25、Y+2
+ 546 011c 907C      		andi r25、lo8(-64)
+ 547 011e 9A83      		std Y+2、r25
+ 548               	.LM35:
+ 549 0120 802F      		mov r24、r16
+ 550 0122 8770      		andi r24、lo8(7)
+ 551 0124 880F      		lsl r24
+ 552 0126 880F      		lsl r24
+ 553 0128 880F      		lsl r24
+ 554 012a 982B      		or r25、r24
+ 555 012c 8E2D      		mov r24、r14
+ 556 012e 8770      		andi r24、lo8(7)
+ 557 0130 982B      		or r25、r24
+ 558               	.LM36:
+ 559 0132 692F      		mov r22、r25
+ 560 0134 82E3      		ldi r24、lo8(50)
+ 561 0136 0E94 0000 		call wrOV7670Reg
+ 562               	.LM37:
+ 563 013a 88EF      		ldi r24、lo8(2040)
+ 564 013c 97E0      		ldi r25、hi8(2040)
+ 565 013e E822      		and r14、r24
+ 566 0140 F922      		and r15、r25
+ 567 0142 33E0      		ldi r19、3
+ 568 0144 F694      	1:	lsr r15
+ 569 0146 E794      		ror r14
+ 570 0148 3A95      		dec r19
+ 571 014a E1F7      		brne 1b
+ 572               	.LM38:
+ 573 014c 6E2D      		mov r22、r14
+ 574 014e 87E1      		ldi r24、lo8(23)
+ 575 0150 0E94 0000 		call wrOV7670Reg
+ 576               	.LM39:
+ 577 0154 087F      		andi r16、lo8(2040)
+ 578 0156 1770      		andi r17、hi8(2040)
+ 579 0158 23E0      		ldi r18、3
+ 580 015a 1695      	1:	lsr r17
+ 581 015c 0795      		ror r16
+ 582 015e 2A95      		dec r18
+ 583 0160 E1F7      		brne 1b
+ 584               	.LM40:
+ 585 0162 602F      		mov r22、r16
+ 586 0164 88E1      		ldi r24、lo8(24)
+ 587 0166 0E94 0000 		call wrOV7670Reg
+ 588               	.LM41:
+ 589 016a 9C2D      		mov r25、r12
+ 590 016c 9370      		andi r25、lo8(3)
+ 591 016e 990F      		lsl r25
+ 592 0170 990F      		lsl r25
+ 593 0172 8981      		ldd r24、Y+1
+ 594 0174 892B      		or r24、r25
+ 595 0176 9A2D      		mov r25、r10
+ 596 0178 9370      		andi r25、lo8(3)
+ 597 017a 892B      		or r24、r25
+ 598               	.LM42:
+ 599 017c 682F      		mov r22、r24
+ 600 017e 83E0      		ldi r24、lo8(3)
+ 601 0180 0E94 0000 		call wrOV7670Reg
+ 602               	.LM43:
+ 603 0184 B694      		lsr r11
+ 604 0186 A794      		ror r10
+ 605 0188 B694      		lsr r11
+ 606 018a A794      		ror r10
+ 607               	.LM44:
+ 608 018c 6A2D      		mov r22、r10
+ 609 018e 89E1      		ldi r24、lo8(25)
+ 610 0190 0E94 0000 		call wrOV7670Reg
+ 611               	.LM45:
+ 612 0194 D694      		lsr r13
+ 613 0196 C794      		ror r12
+ 614 0198 D694      		lsr r13
+ 615 019a C794      		ror r12
+ 616               	.LM46:
+ 617 019c 6C2D      		mov r22、r12
+ 618 019e 8AE1      		ldi r24、lo8(26)
+ 619 01a0 0E94 0000 		call wrOV7670Reg
+ 620               	/* epilogue: frame size=2 */
+ 621 01a4 2296      		adiw r28、2
+ 622 01a6 0FB6      		in __tmp_reg__、__SREG__
+ 623 01a8 F894      		cli
+ 624 01aa DEBF      		out __SP_H__、r29
+ 625 01ac 0FBE      		out __SREG__、__tmp_reg__
+ 626 01ae CDBF      		out __SP_L__、r28
+ 627 01b0 DF91      		pop r29
+ 628 01b2 CF91      		pop r28
+ 629 01b4 1F91      		pop r17
+ 630 01b6 0F91      		pop r16
+ 631 01b8 FF90      		pop r15
+ 632 01ba EF90      		pop r14
+ 633 01bc DF90      		pop r13
+ 634 01be CF90      		pop r12
+ 635 01c0 BF90      		pop r11
+ 636 01c2 AF90      		pop r10
+ 637 01c4 0895      		ret
+ 638               	/* epilogue end (size=17) */
+ 639               	/* function OV7670_config_window size 129 (94) */
+ 640               	.LFE2:
+ 642               	.global	OV7670_init
+ 644               	OV7670_init:
+ 645               	.LFB5:
+ 646               	.LM47:
+ 647               	/* prologue: frame size=0 */
+ 648 01c6 0F93      		push r16
+ 649 01c8 1F93      		push r17
+ 650 01ca CF93      		push r28
+ 651 01cc DF93      		push r29
+ 652               	/* prologue end (size=4) */
+ 653               	.LM48:
+ 654 01ce C0E0      		ldi r28、lo8(0)
+ 655 01d0 D0E0      		ldi r29、hi8(0)
+ 656               	.LM49:
+ 657 01d2 0E94 0000 		call InitSCCB
+ 658               	.LM50:
+ 659 01d6 60E8      		ldi r22、lo8(-128)
+ 660 01d8 82E1      		ldi r24、lo8(18)
+ 661 01da 0E94 0000 		call wrOV7670Reg
+ 662 01de 8823      		tst r24
+ 663 01e0 29F4      		brne .L13
+ 664               	.LM51:
+ 665 01e2 CE01      		movw r24、r28
+ 666 01e4 20C0      		rjmp .L12
+ 667               	.L21:
+ 668               	.LM52:
+ 669 01e6 80E0      		ldi r24、lo8(0)
+ 670 01e8 90E0      		ldi r25、hi8(0)
+ 671 01ea 1DC0      		rjmp .L12
+ 672               	.L13:
+ 673               	.LM53:
+ 674 01ec 8AE0      		ldi r24、lo8(10)
+ 675 01ee 90E0      		ldi r25、hi8(10)
+ 676 01f0 0E94 0000 		call delay_ms
+ 677 01f4 C050      		subi r28、lo8(-(change_reg))
+ 678 01f6 D040      		sbci r29、hi8(-(change_reg))
+ 679 01f8 8E01      		movw r16、r28
+ 680 01fa 0F5F      		subi r16、lo8(-(1))
+ 681 01fc 1F4F      		sbci r17、hi8(-(1))
+ 682               	.L18:
+ 683               	.LBB2:
+ 684               	.LM54:
+ 685 01fe F801      		movw r30、r16
+ 686               	/* #APP */
+ 687 0200 8491      		lpm r24、 Z
+ 688               		
+ 689               	/* #NOAPP */
+ 690               	.LBE2:
+ 691               	.LBB3:
+ 692 0202 FE01      		movw r30、r28
+ 693               	/* #APP */
+ 694 0204 9491      		lpm r25、 Z
+ 695               		
+ 696               	/* #NOAPP */
+ 697               	.LBE3:
+ 698 0206 682F      		mov r22、r24
+ 699 0208 892F      		mov r24、r25
+ 700 020a 0E94 0000 		call wrOV7670Reg
+ 701 020e 8823      		tst r24
+ 702 0210 51F3      		breq .L21
+ 703 0212 0E5F      		subi r16、lo8(-(2))
+ 704 0214 1F4F      		sbci r17、hi8(-(2))
+ 705 0216 2296      		adiw r28、2
+ 706               	.LM55:
+ 707 0218 F0E0      		ldi r31、hi8(change_reg+350)
+ 708 021a C030      		cpi r28、lo8(change_reg+350)
+ 709 021c DF07      		cpc r29、r31
+ 710 021e 79F3      		breq .L18
+ 711 0220 70F3      		brlo .L18
+ 712               	.LM56:
+ 713 0222 81E0      		ldi r24、lo8(1)
+ 714 0224 90E0      		ldi r25、hi8(1)
+ 715               	.L12:
+ 716               	/* epilogue: frame size=0 */
+ 717 0226 DF91      		pop r29
+ 718 0228 CF91      		pop r28
+ 719 022a 1F91      		pop r17
+ 720 022c 0F91      		pop r16
+ 721 022e 0895      		ret
+ 722               	/* epilogue end (size=5) */
+ 723               	/* function OV7670_init size 59 (50) */
+ 724               	.LFE5:
+ 726               	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 ov7670.c
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cciMaaaa.s:3      *ABS*:0000003f __SREG__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cciMaaaa.s:4      *ABS*:0000003e __SP_H__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cciMaaaa.s:5      *ABS*:0000003d __SP_L__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cciMaaaa.s:6      *ABS*:00000000 __tmp_reg__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cciMaaaa.s:7      *ABS*:00000001 __zero_reg__
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cciMaaaa.s:22     .progmem.data:00000000 change_reg
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cciMaaaa.s:361    .text:00000000 wrOV7670Reg
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cciMaaaa.s:419    .text:00000052 rdOV7670Reg
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cciMaaaa.s:493    .text:000000c4 OV7670_config_window
+C:\DOCUME~1\WANGGU~1\LOCALS~1\Temp/cciMaaaa.s:644    .text:000001c6 OV7670_init
+
+UNDEFINED SYMBOLS
+__do_copy_data
+__do_clear_bss
+startSCCB
+SCCBwriteByte
+delay_us
+stopSCCB
+SCCBreadByte
+noAck
+InitSCCB
+delay_ms
