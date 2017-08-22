@@ -4,8 +4,6 @@ typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 
-#define __nop() __asm__ __volatile__ ("nop")
-
 const uint8 SRAM_CS_PIN = 2; 
 const uint8 SRAM_OE_PIN = 3; 
 const uint8 SRAM_WE_PIN = 4; 
