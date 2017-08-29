@@ -43,12 +43,74 @@ uint8_t data_in() {
   return val;
 }
 
+uint8_t dram_read(const uint32_t & addr) {
+  uint8_t data;
+  uint16_t row, col;
+
+  // low 4 bit in even address, high 4 bit in the next odd address
+  row = addr>>9;
+  col = addr<<1;
+
+  cli();
+  addr_out(row);
+  PORTB &= ~DRAM_RAS; //digitalWrite(DRAM_RAS_PIN,LOW);
+
+  // low nibble
+  addr_out(col);
+  PORTB &= ~DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,LOW);
+  PORTB &= ~DRAM_OE; //digitalWrite(DRAM_OE_PIN,LOW);
+  data = data_in();
+  PORTB |= DRAM_OE; //digitalWrite(DRAM_OE_PIN,HIGH);
+  PORTB |= DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,HIGH);
+
+  // high nibble
+  addr_out(col | 1);
+  PORTB &= ~DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,LOW);
+  PORTB &= ~DRAM_OE; //digitalWrite(DRAM_OE_PIN,LOW);
+  data |= data_in()<<4;
+  PORTB |= DRAM_OE; //digitalWrite(DRAM_OE_PIN,HIGH);
+  PORTB |= DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,HIGH);
+
+  // 8 bits read completed
+  PORTB |= DRAM_RAS; //ådigitalWrite(DRAM_RAS_PIN,HIGH);
+  
+  sei();
+  return data;  
+}
+
+void dram_write(const uint32_t addr, uint8_t data) {
+  uint16_t row, col;
+
+  row = addr>>9;
+  col = addr<<1;
+
+  cli();
+  addr_out(row);
+  PORTB &= ~DRAM_RAS; //digitalWrite(DRAM_RAS_PIN,LOW);
+  // low nibble
+  addr_out(col);
+  PORTB &= ~DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,LOW);
+  data_out(data);
+  PORTB &= ~DRAM_WE; //digitalWrite(DRAM_WE_PIN,LOW);
+  PORTB |= DRAM_WE; //digitalWrite(DRAM_WE_PIN,HIGH);
+  PORTB |= DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,HIGH);
+  // high nibble
+  addr_out(col | 1);
+  PORTB &= ~DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,LOW);
+  data_out(data>>4);
+  PORTB &= ~DRAM_WE; //digitalWrite(DRAM_WE_PIN,LOW);
+  PORTB |= DRAM_WE; //digitalWrite(DRAM_WE_PIN,HIGH);
+  PORTB |= DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,HIGH);
+  // 8 bits read completed
+  PORTB |= DRAM_RAS; //digitalWrite(DRAM_RAS_PIN,HIGH);
+  sei();
+}
 void init_timer1_interrupt() {
   cli();
   TCCR1A = 0;
   TCCR1B = 0;
   
-  OCR1A = 1562;//30;
+  OCR1A = 384; // CAS_before_RAS: 1562; //30;
   // turn on CTC mode:
   TCCR1B |= (1 << WGM12);
   // Set CS10 and CS12 bits for 1024 prescaler:
@@ -56,49 +118,36 @@ void init_timer1_interrupt() {
   TCCR1B |= (1 << CS12);
   // enable timer compare interrupt:
   TIMSK1 |= (1 << OCIE1A);
+
+  CAS_before_RAS();
   sei();      // interrupts are also enabled here, starting refresh 
 }
 
-volatile uint32_t rowcount;
+volatile uint16_t rowcount;
 
-ISR(TIMER1_COMPA_vect)
-{
+inline void RAS_only(void) {
+  // refreshes a quadrant (256 rows) at a time
+  for(uint16_t i = 0; i < 0x100; i++, rowcount++) {
+    addr_out(rowcount);
+    PORTB &= ~DRAM_RAS;
+    PORTB |= DRAM_RAS;
+  }
+  rowcount &= 0x300; // starts from rows 0x000, 0x100, 0x200, 0x300
+}
+
+inline void CAS_before_RAS(void) {
   for(rowcount = 0; rowcount < 0x400; rowcount++ ) {
       PORTB &= ~DRAM_CAS;
       PORTB &= ~DRAM_RAS;
       PORTB |= DRAM_CAS;
       PORTB |= DRAM_RAS;
-  }
-  /*
-  // Refresh DRAM cells every 2mS
-  int i;
-  for (i=0;i<128;i++)  // 128 cycles
-  {
-    //digitalWrite(13, HIGH); // RAS high
-    //digitalWrite(12, HIGH); // CAS high
-    PORTB |= B010000;   // CAS high
-    PORTB |= B100000;   // RAS high
-  
-    //digitalWrite(8, HIGH && (i & B01000000));
-    PORTB |= (i & B01000000) >> 6;
-    //digitalWrite(7, HIGH && (i & B00100000));
-    PORTD |= (i & B00100000) << 2; 
-    //digitalWrite(6, HIGH && (i & B00010000));
-    PORTD |= (i & B00010000) << 2;
-    //digitalWrite(5, HIGH && (i & B00001000));
-    PORTD |= (i & B00001000) << 2; 
-    //digitalWrite(4, HIGH && (i & B00000100));
-    PORTD |= (i & B00000100) << 2; 
-    //digitalWrite(3, HIGH && (i & B00000010));
-    PORTD |= (i & B00000010) << 2; 
-    //digitalWrite(2, HIGH && (i & B00000001));
-    PORTD |= (i & B00000001) << 2; 
-    //digitalWrite(13, LOW);  // RAS low
-    //digitalWrite(13, HIGH); // RAS high
-    PORTB ^= B011111;   // RAS low
-    PORTB |= B100000;   // RAS high
-  }
-  */
+  }  
+}
+
+ISR(TIMER1_COMPA_vect)
+{
+  RAS_only();
+  //CAS_before_RAS();
 }
 
 uint32_t addr = 0;
@@ -123,58 +172,86 @@ void setup() {
   }
 
   init_timer1_interrupt();
-  delay(200);  // wait one or more refresh
   Serial.println("Let's go!");
 }
 
 void loop() {
-  uint16_t row;
-  uint8_t val = random('0','Z');  
-  uint8_t data = 0;
+  uint8_t data;  
 
-  addr = millis()>>10;
-  data = val & 0x0f;
+  addr = random(0,0x40000-1);
 
+  Serial.print("from 0x");
+  Serial.println(addr, HEX);
   Serial.print("write ");
-  Serial.print(addr, HEX);
-  Serial.print(" ");
-  Serial.print(data, HEX);
-  Serial.print(", ");
 
+  for(uint32_t i = 0; i < 64; i++) {
+    data = random('0','Z');
+    Serial.print((char)data);
+  /*
  // write
-  row = addr>>10;
+  row = addr>>9;
+  col = addr<<1;
   cli();
   addr_out(row);
   PORTB &= ~DRAM_RAS; //digitalWrite(DRAM_RAS_PIN,LOW);
-  addr_out(addr);
+  // low nibble
+  addr_out(col);
   PORTB &= ~DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,LOW);
   data_out(data);
   PORTB &= ~DRAM_WE; //digitalWrite(DRAM_WE_PIN,LOW);
   PORTB |= DRAM_WE; //digitalWrite(DRAM_WE_PIN,HIGH);
   PORTB |= DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,HIGH);
+  // high nibble
+  __asm__ __volatile__("nop");
+  addr_out(col | 1);
+  PORTB &= ~DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,LOW);
+  data_out(data>>4);
+  PORTB &= ~DRAM_WE; //digitalWrite(DRAM_WE_PIN,LOW);
+  PORTB |= DRAM_WE; //digitalWrite(DRAM_WE_PIN,HIGH);
+  PORTB |= DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,HIGH);
+  // 8 bits read completed
   PORTB |= DRAM_RAS; //digitalWrite(DRAM_RAS_PIN,HIGH);
   sei();
+*/
+  dram_write(addr+i, data);
+  }
+  Serial.println();
 
-  delay(20);
-  data_out(0xff);
   // read
-  row = addr>>10;
+  Serial.print("read  ");
+  for(uint32_t i = 0; i < 64; i++) {
+   data = dram_read(addr+i);
+  /*
+  row = addr>>9;
+  col = addr<<1;
 
   cli();
   addr_out(row);
   PORTB &= ~DRAM_RAS; //digitalWrite(DRAM_RAS_PIN,LOW);
-  addr_out(addr);
+  // low nibble
+  addr_out(col);
   PORTB &= ~DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,LOW);
   PORTB &= ~DRAM_OE; //digitalWrite(DRAM_OE_PIN,LOW);
   data = data_in();
   PORTB |= DRAM_OE; //digitalWrite(DRAM_OE_PIN,HIGH);
   PORTB |= DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,HIGH);
+  // high nibble
+  __asm__ __volatile__("nop");
+  addr_out(col | 1);
+  PORTB &= ~DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,LOW);
+  PORTB &= ~DRAM_OE; //digitalWrite(DRAM_OE_PIN,LOW);
+  data |= data_in()<<4;
+  PORTB |= DRAM_OE; //digitalWrite(DRAM_OE_PIN,HIGH);
+  PORTB |= DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,HIGH);
+  // 8 bits read completed
   PORTB |= DRAM_RAS; //ådigitalWrite(DRAM_RAS_PIN,HIGH);
-  sei();
 
-  Serial.print("read ");
-  Serial.print(data, HEX);
-  Serial.println(".");
+  sei();
+*/
+  Serial.print((char)data);
+  }
+  Serial.println();
+  Serial.println();
   //
 //  addr++;
 //  addr &= 0x000f;
