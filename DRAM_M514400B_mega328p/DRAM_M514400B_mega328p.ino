@@ -18,12 +18,37 @@ const byte DATA_IO[] = {
 };
 const byte DATA_IO_WIDTH = 4;
 
+
+void addr_out(uint16_t addr) {
+  PORTC = (addr & 0x3f);
+  PORTD &= ~0xc0;
+  PORTD |= (0xc0 & addr);
+  addr >>= 8;
+  PORTB &= ~0x03;
+  PORTB |= (0x03 & addr);
+}
+
+void data_out(uint8_t val) {
+  DDRD |= (0x0f << 2);  
+  PORTD &= ~(0x0f << 2);
+  PORTD |= (val & 0x0f)<<2;
+}
+
+uint8_t data_in() {
+  uint8_t val;
+  DDRD &= ~(0x0f << 2);    
+  __asm__ __volatile("nop");
+  val = PIND & (0x0f<<2);
+  val >>= 2;
+  return val;
+}
+
 void init_timer1_interrupt() {
   cli();
   TCCR1A = 0;
   TCCR1B = 0;
   
-  OCR1A = 156;//30;
+  OCR1A = 1562;//30;
   // turn on CTC mode:
   TCCR1B |= (1 << WGM12);
   // Set CS10 and CS12 bits for 1024 prescaler:
@@ -39,10 +64,10 @@ volatile uint32_t rowcount;
 ISR(TIMER1_COMPA_vect)
 {
   for(rowcount = 0; rowcount < 0x400; rowcount++ ) {
-    PORTB &= ~(1<<DRAM_CAS);
-    PORTB &= ~(1<<DRAM_RAS);
-    PORTB |= (1<<DRAM_CAS);
-    PORTB |= (1<<DRAM_RAS);
+      PORTB &= ~DRAM_CAS;
+      PORTB &= ~DRAM_RAS;
+      PORTB |= DRAM_CAS;
+      PORTB |= DRAM_RAS;
   }
   /*
   // Refresh DRAM cells every 2mS
@@ -76,6 +101,7 @@ ISR(TIMER1_COMPA_vect)
   */
 }
 
+uint32_t addr = 0;
 void setup() {
   Serial.begin(19200);
   Serial.println("Hi there.");
@@ -97,67 +123,61 @@ void setup() {
   }
 
   init_timer1_interrupt();
+  delay(200);  // wait one or more refresh
   Serial.println("Let's go!");
 }
 
 void loop() {
-  uint32_t addr = millis()>>8;
   uint16_t row;
   uint8_t val = random('0','Z');  
   uint8_t data = 0;
 
+  addr = millis()>>10;
+  data = val & 0x0f;
+
+  Serial.print("write ");
+  Serial.print(addr, HEX);
+  Serial.print(" ");
+  Serial.print(data, HEX);
+  Serial.print(", ");
+
+ // write
+  row = addr>>10;
+  cli();
+  addr_out(row);
+  PORTB &= ~DRAM_RAS; //digitalWrite(DRAM_RAS_PIN,LOW);
+  addr_out(addr);
+  PORTB &= ~DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,LOW);
+  data_out(data);
+  PORTB &= ~DRAM_WE; //digitalWrite(DRAM_WE_PIN,LOW);
+  PORTB |= DRAM_WE; //digitalWrite(DRAM_WE_PIN,HIGH);
+  PORTB |= DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,HIGH);
+  PORTB |= DRAM_RAS; //digitalWrite(DRAM_RAS_PIN,HIGH);
+  sei();
+
+  delay(20);
+  data_out(0xff);
   // read
   row = addr>>10;
-  for(int i = 0; i < ADDR_BUS_WIDTH; i++) {
-    digitalWrite(ADDR_BUS[i], (row>>i)&1);
-  }
-  digitalWrite(DRAM_RAS_PIN,LOW);
 
-  for(int i = 0; i < ADDR_BUS_WIDTH; i++) {
-    digitalWrite(ADDR_BUS[i], (addr>>i)&1);
-  }
-  digitalWrite(DRAM_CAS_PIN,LOW);
-  for(int i = 0; i < DATA_IO_WIDTH; i++) {
-    pinMode(DATA_IO[i],INPUT);
-  }
-  digitalWrite(DRAM_OE_PIN,LOW);
-  for(int i = 0; i < DATA_IO_WIDTH; i++) {
-    if ( digitalRead(DATA_IO[i]) )
-      data |= 0x08;
-    data >>= 1;
-  }
-  digitalWrite(DRAM_OE_PIN,HIGH);
-  digitalWrite(DRAM_CAS_PIN,HIGH);
-  digitalWrite(DRAM_RAS_PIN,LOW);
+  cli();
+  addr_out(row);
+  PORTB &= ~DRAM_RAS; //digitalWrite(DRAM_RAS_PIN,LOW);
+  addr_out(addr);
+  PORTB &= ~DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,LOW);
+  PORTB &= ~DRAM_OE; //digitalWrite(DRAM_OE_PIN,LOW);
+  data = data_in();
+  PORTB |= DRAM_OE; //digitalWrite(DRAM_OE_PIN,HIGH);
+  PORTB |= DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,HIGH);
+  PORTB |= DRAM_RAS; //ådigitalWrite(DRAM_RAS_PIN,HIGH);
+  sei();
 
-  Serial.print((char)data);
-  Serial.print(" ");
-
-  // write
-  row = addr>>10;
-  for(int i = 0; i < ADDR_BUS_WIDTH; i++) {
-    digitalWrite(ADDR_BUS[i], (row>>i)&1);
-  }
-  digitalWrite(DRAM_RAS_PIN,LOW);
-
-  for(int i = 0; i < ADDR_BUS_WIDTH; i++) {
-    digitalWrite(ADDR_BUS[i], (addr>>i)&1);
-  }
-  digitalWrite(DRAM_CAS_PIN,LOW);
-  for(int i = 0; i < DATA_IO_WIDTH; i++) {
-    pinMode(DATA_IO[i],INPUT);
-  }
-  digitalWrite(DRAM_OE_PIN,LOW);
-  for(int i = 0; i < DATA_IO_WIDTH; i++) {
-    if ( digitalRead(DATA_IO[i]) )
-      data |= 0x08;
-    data >>= 1;
-  }
-  digitalWrite(DRAM_OE_PIN,HIGH);
-  digitalWrite(DRAM_CAS_PIN,HIGH);
-  digitalWrite(DRAM_RAS_PIN,LOW);
-
-  Serial.println(data, HEX);
-  delay(1000);
+  Serial.print("read ");
+  Serial.print(data, HEX);
+  Serial.println(".");
+  //
+//  addr++;
+//  addr &= 0x000f;
+  delay(300);
 }
 
