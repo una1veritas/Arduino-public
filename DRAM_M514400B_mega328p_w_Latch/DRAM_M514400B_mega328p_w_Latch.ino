@@ -1,4 +1,5 @@
 
+
 #define DRAM_RAS_PORT PORTB
 #define DRAM_CAS_PORT PORTB
 #define DRAM_OE_PORT PORTB
@@ -8,10 +9,10 @@
 #define DRAM_OE_DDR DDRB
 #define DRAM_WE_DDR DDRB
 
-const byte DRAM_RAS = 1<<2;  // PB2
-const byte DRAM_CAS = 1<<3;  // PB3
-const byte DRAM_OE = 1<<4;   // PB4
 const byte DRAM_WE = 1<<5;   // PB5
+const byte DRAM_OE = 1<<4;   // PB4
+const byte DRAM_CAS = 1<<3;  // PB3
+const byte DRAM_RAS = 1<<2;  // PB2
 /*
 const byte ADDR_BUS[] = {
   14, 15, 16, 17, 18, 19, 6, 7, 
@@ -23,15 +24,25 @@ const byte DATA_IO[] = {
 };
 const byte DATA_IO_WIDTH = 4;
 */
-#define DATA_PORT PORTD
-#define DATA_DDR  DDRD
+#define DATA_OUT  PORTC
+#define DATA_IN   PINC
+#define DATA_DDR  DDRC
+#define DATA_MASK 0x0f
 
-#define ADDRL_PORT PORTC
-#define ADDRM_PORT PORTD
-#define ADDRH_PORT PORTB
-#define ADDRL_DDR DDRC
-#define ADDRM_DDR DDRD
-#define ADDRH_DDR DDRB
+#define ADDRL_PORT  PORTC
+#define ADDRM_PORT  PORTD
+#define ADDRH_PORT  PORTD
+#define ADDRL_DDR   DDRC
+#define ADDRM_DDR   DDRD
+#define ADDRH_DDR   DDRD
+// 4, 5, 6, 7
+#define ADDRL_MASK  0x3f
+#define ADDRM_MASK  0xc0
+#define ADDRH_MASK  0x30
+
+#define ADDR_LATCH_PORT  PORTB
+#define ADDR_LATCH_DDR   DDRB
+#define ADDR_LATCH       1<<0
 
 uint8_t crc8(uint8_t inbyte, uint8_t & crc) {
     uint8_t j;
@@ -47,28 +58,32 @@ uint8_t crc8(uint8_t inbyte, uint8_t & crc) {
 }
 
 
-void addr_out(uint16_t addr) {
-  PORTC = (addr & 0x3f);
-  PORTD &= ~0xc0;
-  PORTD |= (0xc0 & addr);
-  addr >>= 8;
-  PORTB &= ~0x03;
-  PORTB |= (0x03 & addr);
+inline void addr_out(uint16_t addr) {
+  // ADDRL bits are output in default
+  ADDRL_DDR  |= ADDRL_MASK;
+  ADDRL_PORT = (uint8_t) addr;
+  ADDRM_PORT &= ~ADDRM_MASK;
+  ADDRM_PORT |= (uint8_t) addr & ADDRM_MASK;
+  ADDRH_PORT &= ~ADDRH_MASK;
+  ADDRH_PORT |= (uint8_t)(addr>>4) & ADDRH_MASK;
+//  ADDRH_PORT |= (addr>>8 & ADDRH_MASK)<<4;
+  ADDR_LATCH_PORT &= ~ADDR_LATCH;
+  ADDR_LATCH_PORT |= ADDR_LATCH;
 }
 
-void data_out(uint8_t val) {
-  DDRD |= (0x0f << 2);  
-  PORTD &= ~(0x0f << 2);
-  PORTD |= (val & 0x0f)<<2;
+inline void data_out(uint8_t val) {
+  // ADDRL bits are output in default
+  DATA_DDR |= DATA_MASK;  
+  DATA_OUT = val;
 }
 
-uint8_t data_in() {
+inline uint8_t data_in() {
   uint8_t val;
-  DDRD &= ~(0x0f << 2);    
+  DATA_DDR &= ~DATA_MASK;
   __asm__ __volatile("nop");
-  val = PIND & (0x0f<<2);
-  val >>= 2;
-  return val;
+  val = DATA_IN;
+  DATA_DDR |= DATA_MASK;
+  return val & 0x0f;
 }
 
 uint8_t dram_read(const uint32_t & addr) {
@@ -95,7 +110,7 @@ uint8_t dram_read(const uint32_t & addr) {
   addr_out(col | 1);
   PORTB &= ~DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,LOW);
   PORTB &= ~DRAM_OE; //digitalWrite(DRAM_OE_PIN,LOW);
-  data |= data_in()<<4;
+  data |= (data_in()<<4);
   PORTB |= DRAM_OE; //digitalWrite(DRAM_OE_PIN,HIGH);
   PORTB |= DRAM_CAS; //digitalWrite(DRAM_CAS_PIN,HIGH);
 
@@ -180,10 +195,19 @@ ISR(TIMER1_COMPA_vect)
 
 long errcount = 0;
 
+void test() {
+  Serial.println("testing..");
+  for(;;) {
+    for(uint32_t addr = 0; addr < 0x40000; addr++) {
+      addr_out(addr);
+      delay(8);
+    }
+  }
+}
+
 void setup() {
   Serial.begin(19200);
   Serial.println("Hi there.");
-
 
   DRAM_RAS_DDR |= DRAM_RAS;
   DRAM_CAS_DDR |= DRAM_CAS;
@@ -193,12 +217,14 @@ void setup() {
   DRAM_CAS_PORT |= DRAM_CAS;
   DRAM_OE_PORT |= DRAM_OE;
   DRAM_WE_PORT |= DRAM_WE;
+  ADDR_LATCH_DDR |= ADDR_LATCH;
+  ADDR_LATCH_PORT |= ADDR_LATCH;
 
-  ADDRL_DDR |= 0x3f;
-  ADDRM_DDR |= 0xC0;
-  ADDRH_DDR |= 0x03;
+  ADDRL_DDR |= ADDRL_MASK;
+  ADDRM_DDR |= ADDRM_MASK;
+  ADDRH_DDR |= ADDRH_MASK;
 
-  DATA_DDR |= 0x0f<<2;
+  DATA_DDR |= DATA_MASK;
 /*
   for(int i = 0; i < ADDR_BUS_WIDTH; i++) {
     pinMode(ADDR_BUS[i], OUTPUT);
@@ -210,13 +236,14 @@ void setup() {
 
   init_timer1_interrupt();
   Serial.println("Let's go!");
+
 }
 
 void loop() {
   uint32_t addr;
   uint8_t data, crc8val;
   
-  addr = random(0,0x40000-1);
+  addr = random(0,0x40000-2);
 
   Serial.print("from 0x");
   Serial.println(addr, HEX);
@@ -232,7 +259,7 @@ void loop() {
   }
   dram_write(addr+64, crc8val);
   Serial.println();
-  delay(200);
+  //delay(200);
 
   // read
   Serial.print("read  ");
