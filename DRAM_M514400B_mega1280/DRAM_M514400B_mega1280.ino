@@ -219,7 +219,7 @@ void loop() {
   Serial.print("write ");
 
   crc8val = 0;
-  for(uint32_t i = 0; i < 64; i++) {
+  for(uint32_t i = 0; i < 128; i++) {
     data = random('0','Z');
     Serial.print((char)data);
     
@@ -233,7 +233,7 @@ void loop() {
   // read
   Serial.print("read  ");
   crc8val = 0;
-  for(uint32_t i = 0; i < 64; i++) {
+  for(uint32_t i = 0; i < 128; i++) {
     data = dram_read(addr+i);
     crc8(data, crc8val);
 
