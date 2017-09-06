@@ -5,7 +5,7 @@ PROG = RunCPM
 MFILE = Makefile.posix
 
 # Compiler command
-CC = gcc
+CC = /usr/bin/gcc
 #CC = gcc -DDEBUG=1 -DDEBUGLOG=1
 
 # Flags to pass to the compiler - add "-g" to include debug information
