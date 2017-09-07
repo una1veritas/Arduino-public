@@ -49,9 +49,9 @@ void loop() {
 
   cout << F("FreeStack: ") << FreeStack() << endl;
 
-  // Initialize at the highest speed supported by the board that is
-  // not over 50 MHz. Try a lower speed if SPI errors occur.
-  if (!sd.begin(chipSelect, SD_SCK_MHZ(50))) {
+  // initialize the SD card at SPI_FULL_SPEED for best performance.
+  // try SPI_HALF_SPEED if bus errors occur.
+  if (!sd.begin(chipSelect, SPI_FULL_SPEED)) {
     sd.initErrorHalt();
   }
 

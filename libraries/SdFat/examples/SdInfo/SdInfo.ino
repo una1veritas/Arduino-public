@@ -3,9 +3,6 @@
  */
 #include <SPI.h>
 #include "SdFat.h"
-
-// Set USE_SDIO to zero for SPI card access. 
-#define USE_SDIO 0
 /*
  * SD chip select pin.  Common values are:
  *
@@ -21,14 +18,7 @@ const uint8_t SD_CHIP_SELECT = SS;
  * to 10 to disable the Ethernet controller.
  */
 const int8_t DISABLE_CHIP_SELECT = -1;
-
-#if USE_SDIO
-// Use faster SdioCardEX
-SdFatSdioEX sd;
-// SdFatSdio sd;
-#else // USE_SDIO
 SdFat sd;
-#endif  // USE_SDIO
 
 // serial output steam
 ArduinoOutStream cout(Serial);
@@ -40,7 +30,16 @@ uint32_t cardSize;
 uint32_t eraseSize;
 //------------------------------------------------------------------------------
 // store error strings in flash
-#define sdErrorMsg(msg) sd.errorPrint(F(msg));
+#define sdErrorMsg(msg) sdErrorMsg_F(F(msg));
+void sdErrorMsg_F(const __FlashStringHelper* str) {
+  cout << str << endl;
+  if (sd.card()->errorCode()) {
+    cout << F("SD errorCode: ");
+    cout << hex << int(sd.card()->errorCode()) << endl;
+    cout << F("SD errorData: ");
+    cout << int(sd.card()->errorData()) << dec << endl;
+  }
+}
 //------------------------------------------------------------------------------
 uint8_t cidDmp() {
   cid_t cid;
@@ -98,13 +97,17 @@ uint8_t csdDmp() {
 //------------------------------------------------------------------------------
 // print partition table
 uint8_t partDmp() {
-  mbr_t mbr;
-  if (!sd.card()->readBlock(0, (uint8_t*)&mbr)) {
+  cache_t *p = sd.vol()->cacheClear();
+  if (!p) {
+    sdErrorMsg("cacheClear failed");
+    return false;
+  }
+  if (!sd.card()->readBlock(0, p->data)) {
     sdErrorMsg("read MBR failed");
     return false;
   }
   for (uint8_t ip = 1; ip < 5; ip++) {
-    part_t *pt = &mbr.part[ip - 1];
+    part_t *pt = &p->mbr.part[ip - 1];
     if ((pt->boot & 0X7F) != 0 || pt->firstSector > cardSize) {
       cout << F("\nNo MBR. Assuming Super Floppy format.\n");
       return true;
@@ -113,7 +116,7 @@ uint8_t partDmp() {
   cout << F("\nSD Partition Table\n");
   cout << F("part,boot,type,start,length\n");
   for (uint8_t ip = 1; ip < 5; ip++) {
-    part_t *pt = &mbr.part[ip - 1];
+    part_t *pt = &p->mbr.part[ip - 1];
     cout << int(ip) << ',' << hex << int(pt->boot) << ',' << int(pt->type);
     cout << dec << ',' << pt->firstSector <<',' << pt->totalSectors << endl;
   }
@@ -153,7 +156,6 @@ void setup() {
 
   // F stores strings in flash to save RAM
   cout << F("SdFat version: ") << SD_FAT_VERSION << endl;
-#if !USE_SDIO  
   if (DISABLE_CHIP_SELECT < 0) {
     cout << F(
            "\nAssuming the SD is the only SPI device.\n"
@@ -166,7 +168,6 @@ void setup() {
   }
   cout << F("\nAssuming the SD chip select pin is: ") <<int(SD_CHIP_SELECT);
   cout << F("\nEdit SD_CHIP_SELECT to change the SD chip select pin.\n");
-#endif  // !USE_SDIO  
 }
 //------------------------------------------------------------------------------
 void loop() {
@@ -182,19 +183,12 @@ void loop() {
   }
 
   uint32_t t = millis();
-#if USE_SDIO
-  if (!sd.cardBegin()) {
+  // initialize the SD card at SPI_HALF_SPEED to avoid bus errors with
+  // breadboards.  use SPI_FULL_SPEED for better performance.
+  if (!sd.cardBegin(SD_CHIP_SELECT, SPI_HALF_SPEED)) {
     sdErrorMsg("\ncardBegin failed");
     return;
   }
-#else  // USE_SDIO
-  // Initialize at the highest speed supported by the board that is
-  // not over 50 MHz. Try a lower speed if SPI errors occur.
-  if (!sd.cardBegin(SD_CHIP_SELECT, SD_SCK_MHZ(50))) {
-    sdErrorMsg("cardBegin failed");
-    return;
-  }
- #endif  // USE_SDIO 
   t = millis() - t;
 
   cardSize = sd.card()->cardSize();

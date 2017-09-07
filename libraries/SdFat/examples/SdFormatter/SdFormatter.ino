@@ -11,9 +11,13 @@
  * For smaller cards this program uses FAT16
  * and SDFormatter uses FAT12.
  */
-
-// Set USE_SDIO to zero for SPI card access. 
-#define USE_SDIO 0
+// Print extra info for debug if DEBUG_PRINT is nonzero
+#define DEBUG_PRINT 0
+#include <SPI.h>
+#include "SdFat.h"
+#if DEBUG_PRINT
+#include "FreeStack.h"
+#endif  // DEBUG_PRINT
 //
 // Change the value of chipSelect if your hardware does
 // not use the default value, SS.  Common values are:
@@ -22,31 +26,16 @@
 // Adafruit SD shields and modules: pin 10
 const uint8_t chipSelect = SS;
 
-// Initialize at highest supported speed not over 50 MHz.
-// Reduce max speed if errors occur.
-#define SPI_SPEED SD_SCK_MHZ(50)
-
-// Print extra info for debug if DEBUG_PRINT is nonzero
-#define DEBUG_PRINT 0
-#include <SPI.h>
-#include "SdFat.h"
-#if DEBUG_PRINT
-#include "FreeStack.h"
-#endif  // DEBUG_PRINT
+// Change spiSpeed to SPI_FULL_SPEED for better performance
+// Use SPI_QUARTER_SPEED for even slower SPI bus speed
+const uint8_t spiSpeed = SPI_HALF_SPEED;
 
 // Serial output stream
 ArduinoOutStream cout(Serial);
 
-#if USE_SDIO
-// Use faster SdioCardEX
-SdioCardEX card;
-// SdioCard card;
-#else  // USE_SDIO
 Sd2Card card;
-#endif  // USE_SDIO
- 
 uint32_t cardSizeBlocks;
-uint32_t cardCapacityMB;
+uint16_t cardCapacityMB;
 
 // cache for SD block
 cache_t cache;
@@ -76,9 +65,11 @@ char noName[] = "NO NAME    ";
 char fat16str[] = "FAT16   ";
 char fat32str[] = "FAT32   ";
 //------------------------------------------------------------------------------
-#define sdError(msg) {cout << F("error: ") << F(msg) << endl; sdErrorHalt();}
-//------------------------------------------------------------------------------
-void sdErrorHalt() {
+#define sdError(msg) sdError_F(F(msg))
+
+void sdError_F(const __FlashStringHelper* str) {
+  cout << F("error: ");
+  cout << str << endl;
   if (card.errorCode()) {
     cout << F("SD error: ") << hex << int(card.errorCode());
     cout << ',' << int(card.errorData()) << dec << endl;
@@ -166,16 +157,6 @@ void clearCache(uint8_t addSig) {
 // zero FAT and root dir area on SD
 void clearFatDir(uint32_t bgn, uint32_t count) {
   clearCache(false);
-#if USE_SDIO
-  for (uint32_t i = 0; i < count; i++) {
-    if (!card.writeBlock(bgn + i, cache.data)) {
-       sdError("Clear FAT/DIR writeBlock failed");
-    }     
-    if ((i & 0XFF) == 0) {
-      cout << '.';
-    }    
-  }
-#else  // USE_SDIO
   if (!card.writeStart(bgn, count)) {
     sdError("Clear FAT/DIR writeStart failed");
   }
@@ -190,7 +171,6 @@ void clearFatDir(uint32_t bgn, uint32_t count) {
   if (!card.writeStop()) {
     sdError("Clear FAT/DIR writeStop failed");
   }
-#endif  // USE_SDIO
   cout << endl;
 }
 //------------------------------------------------------------------------------
@@ -518,19 +498,14 @@ void setup() {
     cout << F("Quiting, invalid option entered.") << endl;
     return;
   }
-#if USE_SDIO
-  if (!card.begin()) {
-    sdError("card.begin failed");  
-  }
-#else  // USE_SDIO
-  if (!card.begin(chipSelect, SPI_SPEED)) {
+
+  if (!card.begin(chipSelect, spiSpeed)) {
     cout << F(
            "\nSD initialization failure!\n"
            "Is the SD card inserted correctly?\n"
            "Is chip select correct at the top of this program?\n");
     sdError("card.begin failed");
   }
-#endif  
   cardSizeBlocks = card.cardSize();
   if (cardSizeBlocks == 0) {
     sdError("cardSize");

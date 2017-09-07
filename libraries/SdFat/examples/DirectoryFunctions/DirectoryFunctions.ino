@@ -5,7 +5,7 @@
 #include "SdFat.h"
 
 // SD card chip select pin.
-const uint8_t chipSelect = SS;
+const uint8_t SD_CHIP_SELECT = SS;
 //------------------------------------------------------------------------------
 
 // File system object.
@@ -40,9 +40,9 @@ void setup() {
   cin.readline();
   cout << endl;
   
-  // Initialize at the highest speed supported by the board that is
-  // not over 50 MHz. Try a lower speed if SPI errors occur.
-  if (!sd.begin(chipSelect, SD_SCK_MHZ(50))) {
+  // Initialize the SD card at SPI_HALF_SPEED to avoid bus errors with
+  // breadboards.  use SPI_FULL_SPEED for better performance.
+  if (!sd.begin(SD_CHIP_SELECT, SPI_HALF_SPEED)) {
     sd.initErrorHalt();
   }
   if (sd.exists("Folder1") 

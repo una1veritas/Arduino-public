@@ -256,7 +256,12 @@ ISR(TIMER1_COMPB_vect) {
 }
 //==============================================================================
 // Error messages stored in flash.
-#define error(msg) {sd.errorPrint(F(msg));fatalBlink();}
+#define error(msg) errorFlash(F(msg))
+//------------------------------------------------------------------------------
+void errorFlash(const __FlashStringHelper* msg) {
+  sd.errorPrint(msg);
+  fatalBlink();
+}
 //------------------------------------------------------------------------------
 //
 void fatalBlink() {
@@ -620,7 +625,8 @@ void logData() {
   // Create new file.
   Serial.println(F("Creating new file"));
   binFile.close();
-  if (!binFile.createContiguous(TMP_FILE_NAME, 512 * FILE_BLOCK_COUNT)) {
+  if (!binFile.createContiguous(sd.vwd(),
+                                TMP_FILE_NAME, 512 * FILE_BLOCK_COUNT)) {
     error("createContiguous failed");
   }
   // Get the address of the file on the SD.
@@ -777,9 +783,8 @@ void setup(void) {
   Serial.print(F("FreeStack: "));
   Serial.println(FreeStack());
 
-  // Initialize at the highest speed supported by the board that is
-  // not over 50 MHz. Try a lower speed if SPI errors occur.
-  if (!sd.begin(SD_CS_PIN, SD_SCK_MHZ(50))) {
+  // initialize file system.
+  if (!sd.begin(SD_CS_PIN, SPI_FULL_SPEED)) {
     sd.initErrorPrint();
     fatalBlink();
   }

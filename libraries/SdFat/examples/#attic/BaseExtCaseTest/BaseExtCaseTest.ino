@@ -4,8 +4,6 @@
 #include <SPI.h>
 #include "SdFat.h"
 
-const uint8_t chipSelect = SS;
-
 SdFat sd;
 
 SdFile file;
@@ -26,7 +24,7 @@ void setup() {
   while (!Serial.available()) {
     SysCall::yield();
   }
-  if (!sd.begin(chipSelect, SD_SCK_MHZ(50))) {
+  if (!sd.begin()) {
     Serial.println("begin failed");
     return;
   }

@@ -39,10 +39,7 @@ void setup() {
     SysCall::yield();
   }
   Serial.println(F("Starting test"));
-
-  // Initialize at the highest speed supported by the board that is
-  // not over 50 MHz. Try a lower speed if SPI errors occur.  
-  if (!sd.begin(SD_CS_PIN, SD_SCK_MHZ(50))) {
+  if (!sd.begin(SD_CS_PIN)) {
     sd.errorHalt();
   }
 
@@ -140,11 +137,10 @@ void setup() {
 
         case 3:
           for (uint16_t i = 0; i < 10000; i++) {
-            uint32_t n = i + 1000000000UL;
 #if PRINT_FIELD
-            stdioFile.printField(n, '\n');
+            stdioFile.printField(i + 1000000000UL, '\n');
 #else  // PRINT_FIELD
-            stdioFile.println(n);
+            stdioFile.println(i + 1000000000UL);
 #endif  // PRINT_FIELD      
           }
           break;

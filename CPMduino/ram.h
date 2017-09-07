@@ -31,6 +31,10 @@ bool _RamLoad(char* filename, uint16 address)
 		file.close();
 	}
 	else {
+    /*
+    Serial.print(filename);
+    Serial.println(" open failed");
+    */
 		result = false;
 	}
 	return(result);

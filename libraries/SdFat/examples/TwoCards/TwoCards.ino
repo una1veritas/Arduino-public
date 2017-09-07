@@ -1,5 +1,4 @@
 /*
- * Warning This example requires extra RAM and may crash on Uno.
  * Example use of two SD cards.
  */
 #include <SPI.h>

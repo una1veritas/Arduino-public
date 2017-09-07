@@ -17,13 +17,9 @@
  * along with the Arduino SdFat Library.  If not, see
  * <http://www.gnu.org/licenses/>.
  */
- /**
- * \file
- * \brief Minimal AVR Serial driver.
- */
 #ifndef MinimumSerial_h
 #define MinimumSerial_h
-#include "SysCall.h"
+#include "SystemInclude.h"
 //==============================================================================
 /**
  * \class MinimumSerial
@@ -31,20 +27,12 @@
  */
 class MinimumSerial : public Print {
  public:
-  /** \return true for hardware serial */
-  operator bool() { return true; }
-  /**
-   * \return one if data is available.
-   */
-  int available();
   /**
    * Set baud rate for serial port zero and enable in non interrupt mode.
    * Do not call this function if you use another serial library.
    * \param[in] baud rate
    */
   void begin(uint32_t baud);
-  /** Wait for write done. */
-  void flush();
   /**
    *  Unbuffered read
    *  \return -1 if no character is available or an available character.
