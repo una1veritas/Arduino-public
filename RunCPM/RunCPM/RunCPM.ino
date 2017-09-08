@@ -75,7 +75,9 @@ void setup(void) {
 				}
 			}
 		} else {
-			_puts("Unable to load CP/M CCP. CPU halted.\r\n");
+			_puts("Unable to find CP/M CCP file '");
+			_puts(CCPname);
+			_puts("'. CPU halted.\r\n");
 		}
 #endif
 	} else {
