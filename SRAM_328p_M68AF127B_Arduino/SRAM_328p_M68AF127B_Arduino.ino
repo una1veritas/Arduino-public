@@ -1,10 +1,10 @@
 
-const byte LATCH_H_CLK = 13;  // PB5
-const byte LATCH_L_CLK = 12;  // PB4
+const byte LATCH_H_CLK = 9;  // PB5
+const byte LATCH_L_CLK = 8;  // PB4
 const byte SRAM_OE = 11;    // PB3 
 const byte SRAM_CS = 10;    // PB2
-const byte SRAM_WE = 9;    // PB1
-const byte SD_CS = 8;    // PB0
+const byte SRAM_WE = 12;    // PB1
+//const byte SD_CS = 8;    // PB0
 
 const byte ADDR[] = {
   14, 15, 16, 17, 
@@ -88,13 +88,13 @@ void setup(void) {
   pinMode(SRAM_CS, OUTPUT);
   pinMode(SRAM_OE, OUTPUT);
   pinMode(SRAM_WE, OUTPUT);
-  pinMode(SD_CS, OUTPUT);
+//  pinMode(SD_CS, OUTPUT);
   digitalWrite(LATCH_L_CLK, HIGH);
   digitalWrite(LATCH_H_CLK, HIGH);
   digitalWrite(SRAM_CS, HIGH);
   digitalWrite(SRAM_OE, HIGH);
   digitalWrite(SRAM_WE, HIGH);
-  digitalWrite(SD_CS, HIGH);
+//  digitalWrite(SD_CS, HIGH);
   
   for(byte b = 0; b < ADDR_BUSWIDTH; b++)
     pinMode(ADDR[b], OUTPUT);
@@ -108,12 +108,7 @@ void loop(void) {
 
   // WRITE
   Serial.print("write @ H");
-  Serial.print(base>>20 & 0x0f, HEX);
-  Serial.print(base>>16 & 0x0f, HEX);
-  Serial.print(base>>12 & 0x0f, HEX);
-  Serial.print(base>>8 & 0x0f, HEX);
-  Serial.print(base>>4 & 0x0f, HEX);
-  Serial.print(base & 0x0f, HEX);
+  Serial.print(base, HEX);
   Serial.print(": ");
 
   long swatch = micros();
@@ -136,16 +131,12 @@ void loop(void) {
   }
   deselect();
   swatch = micros() - swatch;
-  Serial.println(swatch);
+  Serial.print(swatch);
+  Serial.println(" usec");
 
   // READ
   Serial.print("read  @ H");
-  Serial.print(base>>20 & 0x0f, HEX);
-  Serial.print(base>>16 & 0x0f, HEX);
-  Serial.print(base>>12 & 0x0f, HEX);
-  Serial.print(base>>8 & 0x0f, HEX);
-  Serial.print(base>>4 & 0x0f, HEX);
-  Serial.print(base & 0x0f, HEX);
+  Serial.print(base, HEX);
   Serial.print(": ");
   uint16_t diffs = 0;
 
@@ -159,7 +150,8 @@ void loop(void) {
   }
   deselect();
   swatch = micros() -swatch;
-  Serial.println(swatch);
+  Serial.print(swatch);
+  Serial.println(" usec");
   Serial.print("errors = ");
   Serial.println(diffs);
   Serial.println();

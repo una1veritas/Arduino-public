@@ -1,50 +1,38 @@
-
 #include "uart.h"
 
-static unsigned char
-fifo[8];
+#undef USE_INTERRUPT_RX
 
-static unsigned char
-fifo_rdptr = 0;
+/*
+ *  UBRR0, UCSR0A, UCSR0B, UCSR0C, UDR0
+ */
 
-static unsigned char
-fifo_wrptr = 0;
+#ifdef USE_INTERRUPT_RX
+static unsigned char rxfifo[8];
+static unsigned char rxdeq = 0;
+static unsigned char rxenq = 0;
+#endif
 
+/*
 static unsigned char
 sx_queue[8];
 static unsigned char
 sx_enqptr = 0, sx_deqptr = 0;
+*/
 
-void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
-  // put your setup code here, to run once:
-  uart_init(19200);
-  uart_putstr("hello.\n");
-
+#ifdef USE_INTERRUPT_RX
+ISR(USART0_RX_vect)
+{
+  uart_push(UDR0);
+  uart_disable_rxint();
 }
+#endif
 
-void loop() {
-  int ch;
-  // put your main code here, to run repeatedly:
-  if ( (ch = uart_getchar()) != -1 ) {
-    uart_putnum_u16(fifo_wrptr, 3);
-    
-    uart_putstr("> ");
-    do {
-      uart_putchar((char)ch);
-    } while ( (ch = uart_getchar()) != -1 );
-    uart_putstr("\n");
-  }
+/*
+ISR(USART0_TX_vect)
+{
+  digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
 }
-
-
-static void uart_push(unsigned char c) {
-  if (fifo_rdptr != (fifo_wrptr + 1)) {
-    fifo[fifo_wrptr++] = c;
-    fifo_wrptr &= 7;
-  }
-}
-
+*/
 
 void uart_init(unsigned long baud) {
   //duint32_t baud = 19200;
@@ -55,64 +43,65 @@ void uart_init(unsigned long baud) {
     UCSR0B = ((1<<RXEN0)|(1<<TXEN0));  // Enable receiver and transmitter and Rx interrupt
     UCSR0C = ((0<<USBS0)|(1 << UCSZ01)|(1<<UCSZ00));  // Set frame format: 8data, 1 stop bit. See Table 22-7 for details
 
+#ifdef USE_INTERRUPT_RX
     uart_enable_rxint();
+#endif
+#ifdef USE_INTERRUPT_TX
     uart_enable_txint();
+#endif
     sei();
 }
 
-unsigned char uart_tx(unsigned char data) {
+unsigned char uart_tx(const unsigned char data) {
     //while the transmit buffer is not empty loop
     while(!(UCSR0A & (1<<UDRE0)));
-
     //when the buffer is empty write data to the transmitted
     UDR0 = data;
-    uart_enable_txint)
     return data;
 }
 
 unsigned char uart_rx(void) {
   /* Wait for data to be received */
   while (!(UCSR0A & (1<<RXC0)));
-  /* Get and return received data from buffer */
+  /* Get and return received data from buffer UDR0 */
   return UDR0;
 }
 
-ISR(USART0_RX_vect)
-{
-  uart_push(UDR0);
-  uart_disable_txint();
+#ifdef USE_INTERRUPT_RX
+static void uart_push(unsigned char c) {
+  if (rxdeq != (rxenq + 1)) {
+    rxfifo[rxenq++] = c;
+    rxenq &= 7;
+  }
 }
+#endif
 
-
-ISR(USART0_TX_vect)
-{
-  digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-}
-
-void uart_putchar(unsigned char c){
-//  unsigned short rc = uart_tx(c);
-//  if (0 != rc) uart_push(rc);
+void uart_putchar(const unsigned char c){
   uart_tx(c);
 }
 
-void uart_putstr(char * str) {
-  while (*str != 0) {
-    uart_putchar((unsigned char)*str++);
+void uart_putstr(const char * str) {
+  unsigned int i = 0;
+  while ( *(str+i) != 0) {
+    uart_putchar((const unsigned char) *(str+i));
+    i++;
   }
 }
 
+#ifdef USE_INTERRUPT_RX
 int uart_getchar(void) {
-  if (fifo_rdptr == fifo_wrptr) return -1;
+  if (rxdeq == rxenq) return -1;
   cli();
-  int rc = fifo[fifo_rdptr++];
-  fifo_rdptr &= 7;
+  int rc = rxfifo[rxdeq++];
+  rxdeq &= 7;
   sei();
   return rc;
 }
 
 int uart_peek(void) {
-  return (fifo_wrptr - fifo_rdptr) & 7;
+  return (rxenq - rxdeq) & 7;
 }
+#endif
 
 static void
 put_halfhex
@@ -147,17 +136,25 @@ uart_putnum_u16
   } while (0 != d);
 }
 
-void
-uart_puts
-(char *s)
-{
-  while (0 != *s) uart_putchar(*s++);
+void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+  // put your setup code here, to run once:
+  uart_init(19200);
+  uart_putstr("hello.\n");
+
 }
 
-void
-uart_putsln
-(char *s)
-{
-  uart_puts(s);
-  uart_puts("\r\n");
+void loop() {
+  int ch;
+  // put your main code here, to run repeatedly:
+  if ( (ch = uart_getchar()) != -1 ) {
+    //uart_putnum_u16(rxenq, 3);
+    
+    uart_putstr("> ");
+    do {
+      uart_putchar((char)ch);
+    } while ( (ch = uart_getchar()) != -1 );
+    uart_putstr("\n");
+  }
 }
+
