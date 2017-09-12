@@ -28,7 +28,7 @@
 #define bitclear(port, bv) (port) &= ~(bv)
 
 void sram_init(void);
-uint8_t sram_read(uint8_t addr);
+uint8_t sram_read(uint16_t addr);
 void sram_write(uint16_t addr, uint8_t data);
 void sram_bank(uint8_t bk);
 

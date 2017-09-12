@@ -27,7 +27,7 @@ inline void sram_bank(uint8_t bk) {
     ADDRX |= ADDRX_MASK;
 }
 
-uint8_t sram_read(uint32_t addr) {
+uint8_t sram_read(uint16_t addr) {
   unsigned char val;
   CONTROL_CS &= ~SRAM_CS;
   addr_out(addr);
@@ -42,7 +42,7 @@ uint8_t sram_read(uint32_t addr) {
   return val;
 }
 
-void sram_write(uint32_t addr, uint8_t data) {
+void sram_write(uint16_t addr, uint8_t data) {
   CONTROL_CS &= ~SRAM_CS;
   addr_out(addr);  // A16 is always 0
   DATA_OUT = data;
@@ -83,7 +83,7 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   uint8_t val;
-  const uint16_t blocksize = (1<<6);
+  const uint16_t blocksize = (1<<7);
 
   sram_bank(0);
   
@@ -142,7 +142,7 @@ void loop() {
     }
     Serial.print(": ");
     Serial.println(crc2, HEX);
-    delay(3000);
+    delay(30000);
   }
   addr += blocksize;
   delay(50);
