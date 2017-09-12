@@ -29,21 +29,30 @@
  * DAMAGE.
  */
 
-#include "machine.h"
+#include "eeprom.h"
+
+#include <stdio.h>
+
+static FILE* fp = NULL;
 
 int
-main
-(int argc, char **argv)
+eeprom_load
+(void *image)
 {
-  machine_boot();
-  return 0;
+  if (NULL != fp) return EEPROM_SIZE;
+  fp = fopen("eeprom.img", "r+");
+  if (NULL == fp) fp = fopen("eeprom.img", "w");
+  if (NULL == fp) fp = fopen("eeprom.img", "r");
+  if (NULL == fp) return 0;
+  return fread(image, 1, EEPROM_SIZE, fp);
 }
 
 void
-platform_reset
-(void)
+eeprom_flush
+(void *image)
 {
-  asm ("mov r30, r1");
-  asm ("mov r31, r1");
-  asm ("ijmp");
+  if (NULL == fp) return;
+  if (0 != fseek(fp, 0, SEEK_SET)) return;
+  fwrite(image, 1, EEPROM_SIZE, fp);
+  fflush(fp);
 }

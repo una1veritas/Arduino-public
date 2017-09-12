@@ -29,27 +29,17 @@
  * DAMAGE.
  */
 
-#include "sram.h"
+#include "eeprom.h"
 
-static unsigned char
-sram[64 * 1024];
-
-unsigned char
-sram_read
-(unsigned short addr)
+int
+eeprom_load
+(void *image)
 {
-  return sram[addr];
+  return 0;
 }
 
 void
-sram_write
-(unsigned short addr, unsigned char data)
-{
-  sram[addr] = data;
-}
-
-void
-sram_init
-(void)
+eeprom_flush
+(void *image)
 {
 }

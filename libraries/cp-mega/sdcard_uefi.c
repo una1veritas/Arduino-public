@@ -29,52 +29,88 @@
  * DAMAGE.
  */
 
-#include "uart.h"
+#include "sdcard.h"
 
-static void
-put_halfhex
-(unsigned char c)
-{
-  if (c < 10) uart_putchar('0' + c);
-  else uart_putchar('A' - 10 + c);
-}
+#include <efi.h>
 
-void
-uart_puthex
-(unsigned char c)
-{
-  put_halfhex(c >> 4);
-  put_halfhex(c & 15);
-}
+static unsigned char
+buffer[512];
+
+static unsigned short
+crc = 0xffff;
+
+static unsigned long
+cur_blk = 0;
+
+extern EFI_FILE_HANDLE efi_fs;
+EFI_FILE_HANDLE fp = NULL;
 
 void
-uart_putnum_u16
-(unsigned short n, int digit)
+sdcard_init
+(void)
 {
-  unsigned short d = 10000;
-  if (digit > 0) {
-    d = 1;
-    for (digit--; digit > 0; digit--) d *= 10;
-  }
-  do {
-    int num = n / d;
-    n = n % d;
-    d /= 10;
-    uart_putchar('0' + num);
-  } while (0 != d);
+  fp = NULL;
 }
 
-void
-uart_puts
-(char *s)
+int
+sdcard_open
+(void)
 {
-  while (0 != *s) uart_putchar(*s++);
+  UINT64 mode = EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE;
+  EFI_STATUS status = uefi_call_wrapper(
+      efi_fs->Open, 5, efi_fs, &fp, L"EFI\\cpmega88\\sdcard.img", mode, 0);
+  if (!EFI_ERROR(status)) return 0;
+  status = uefi_call_wrapper(
+      efi_fs->Open, 5, efi_fs, &fp, L"sdcard.img", mode, 0);
+  return EFI_ERROR(status) ? -1 : 0;
 }
 
-void
-uart_putsln
-(char *s)
+int
+sdcard_fetch
+(unsigned long blk_addr)
 {
-  uart_puts(s);
-  uart_puts("\r\n");
+  if (NULL == fp) return -1;
+  if (0 != (blk_addr & 0x1ff)) return -2;
+  EFI_STATUS status = uefi_call_wrapper(fp->SetPosition, 2, fp, blk_addr);
+  if (EFI_ERROR(status)) return -3;
+  UINTN size = 512;
+  status = uefi_call_wrapper(fp->Read, 3, fp, &size, buffer);
+  if (EFI_ERROR(status) || 512 != size) return -4;
+  cur_blk = blk_addr;
+  return 0;
+}
+
+int
+sdcard_store
+(unsigned long blk_addr)
+{
+  if (NULL == fp) return -1;
+  if (0 != (blk_addr & 0x1ff)) return -2;
+  EFI_STATUS status = uefi_call_wrapper(fp->SetPosition, 2, fp, blk_addr);
+  if (EFI_ERROR(status)) return -3;
+  UINTN size = 512;
+  status = uefi_call_wrapper(fp->Write, 3, fp, &size, buffer);
+  if (EFI_ERROR(status) || 512 != size) return -4;
+  return 0;
+}
+
+unsigned short
+sdcard_crc
+(void)
+{
+  return crc;
+}
+
+int
+sdcard_flush
+(void)
+{
+  return sdcard_store(cur_blk);
+}
+
+void *
+sdcard_buffer
+(void)
+{
+  return buffer;
 }
