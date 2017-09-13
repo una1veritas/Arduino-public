@@ -14,6 +14,7 @@ void sram_init() {
 }
 
 inline void addr_out(uint16_t addr) {
+  CONTROL |= SRAM_ALE;    // transparent
   ADDRL_DIR = ADDRL_MASK;  // set to OUTPUT
   ADDRL = addr & ADDRL_MASK;
   CONTROL &= ~SRAM_ALE;  // Latch on this edge
@@ -36,8 +37,6 @@ uint8_t sram_read(uint16_t addr) {
   CONTROL &= ~SRAM_OE;
   CONTROL |= SRAM_OE; // valid data remains while
   val = DATA_IN;
-  
-  CONTROL |= SRAM_ALE;    // transparent
   CONTROL_CS |= SRAM_CS;
   return val;
 }
@@ -48,8 +47,6 @@ void sram_write(uint16_t addr, uint8_t data) {
   DATA_OUT = data;
   CONTROL &= ~SRAM_WE;
   CONTROL |= SRAM_WE;
-
-  CONTROL |= SRAM_ALE;    // transparent
   CONTROL_CS |= SRAM_CS;
 }
 
@@ -61,7 +58,7 @@ uint8_t crc8(uint8_t inbyte, uint8_t & crc) {
 
     for (j = 0; j < 8; j++) {
         mix = (crc ^ inbyte) & 0x01;
-        crc >>= 1;
+   1     crc >>= 1;
         if (mix) crc ^= 0x8C;
         inbyte >>= 1;
     }
