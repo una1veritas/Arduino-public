@@ -20,28 +20,25 @@
 // d8       --> Z80 ~BUSREQ
 #define Z80_BUSREQ  (1<<PH5)
 #define Z80_BUSREQ_PIN 8
-/*
-#define Z80_HALT_PIN  38
-#define Z80_HALT  (1<<PD7)
-// d39 PG2      --> Z80 ~IOREQ (OUT)
-#define Z80_IOREQ_PIN 39
-#define Z80_IOREQ   (1<<PG2)
-// d45 PL4      --> Z80 ~MREQ (OUT)
-#define Z80_MREQ_PIN 45
-#define Z80_MREQ  (1<<PL4)
-*/
+// d13      --> Z80 ~HALT
+#define Z80_HALT_PIN  13
+#define Z80_HALT  (1<<PB7)
+
+// d10 PG2      --> Z80 ~IOREQ (OUT)
+#define Z80_IOREQ_PIN 10
+#define Z80_IOREQ   (1<<PB4)
 // d40 PG1      --> SRAM ~OE (IN), Z80 ~RD (OUT)
 // d41 PG0      --> SRAM ~WE (IN), Z80 ~WR (OUT)
 // d4  PG5      --> SRAM ~CS (IN), Z80 ~MREQ (OUT)
-/*
+
 #define Z80_RD_PIN  40
 #define Z80_RD    (1<<PG1)
 #define Z80_WR_PIN  41
 #define Z80_WR    (1<<PG0)
 #define Z80_MREQ_PIN 4
 #define Z80_MREQ (1<<PG5)
-// d8 PH5     --> Z80 ~BUSACK (OUT)
-#define Z80_BUSACK_PIN 8
-#define Z80_BUSACK (1<<PH5)
-*/
+// d9 PH5     --> Z80 ~BUSACK (OUT)
+#define Z80_BUSACK_PIN 9
+#define Z80_BUSACK (1<<PH6)
+
 

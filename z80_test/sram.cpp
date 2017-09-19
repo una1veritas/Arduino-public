@@ -11,11 +11,18 @@ void sram_init() {
   ADDRL_DIR = ADDRL_MASK; // fixed to be OUTPUT
   ADDRH_DIR = ADDRH_MASK; // fixed to be OUTPUT
   ADDRX_DIR |= ADDRX_MASK; // fixed to be OUTPUT
-  DATA_DIR = DATA_MASK;
+  DATA_DIR = 0x00;
   CONTROL_DIR |= ( SRAM_WE | SRAM_OE | SRAM_CS ); //SRAM_ALE );
   CONTROL |= ( SRAM_WE | SRAM_OE | SRAM_CS ); //SRAM_ALE);
 }
 
+void sram_bus_release() {
+  ADDRL_DIR = 0x00;
+  ADDRH_DIR = 0x00;
+  DATA_DIR = 0x00;
+  CONTROL_DIR &= ~( SRAM_WE | SRAM_OE | SRAM_CS ); //SRAM_ALE );
+  CONTROL |= ( SRAM_WE | SRAM_OE | SRAM_CS ); //SRAM_ALE);
+}
 
 inline void addr_set(uint32_t addr) {
   ADDRL = (uint8_t) addr;

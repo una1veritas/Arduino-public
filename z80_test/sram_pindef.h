@@ -3,9 +3,11 @@
 /* SRAM I/F Port/Pin definitions */
 #define ADDRL_DIR DDRA
 #define ADDRL PORTA
+#define ADDRL_IN PINA
 #define ADDRL_MASK 0xff
 #define ADDRH_DIR DDRC
 #define ADDRH PORTC
+#define ADDRH_IN PINC
 #define ADDRH_MASK 0xff
 #define ADDRX_DIR DDRL
 #define ADDRX PORTL
