@@ -5,7 +5,7 @@
  *      Author: sin
  */
 
-#include "sram_mega100_PF.h"
+#include "sram_pindef.h"
 
 void sram_init() {
   ADDRL_DIR = ADDRL_MASK; // fixed to be OUTPUT
@@ -54,3 +54,4 @@ void sram_write(uint32_t addr, uint8_t data) {
   CONTROL |= SRAM_WE;
   CONTROL |= SRAM_CS;
 }
+
