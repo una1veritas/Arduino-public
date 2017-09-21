@@ -35,9 +35,7 @@ void init_Timer1(uint8_t presc, uint16_t top) {
 }
 
 uint8_t mem[] = {
-  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
+  0x3e, 0x01, 0x06, 0x13, 0x80, 0x3c, 0xc3, 0x00, 0x00, 0x00,
   };
 const uint8_t memsize = sizeof mem;
 
@@ -77,63 +75,39 @@ void setup() {
   digitalWrite(Z80_INT_PIN, HIGH);
   
   init_Timer1(5, 4000);
-  delay(1000);
+  delay(2000);
   digitalWrite(Z80_RESET_PIN, LOW);
   delay(1000);
   digitalWrite(Z80_RESET_PIN, HIGH);
-
 }
 
 void loop() {
-  enum edges{
-    falling,
-    bottom,
-    rising,
-    top,
-  };
-  edges edge = bottom;
   uint16_t addr;
+  uint8_t data;
+  
+  if ( !digitalRead(Z80_MREQ_PIN) && !digitalRead(Z80_RD_PIN) ) {
+    addr = (((uint16_t)PINC) <<8) | PINA;
+    if ( addr < memsize ) 
+      data = mem[addr];
+      else
+      data = 0;
+    DDRF = 0xff;
+    PORTF = data;
+    if ( !digitalRead(Z80_M1_PIN) ) {
+      // opcode fetch
+      Serial.print(addr, HEX);
+      Serial.print(" : ");
+      Serial.print(data, HEX);
+      Serial.print(" M1");
+      Serial.println();
+    } else {
+      Serial.print(addr, HEX);
+      Serial.print(" : ");
+      Serial.print(data, HEX);
+      Serial.print(" RD");
+      Serial.println();    
+    }
+    while ( !digitalRead(Z80_MREQ_PIN) || !digitalRead(Z80_RD_PIN) );
+  }
 
-  if ( digitalRead(Z80_CLK_PIN) == LOW ) {
-    if ( clkpulse == HIGH ) {
-      edge = falling;
-      clkpulse = LOW;
-    } else {
-      edge = bottom;
-    }
-  } else {
-    if ( clkpulse == HIGH ) {
-      edge = top;
-    } else {
-      clkpulse = HIGH;
-      edge = rising;
-    }
-  }
-  
-  if ( edge == falling ) {
-    addr = PINA;
-    addr = ((uint16_t) PINC)<<8;
-    Serial.print(addr, HEX);
-    opcycle++;
-    if ( !digitalRead(Z80_M1_PIN) && !digitalRead(Z80_MREQ_PIN) && !digitalRead(Z80_RD_PIN) ) {
-      if ( opcycle == 1 ) {
-        Serial.print(" (M1) ");
-        Serial.println();
-      } else {
-        Serial.println();
-      }
-    } if ( !digitalRead(Z80_MREQ_PIN) && !digitalRead(Z80_RD_PIN) ) {
-        Serial.print(" (RD) ");
-        Serial.println();
-        opcycle = 0;
-    } else if ( !digitalRead(Z80_MREQ_PIN) && !digitalRead(Z80_WR_PIN) ) {
-        Serial.print(" (WR) ");
-        Serial.println();
-        opcycle = 0;
-    } else {
-        Serial.println();
-        opcycle = 0;
-    }
-  }
-  
 }

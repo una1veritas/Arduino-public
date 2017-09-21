@@ -45,3 +45,4 @@ void sram_write(uint32_t addr, uint8_t data) {
   CONTROL |= SRAM_WE;
   CONTROL |= SRAM_CS;
 }
+

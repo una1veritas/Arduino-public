@@ -1,4 +1,12 @@
-#include <avr/io.h>
+/*
+ * sram_pindef.h
+ *
+ *  Created on: 2017/09/21
+ *      Author: sin
+ */
+
+#ifndef EXAMPLES_SRAM_MEGAXXX0_PF_SRAM_PINDEF_H_
+#define EXAMPLES_SRAM_MEGAXXX0_PF_SRAM_PINDEF_H_
 
 /* SRAM I/F Port/Pin definitions */
 #define ADDRL_DIR DDRA
@@ -23,11 +31,7 @@
 //#define SRAM_ALE (1<<PG2)
 #define SRAM_CS (1<<PG5)
 
-#define bitset(port, bv) (port) |= (bv)
-#define bitclear(port, bv) (port) &= ~(bv)
 
-void sram_init(void);
-uint8_t sram_read(uint32_t addr);
-void sram_write(uint32_t addr, uint8_t data);
-void sram_bank(uint8_t bk);
 
+
+#endif /* EXAMPLES_SRAM_MEGAXXX0_PF_SRAM_PINDEF_H_ */
