@@ -1,5 +1,8 @@
+#include "sortalgorithms.h"
 
 String myInput;
+const INDEXTYPE maxsize = 512;
+DATATYPE data[maxsize];
 
 void setup() {
   Serial.begin(9600);
@@ -8,18 +11,19 @@ void setup() {
 }
 
 void loop() {
-  String inputcopy;
   long stopwatch;
 
   while (Serial.available()) {
-    myInput += Serial.read();
+    myInput += (char)Serial.read();
     if ( Serial.available() )
       continue;
     delay(10);
   }
 
   if ( myInput.length() > 0 ) {
-    inputcopy = String(myInput);
+    for(INDEXTYPE i = 0; i < myInput.length(); ++i) {
+      data[i] = myInput[i];
+    }
     Serial.print("======= No. ");
     Serial.print(millis());
     Serial.println(" ======= ");
@@ -30,65 +34,56 @@ void loop() {
     Serial.print(myInput.length());
     Serial.println(" elements:");
     //
+    Serial.println("selection sort: ");
     stopwatch = micros();
-    SelectionSort(myInput, myInput.length());
+    selectionSort(data, myInput.length());
     stopwatch = micros() - stopwatch;
     //
-    Serial.println();
     Serial.print("It took ");
     Serial.print(stopwatch);
-    Serial.println(" micro seconds, ");
-    Serial.println("After sorting: ");
-    Serial.println(myInput);
+    Serial.println(" u secs, ");
     Serial.println();
     //
+    for(INDEXTYPE i = 0; i < myInput.length(); ++i) {
+      data[i] = myInput[i];
+    }
+    Serial.println("bubble sort");
     stopwatch = micros();
-    BubbleSort(inputcopy, myInput.length());
+    bubbleSort(data, myInput.length());
     stopwatch = micros() - stopwatch;
     //
-    Serial.println();
     Serial.print("It took ");
     Serial.print(stopwatch);
-    Serial.println(" micro seconds, ");
+    Serial.println(" u secs, ");
     Serial.println("After sorting: ");
-    Serial.println(inputcopy);
+    for(INDEXTYPE i = 0; i < myInput.length(); ++i) {
+      Serial.print((char)data[i]);
+    }
     Serial.println();
+    Serial.println();
+    //
+    for(INDEXTYPE i = 0; i < myInput.length(); ++i) {
+      data[i] = myInput[i];
+    }
+    Serial.println("quick sort");
+    stopwatch = micros();
+    quickSort(data, myInput.length());
+    stopwatch = micros() - stopwatch;
+    //
+    Serial.print("It took ");
+    Serial.print(stopwatch);
+    Serial.println(" u secs, ");
+    Serial.println("After sorting: ");
+    for(INDEXTYPE i = 0; i < myInput.length(); ++i) {
+      Serial.print((char)data[i]);
+    }
+    Serial.println();
+    Serial.println();
+    //
     //
     //
     myInput = "";
   }
 }
-
-void SelectionSort(String chararray, int size) {
-  int i, j;
-  char tmp;
-
-  for (j = 0; j < size-1; j++) {
-    for (i = j; i < size; i++) {
-      tmp = chararray[i];
-      if ( tmp > chararray[j] ) {
-        chararray[i] = chararray[j];
-        chararray[j] = tmp;
-      }
-    }
-  }
-}
-
-void BubbleSort(String chararray, int n) {
-  int i, j;
-  char tmp;
-
-  for (i = 0; i+1 < n; i++) {
-    for (j = 0; j+1 < n; j++) {
-      if ( chararray[j+1] > chararray[j] ) {
-        tmp = chararray[j];
-        chararray[j] = chararray[j+1];
-        chararray[j+1] = tmp;
-      }
-    }
-  }
-}
-
-
 
 
