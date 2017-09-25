@@ -1,10 +1,14 @@
 
 size_t opcode(uint8_t code) {
   switch(code) {
-    case 0x05:
-      return Serial.print(F("DEC B"));
-      break;
-        
+  case 0x04:
+    return Serial.print(F("INC B"));
+    break;
+
+  case 0x05:
+    return Serial.print(F("DEC B"));
+    break;
+
     case 0x06:
       return Serial.print(F("LD B,n"));
       break;
@@ -97,10 +101,18 @@ size_t opcode(uint8_t code) {
       return Serial.print(F("JP"));
       break;
     
+    case 0xca:
+      return Serial.print(F("JP Z,nn"));
+      break;
+
     case 0xd3:
       return Serial.print(F("OUT (n),A"));
       break;
         
+    case 0xdb:
+      return Serial.print(F("IN A,(n)"));
+      break;
+
     case 0xed:
       return Serial.print(F("OUT "));
       break;

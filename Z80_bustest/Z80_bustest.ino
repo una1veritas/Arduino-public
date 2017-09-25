@@ -53,31 +53,33 @@ void z80_bus_setup() {
 //  digitalWrite(Z80_INT_PIN, HIGH);
 }
 
+void z80_bus_request() {
+    digitalWrite(Z80_BUSREQ_PIN, LOW);
+    while ( !digitalRead(Z80_HALT_PIN) );
+    digitalWrite(Z80_BUSREQ_PIN, HIGH);
+}
+
+void showMemory();
 void showState();
 
 uint8_t mem[] = {
-  0x3e, 0x06, 0x32, 0x18, 0x00, 0x3a, 0x18, 0x00, 
-  0x3c, 0xd3, 0x02, 0x32, 0x18, 0x00, 0xdb, 0x01, 
-  0x32, 0x19, 0x00, 0xa7, 0xc2, 0x05, 0x00, 0x76, 
-  0x00, 0x00,                  
-  0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+		0x3a, 0x0b, 0x00, 0x3d, 0x32, 0x0b, 0x00, 0xc2,
+		0x03, 0x00, 0x76, 0x05,
+									0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 };
 const uint16_t mem_size = sizeof mem;
 
 uint8_t clkpulse = 0;
-uint8_t state_M1 = 0;
-uint8_t state_RFSH = 0;
-uint8_t state_IORD = 0;
-uint8_t state_IOWR = 0;
-uint8_t state_READ = 0; 
-uint8_t state_WRITE = 0; 
 uint16_t cycle = 0;
 uint16_t addr = 0;
 uint8_t data = 0;
 
-uint8_t busmode = 0;
+struct busmode {
+	bool M1, RFSH, IORQ, MREQ, WR, RD;
+} bus;
 
 void setup() {
   Serial.begin(19200);
@@ -92,7 +94,7 @@ void setup() {
   digitalWrite(SRAM_CS_PIN,HIGH);
   
   z80_bus_setup();
-  z80_clock_start(3200);
+  z80_clock_start(400);
   digitalWrite(Z80_RESET_PIN, LOW);
   delay(2000);
   digitalWrite(Z80_RESET_PIN, HIGH);
@@ -101,120 +103,120 @@ void setup() {
 void loop() {
   while ( clkpulse == digitalRead(Z80_CLK_PIN) ); // wait for the next edge.
   clkpulse = digitalRead(Z80_CLK_PIN);
+  /*
   if ( clkpulse ) {
-    if ( !digitalRead(Z80_M1_PIN) && state_M1 ) {
+    if ( !digitalRead(Z80_M1_PIN) && !bus.M1 ) {
       cycle = 0;
     } else {
       ++cycle;    
     }
   }
+  */
+  bus.M1 = !digitalRead(Z80_M1_PIN);
+  bus.RFSH = !digitalRead(Z80_RFSH_PIN);
+  bus.IORQ = !digitalRead(Z80_IORQ_PIN);
+  bus.MREQ = !digitalRead(Z80_MREQ_PIN);
+  bus.WR = !digitalRead(Z80_WR_PIN);
+  bus.RD = !digitalRead(Z80_RD_PIN);
   addr = ((uint16_t)PINA | (PINC<<8));
-  busmode = (!digitalRead(Z80_M1_PIN)) << 5;
-  busmode |= (!digitalRead(Z80_RFSH_PIN)) << 4;
-  busmode |= (!digitalRead(Z80_IORQ_PIN)) << 3;
-  busmode |= (!digitalRead(Z80_MREQ_PIN) << 2;
-  busmode |= (!digitalRead(Z80_WR_PIN)) << 1;
-  busmode |= (!digitalRead(Z80_RD_PIN)) << 0;
-  if ( busmode == ((1<<5) | (1<<2) | (1<<0)) 
-    || busmode == ((1<<2) | (1<<0)) ) {
-    // MREQ M1 READ || MREQ READ
+  if ( bus.MREQ && bus.RD ) {
       DDRF = 0xff;
       if ( addr >= 0 && addr < mem_size ) {
         data = mem[addr];
         PORTF = data;
       } else {
-        Serial.print("address error! ");
+        Serial.println("address error! ");
       }
-  } else if ( busmode == ((1<<2) | (1<<1)) ) {
+      while ( !digitalRead(Z80_RD_PIN) );
+  } else if ( bus.MREQ && bus.WR ) {
       DDRF = 0x00;
       //PORTF = 0xff; // pull-up
       if ( addr >= 0 && addr < mem_size ) {
         mem[addr] = PINF;
         data = mem[addr];
       } else {
-        Serial.print("address error! ");
+        Serial.println("address error! ");
       }
-      Serial.println(addr&0xfff0, HEX);
-      for(int i = 0; i < 16; i++) {
-        Serial.print(mem[(addr & 0xfff0) + i], HEX);
-        Serial.print(" ");
-      }
-      Serial.println();
-  } else if ( !state_IORD ) {
+      while ( !digitalRead(Z80_WR_PIN) );
+  } else if ( bus.IORQ && bus.RD ) {
     DDRF = 0xff;
     PORTF = data;
-  } else if ( !state_IOWR ) {
+    while ( !digitalRead(Z80_RD_PIN) );
+  } else if ( bus.IORQ && bus.WR ) {
     DDRF = 0x00;
     PORTF = 0xff;
     data = PINF;
-  } else if ( !state_RFSH ) {
-    
+    while ( !digitalRead(Z80_WR_PIN) );
+  } else if ( bus.RFSH && bus.MREQ ) {
+	  addr = ((uint16_t)PINA | (PINC<<8));
+	  while ( !digitalRead(Z80_RFSH_PIN) );
   }
   showState();
   
   if ( !digitalRead(Z80_HALT_PIN) ) {
-    for(addr = 0; addr < mem_size; ++addr) {
-      Serial.print(mem[addr]>>4&0x0f, HEX);
-      Serial.print(mem[addr]&0x0f, HEX);
-      Serial.print(" ");
-      if ((addr & 0xf) == 0xf)
-        Serial.println();
-    }
-    Serial.println();
-    digitalWrite(Z80_BUSREQ_PIN, LOW);
-    while ( !digitalRead(Z80_HALT_PIN) );
-    digitalWrite(Z80_BUSREQ_PIN, HIGH);
+	  showMemory();
+	  z80_bus_request();
   }
 }
 
+void showMemory() {
+	for(addr = 0; addr < mem_size; ++addr) {
+	  Serial.print(mem[addr]>>4&0x0f, HEX);
+	  Serial.print(mem[addr]&0x0f, HEX);
+	  Serial.print(" ");
+	  if ((addr & 0xf) == 0xf)
+		Serial.println();
+	}
+	Serial.println();
+}
+
 void showState() {
-  Serial.print(cycle/10);
-  Serial.print(cycle%10);
-  if ( clkpulse ) {
+//  Serial.print(cycle/10);
+//  Serial.print(cycle%10);
+/*  if ( clkpulse ) {
     Serial.print(" H ");
   } else {
     Serial.print(" L ");
   }
-  if ( digitalRead(Z80_M1_PIN) ) {
-    Serial.print("  ");
+*/
+  if ( bus.IORQ ) {
+	  if ( bus.RD )
+		  Serial.print(" I ");
+	  else if ( bus.WR )
+		  Serial.print(" O ");
+  } else if ( bus.MREQ ) {
+	  if ( bus.M1 ) {
+		  Serial.print("MR ");
+  	  } else if ( bus.RD ) {
+  		  Serial.print(" R ");
+  	  } else if ( bus.WR ) {
+  		  Serial.print(" W ");
+  	  } else if ( bus.RFSH ) {
+  		  return;
+  		  //Serial.print("F  ");
+  	  } else {
+  		  return;
+  		  //Serial.print("  ");
+  	  }
   } else {
-    Serial.print("M ");
-  }
-
-  if ( !state_IORD ) {
-    Serial.print("I ");
-  } else if ( !state_IOWR ) {
-    Serial.print("O ");
-  } else if ( !state_READ ) {
-    Serial.print("R ");
-  } else if ( !state_WRITE ) {
-    Serial.print("W ");
-  } else {
-    Serial.print("  ");
+	  return;
+	  //Serial.print("  ");
   }
     
   Serial.print("[");
-  Serial.print( addr>>24&0x0f, HEX);
-  Serial.print( addr>>16&0x0f, HEX);
+  Serial.print( addr>>12&0x0f, HEX);
   Serial.print( addr>>8&0x0f, HEX);
+  Serial.print( addr>>4&0x0f, HEX);
   Serial.print( addr&0x0f, HEX);
   Serial.print("] ");
-  if ( !state_READ || !state_WRITE || state_IORD || state_IOWR ) {
+  if ( (bus.RD || bus.WR) && !bus.RFSH ) {
     Serial.print( data, HEX);
     Serial.print(" ");
   }  
-  if ( !state_M1 && !state_READ ) {
+  if ( bus.M1 && bus.RD ) {
     Serial.print("(op. ");
     opcode(data);
     Serial.print(")");
-  } else if ( state_M1 && !state_READ ) {
-    Serial.print("(data)");
-  } else if ( !state_WRITE ) {
-    Serial.print("(write)");
-  } else if ( !state_RFSH ) {
-    Serial.print("(refresh row)");
-  } else {    
-    //Serial.print("");
   }
   Serial.println();
 }
