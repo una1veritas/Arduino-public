@@ -24,84 +24,59 @@ uint8_t crc8(uint8_t inbyte, uint8_t & crc) {
 uint32_t addr = 0; 
 int blockerrcount = 0;
 int errcount = 0;
-const uint16_t blocksize = (1<<9);
-uint8_t wdata[blocksize], rdata[blocksize];
+const uint16_t blocksize = (1<<10);
+uint8_t readout[blocksize];
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(19200);
   Serial.println("Hi, there.");
   Serial.println("Let's start.");
 
-  sram_init();
+  sram_bus_setup();
+  sram_enable();
 
   randomSeed(analogRead(8) + (analogRead(9)<<8));
-}
 
-void loop() {
-  // put your main code here, to run repeatedly:
   uint8_t val;
   
-  //addr = random(0, 0x20000);
-  if ( addr > 0x1ffff ) {
-    Serial.println();
-    Serial.print("completed with ");
-    Serial.print(errcount);
-    Serial.println(" erros.");
-    while(1);  
-  }
+  for( addr = 0; addr < 0x20000; addr += blocksize) {
+    long blockseed = random(0, 32000);
+    blockerrcount = 0;
 
-  if ( (addr & 0xfff) == 0 )
-    Serial.println();
-  Serial.print(addr, HEX);
-
-  blockerrcount = 0;
-  for(uint16_t i = 0; i < blocksize; i++) {
-    wdata[i] = random(0, 256);
-    sram_write(addr+i, wdata[i]);
-  }
-  //delay(10);
-
-  for(uint32_t i = 0; i < blocksize; i++) {
-    rdata[i] = sram_read(addr+i);
-    if ( rdata[i] != wdata[i] ) {
-      blockerrcount++;
-      Serial.print("[");
-      Serial.print(addr+i, HEX);
-      Serial.print(":");
-      Serial.print(wdata[i], HEX);
-      Serial.print("/");
-      Serial.print(rdata[i], HEX);
-      Serial.print("], ");
-    }
-  }
-  if ( blockerrcount == 0 ) {
-    Serial.print("; ");
-  } else {
-    errcount += blockerrcount;
-    Serial.println(" error!");
-    unsigned int count = 0;
+    Serial.print(addr, HEX);
+    randomSeed(blockseed);
     for(uint16_t i = 0; i < blocksize; i++) {
-      Serial.print(wdata[i], HEX);
-      Serial.print(' ');
-      sram_write(addr+i, wdata[i]);
+      sram_write(addr+i, random(0, 256));
     }
-    Serial.println();
+  
+    randomSeed(blockseed);
     for(uint32_t i = 0; i < blocksize; i++) {
-      val = sram_read(addr+i);
-      Serial.print(val, HEX);
-      Serial.print(' ');
-      if ( wdata[i] != val )
-      count++; 
+      readout[i] = sram_read(addr+i);
+      if ( readout[i] != random(0,256) ) {
+        blockerrcount++;
+      }
     }
-    Serial.println();
-    Serial.print("err count on retry = ");
-    Serial.println(count);
-    Serial.println();
-    if ( count > 0 )
-      while (1);
-    delay(10000);
+    if ( blockerrcount == 0 ) {
+      Serial.print(" -- ");
+      Serial.println(addr+blocksize-1, HEX);
+    } else {
+      errcount += blockerrcount;
+      Serial.println(" error!");
+      unsigned int count = 0;
+      for(uint16_t i = 0; i < blocksize; i++) {
+        Serial.print(readout[i], HEX);
+        Serial.print(' ');
+      }
+      Serial.println();
+      break;
+    }
   }
-  addr += blocksize;
-  //delay(10);
+  Serial.println();
+  Serial.print(errcount);
+  Serial.println(" erros.");
+  Serial.print("completed.");
+}
+  
+void loop() {
 }
 

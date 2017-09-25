@@ -7,7 +7,7 @@
 
 #include "sram.h"
 
-void sram_init() {
+void sram_bus_setup() {
   ADDRL_DIR = ADDRL_MASK; // fixed to be OUTPUT
   ADDRH_DIR = ADDRH_MASK; // fixed to be OUTPUT
   ADDRX_DIR |= ADDRX_MASK; // fixed to be OUTPUT
@@ -16,33 +16,30 @@ void sram_init() {
   CONTROL |= ( SRAM_WE | SRAM_OE | SRAM_CS ); //SRAM_ALE);
 }
 
+void sram_enable() {
+  CONTROL &= ~SRAM_CS;  
+}
 
-inline void sram_bank(uint8_t bk) {
-  ADDRX &= ~ADDRX_MASK;
-  ADDRX |= (bk & ADDRX_MASK);
+void sram_disable() {
+  CONTROL |= SRAM_CS;
 }
 
 uint8_t sram_read(uint32_t addr) {
   unsigned char val;
-  CONTROL &= ~SRAM_CS;
-//  DATA_OUT = 0xff; // clear the pull-ups
+  addr_set32(addr);
   DATA_DIR = 0x00;
-  addr_set(addr);
   CONTROL &= ~SRAM_OE;
-  __asm__ __volatile__ ("nop");
+  __asm__ __volatile("nop");
   val = DATA_IN;
   CONTROL |= SRAM_OE; // valid data remains while
-  CONTROL |= SRAM_CS;
   return val;
 }
 
 void sram_write(uint32_t addr, uint8_t data) {
-  CONTROL &= ~SRAM_CS;
-  addr_set(addr);
+  addr_set32(addr);
   DATA_DIR = DATA_MASK;
   DATA_OUT = data;
   CONTROL &= ~SRAM_WE;
   CONTROL |= SRAM_WE;
-  CONTROL |= SRAM_CS;
 }
 
