@@ -77,6 +77,8 @@ uint16_t cycle = 0;
 uint16_t addr = 0;
 uint8_t data = 0;
 
+uint8_t busmode = 0;
+
 void setup() {
   Serial.begin(19200);
   while(!Serial);
@@ -97,59 +99,59 @@ void setup() {
 }
 
 void loop() {
-  while ( clkpulse == digitalRead(Z80_CLK_PIN) );
-  if ( clkpulse != digitalRead(Z80_CLK_PIN) ) {
-    clkpulse = digitalRead(Z80_CLK_PIN);
-    if ( clkpulse ) {
-      if ( !digitalRead(Z80_M1_PIN) && state_M1 ) {
-        cycle = 0;
-      } else {
-        ++cycle;    
-      }
+  while ( clkpulse == digitalRead(Z80_CLK_PIN) ); // wait for the next edge.
+  clkpulse = digitalRead(Z80_CLK_PIN);
+  if ( clkpulse ) {
+    if ( !digitalRead(Z80_M1_PIN) && state_M1 ) {
+      cycle = 0;
+    } else {
+      ++cycle;    
     }
-    addr = ((uint16_t)PINA | (PINC<<8));
-    state_M1 = digitalRead(Z80_M1_PIN);
-    state_IORD = digitalRead(Z80_RD_PIN) || digitalRead(Z80_IORQ_PIN);
-    state_IOWR = digitalRead(Z80_WR_PIN) || digitalRead(Z80_IORQ_PIN);
-    state_READ = digitalRead(Z80_RD_PIN) || digitalRead(Z80_MREQ_PIN) ;
-    state_WRITE = digitalRead(Z80_WR_PIN) || digitalRead(Z80_MREQ_PIN) ;
-    state_RFSH = digitalRead(Z80_RFSH_PIN) || digitalRead(Z80_MREQ_PIN);
-    if ( !state_READ ) {
-        DDRF = 0xff;
-        if ( addr >= 0 && addr < mem_size ) {
-          data = mem[addr];
-          PORTF = data;
-        } else {
-          Serial.print("address error! ");
-        }
-    } else if ( !state_WRITE ) {
-        for(int i = 0; i < 8; i++)
-        DDRF = 0x00;
-        //PORTF = 0xff; // pull-up
-        if ( addr >= 0 && addr < mem_size ) {
-          mem[addr] = PINF;
-          data = mem[addr];
-        } else {
-          Serial.print("address error! ");
-        }
-        Serial.println(addr&0xfff0, HEX);
-        for(int i = 0; i < 16; i++) {
-          Serial.print(mem[(addr & 0xfff0) + i], HEX);
-          Serial.print(" ");
-        }
-        Serial.println();
-    } else if ( !state_IORD ) {
-      DDRF = 0xff;
-      PORTF = data;
-    } else if ( !state_IOWR ) {
-      DDRF = 0x00;
-      PORTF = 0xff;
-      data = PINF;
-    } else if ( !state_RFSH ) {
-      
-    }
-    showState();
   }
+  addr = ((uint16_t)PINA | (PINC<<8));
+  busmode = (!digitalRead(Z80_M1_PIN)) << 5;
+  busmode |= (!digitalRead(Z80_RFSH_PIN)) << 4;
+  busmode |= (!digitalRead(Z80_IORQ_PIN)) << 3;
+  busmode |= (!digitalRead(Z80_MREQ_PIN) << 2;
+  busmode |= (!digitalRead(Z80_WR_PIN)) << 1;
+  busmode |= (!digitalRead(Z80_RD_PIN)) << 0;
+  if ( busmode == ((1<<5) | (1<<2) | (1<<0)) 
+    || busmode == ((1<<2) | (1<<0)) ) {
+    // MREQ M1 READ || MREQ READ
+      DDRF = 0xff;
+      if ( addr >= 0 && addr < mem_size ) {
+        data = mem[addr];
+        PORTF = data;
+      } else {
+        Serial.print("address error! ");
+      }
+  } else if ( busmode == ((1<<2) | (1<<1)) ) {
+      DDRF = 0x00;
+      //PORTF = 0xff; // pull-up
+      if ( addr >= 0 && addr < mem_size ) {
+        mem[addr] = PINF;
+        data = mem[addr];
+      } else {
+        Serial.print("address error! ");
+      }
+      Serial.println(addr&0xfff0, HEX);
+      for(int i = 0; i < 16; i++) {
+        Serial.print(mem[(addr & 0xfff0) + i], HEX);
+        Serial.print(" ");
+      }
+      Serial.println();
+  } else if ( !state_IORD ) {
+    DDRF = 0xff;
+    PORTF = data;
+  } else if ( !state_IOWR ) {
+    DDRF = 0x00;
+    PORTF = 0xff;
+    data = PINF;
+  } else if ( !state_RFSH ) {
+    
+  }
+  showState();
+  
   if ( !digitalRead(Z80_HALT_PIN) ) {
     for(addr = 0; addr < mem_size; ++addr) {
       Serial.print(mem[addr]>>4&0x0f, HEX);
