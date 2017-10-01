@@ -1,11 +1,10 @@
+/* sram functions */
+/* atmega1280/2560 PA0 -- PC7 for A0 -- A15, PL0 for A16,
+ * and PF0 - PF7 for D0 - D7
+ */
+
 #include "sram.h"
 
-/* sram_avr.c functions */
-/* atmegaxxx0 PA0 -- PC7, PL0 for A0 - A16 
-   and PF0 - PF7 for D0 - D7 */
-
-
-/* sram_avr.c end */
 
 uint8_t crc8(uint8_t inbyte, uint8_t & crc) {
     uint8_t j;
@@ -24,7 +23,7 @@ uint8_t crc8(uint8_t inbyte, uint8_t & crc) {
 uint32_t addr = 0; 
 int blockerrcount = 0;
 int errcount = 0;
-const uint16_t blocksize = (1<<10);
+const uint16_t blocksize = (1<<12);
 uint8_t readout[blocksize];
 void setup() {
   // put your setup code here, to run once:

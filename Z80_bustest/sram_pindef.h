@@ -1,12 +1,19 @@
 /*
  * sram_pindef.h
  *
- *  Created on: 2017/09/21
+ *  Created on: 2017/09/26
  *      Author: sin
  */
 
-#ifndef _SRAM_PINDEF_H_
-#define _SRAM_PINDEF_H_
+#ifndef SRAM_PINDEF_H_
+#define SRAM_PINDEF_H_
+
+/*
+ * sram_pindef.h
+ *
+ *  Created on: 2017/09/21
+ *      Author: sin
+ */
 
 /* SRAM I/F Port/Pin definitions */
 #define ADDRL_DIR DDRA
@@ -28,7 +35,8 @@
 #define CONTROL PORTG
 #define SRAM_OE (1<<PG1)
 #define SRAM_WE (1<<PG0)
-//#define SRAM_ALE (1<<PG2)
+#define SRAM_ALE (1<<PG2)
 #define SRAM_CS (1<<PG5)
 
-#endif /* _SRAM_PINDEF_H_ */
+
+#endif /* SRAM_PINDEF_H_ */

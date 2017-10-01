@@ -1,66 +1,11 @@
-
 #include "opcodeprint.h"
-#include "z80_pindef.h"
+#include "z80_controller.h"
+#include "sram.h"
 
-#define ALLOW_Z80_MREQ_PIN 4
-#define SRAM_CS_PIN 5
-
-void z80_clock_start(uint16_t top) {
-  const uint8_t MODE = 4;
-  const uint8_t PRESCALER = 5;
-
-  TIMSK1 = 0;
-  
-  TCCR1A = 0;
-  TCCR1B = 0;
-  TCCR1C = 0;
-  TCNT1 = 0;
-  OCR1A = top - 1;
-
-  TCCR1A |= (1 << COM1A0) | (MODE & 0x3);
-  TCCR1B |= ((MODE >> 2 & 0x03) << 3) | (PRESCALER << CS10);
-  TCCR1C |= (1 << FOC1A);
-
-  DDRB |= (1<<PB5);
-}
-
-void z80_bus_setup() {
-  DDRF = 0xff;
-  PORTF = 0x00;
-  DDRA = 0x00;
-  DDRC = 0x00;
-
-  pinMode(Z80_MREQ_PIN, INPUT);
-  pinMode(Z80_IORQ_PIN, INPUT);
-  pinMode(Z80_RD_PIN, INPUT);
-  pinMode(Z80_WR_PIN, INPUT);
-
-  pinMode(Z80_M1_PIN, INPUT);
-  pinMode(Z80_RFSH_PIN, INPUT);
-//  pinMode(Z80_BUSACK_PIN, INPUT);
-  pinMode(Z80_HALT_PIN, INPUT);
-  digitalWrite(Z80_HALT_PIN, HIGH);
-
-  pinMode(Z80_RESET_PIN, OUTPUT);
-  digitalWrite(Z80_RESET_PIN, HIGH);
-  pinMode(Z80_BUSREQ_PIN, OUTPUT);
-  digitalWrite(Z80_BUSREQ_PIN, HIGH);
-  pinMode(Z80_WAIT_PIN, OUTPUT);
-  digitalWrite(Z80_WAIT_PIN, HIGH);
-//  pinMode(Z80_NMI_PIN, OUTPUT);
-//  digitalWrite(Z80_NMI_PIN, HIGH);
-//  pinMode(Z80_INT_PIN, OUTPUT);
-//  digitalWrite(Z80_INT_PIN, HIGH);
-}
-
-void z80_bus_request() {
-    digitalWrite(Z80_BUSREQ_PIN, LOW);
-    while ( !digitalRead(Z80_HALT_PIN) );
-    digitalWrite(Z80_BUSREQ_PIN, HIGH);
-}
+#define SRAM_CS_PIN 4
 
 void showMemory();
-void showState();
+void showState(busmode & bus);
 
 uint8_t mem[] = {
 		0x3a, 0x0b, 0x00, 0x3d, 0x32, 0x0b, 0x00, 0xc2,
@@ -74,12 +19,8 @@ const uint16_t mem_size = sizeof mem;
 
 uint8_t clkpulse = 0;
 uint16_t cycle = 0;
-uint16_t addr = 0;
 uint8_t data = 0;
-
-struct busmode {
-	bool M1, RFSH, IORQ, MREQ, WR, RD;
-} bus;
+busmode bus;
 
 void setup() {
   Serial.begin(19200);
@@ -88,41 +29,46 @@ void setup() {
   Serial.print("mem size = ");
   Serial.println(mem_size);
 
-  pinMode(ALLOW_Z80_MREQ_PIN, OUTPUT);
-  digitalWrite(ALLOW_Z80_MREQ_PIN, HIGH); // mreq disabled.
-  pinMode(SRAM_CS_PIN, OUTPUT);
-  digitalWrite(SRAM_CS_PIN,HIGH);
-  
+  Serial.println("start z80");
+  disable_z80_mreq();
   z80_bus_setup();
   z80_clock_start(400);
   digitalWrite(Z80_RESET_PIN, LOW);
-  delay(2000);
+  delay(1000);
   digitalWrite(Z80_RESET_PIN, HIGH);
+  if ( !z80_request_bus() )
+	  Serial.println("z80 BUSACK low");
+
+  sram_bus_setup();
+  sram_enable();
+  for(uint16_t addr = 0; addr < mem_size; ++addr) {
+	  sram_write(addr,addr & 0xff);
+//	  Serial.print(mem[addr], HEX);
+//	  Serial.print(" ");
+  }
+ // Serial.println();
+
+  for(uint16_t addr = 0; addr < mem_size; ++addr) {
+	  uint8_t data = sram_read(addr);
+	  Serial.print(data >> 4 & 0x0f, HEX);
+	  Serial.print(data & 0x0f, HEX);
+	  Serial.print(" ");
+	  if ((addr & 0xf) == 0xf)
+		Serial.println();
+  }
+  Serial.println();
+  sram_disable();
+  while ( !z80_request_bus() );
 }
 
 void loop() {
   while ( clkpulse == digitalRead(Z80_CLK_PIN) ); // wait for the next edge.
   clkpulse = digitalRead(Z80_CLK_PIN);
-  /*
-  if ( clkpulse ) {
-    if ( !digitalRead(Z80_M1_PIN) && !bus.M1 ) {
-      cycle = 0;
-    } else {
-      ++cycle;    
-    }
-  }
-  */
-  bus.M1 = !digitalRead(Z80_M1_PIN);
-  bus.RFSH = !digitalRead(Z80_RFSH_PIN);
-  bus.IORQ = !digitalRead(Z80_IORQ_PIN);
-  bus.MREQ = !digitalRead(Z80_MREQ_PIN);
-  bus.WR = !digitalRead(Z80_WR_PIN);
-  bus.RD = !digitalRead(Z80_RD_PIN);
-  addr = ((uint16_t)PINA | (PINC<<8));
+  z80_bus_status(bus);
   if ( bus.MREQ && bus.RD ) {
       DDRF = 0xff;
-      if ( addr >= 0 && addr < mem_size ) {
-        data = mem[addr];
+      if ( bus.ADDR >= 0 && bus.ADDR < mem_size ) {
+        data = mem[bus.ADDR];
         PORTF = data;
       } else {
         Serial.println("address error! ");
@@ -131,9 +77,9 @@ void loop() {
   } else if ( bus.MREQ && bus.WR ) {
       DDRF = 0x00;
       //PORTF = 0xff; // pull-up
-      if ( addr >= 0 && addr < mem_size ) {
-        mem[addr] = PINF;
-        data = mem[addr];
+      if ( bus.ADDR >= 0 && bus.ADDR < mem_size ) {
+        mem[bus.ADDR] = PINF;
+        data = mem[bus.ADDR];
       } else {
         Serial.println("address error! ");
       }
@@ -148,18 +94,18 @@ void loop() {
     data = PINF;
     while ( !digitalRead(Z80_WR_PIN) );
   } else if ( bus.RFSH && bus.MREQ ) {
-	  addr = ((uint16_t)PINA | (PINC<<8));
 	  while ( !digitalRead(Z80_RFSH_PIN) );
   }
-  showState();
+  showState(bus);
   
   if ( !digitalRead(Z80_HALT_PIN) ) {
 	  showMemory();
-	  z80_bus_request();
+	  z80_request_bus();
   }
 }
 
 void showMemory() {
+	uint16_t addr;
 	for(addr = 0; addr < mem_size; ++addr) {
 	  Serial.print(mem[addr]>>4&0x0f, HEX);
 	  Serial.print(mem[addr]&0x0f, HEX);
@@ -170,7 +116,7 @@ void showMemory() {
 	Serial.println();
 }
 
-void showState() {
+void showState(busmode & bus) {
 //  Serial.print(cycle/10);
 //  Serial.print(cycle%10);
 /*  if ( clkpulse ) {
@@ -204,10 +150,10 @@ void showState() {
   }
     
   Serial.print("[");
-  Serial.print( addr>>12&0x0f, HEX);
-  Serial.print( addr>>8&0x0f, HEX);
-  Serial.print( addr>>4&0x0f, HEX);
-  Serial.print( addr&0x0f, HEX);
+  Serial.print( bus.ADDR>>12&0x0f, HEX);
+  Serial.print( bus.ADDR>>8&0x0f, HEX);
+  Serial.print( bus.ADDR>>4&0x0f, HEX);
+  Serial.print( bus.ADDR&0x0f, HEX);
   Serial.print("] ");
   if ( (bus.RD || bus.WR) && !bus.RFSH ) {
     Serial.print( data, HEX);

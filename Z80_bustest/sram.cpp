@@ -1,6 +1,13 @@
 /*
  * sram.cpp
  *
+ *  Created on: 2017/09/26
+ *      Author: sin
+ */
+
+/*
+ * sram.cpp
+ *
  *  Created on: 2017/09/19
  *      Author: sin
  */
@@ -17,7 +24,7 @@ void sram_bus_setup() {
 }
 
 void sram_enable() {
-  CONTROL &= ~SRAM_CS;  
+  CONTROL &= ~SRAM_CS;
 }
 
 void sram_disable() {
@@ -31,7 +38,7 @@ uint8_t sram_read(uint32_t addr) {
   CONTROL &= ~SRAM_OE;
   __asm__ __volatile("nop");
   val = DATA_IN;
-  CONTROL |= SRAM_OE; // valid data remains while
+  CONTROL |= SRAM_OE; // data remains valid for a while
   return val;
 }
 
@@ -42,4 +49,6 @@ void sram_write(uint32_t addr, uint8_t data) {
   CONTROL &= ~SRAM_WE;
   CONTROL |= SRAM_WE;
 }
+
+
 

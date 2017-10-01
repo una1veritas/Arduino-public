@@ -1,3 +1,13 @@
+/*
+ * sram.h
+ *
+ *  Created on: 2017/09/26
+ *      Author: sin
+ */
+
+#ifndef SRAM_H_
+#define SRAM_H_
+
 #include <avr/io.h>
 #include "sram_pindef.h"
 
@@ -34,3 +44,5 @@ inline void addr_set16(uint16_t addr) {
   addr >>= 8;
 }
 
+
+#endif /* SRAM_H_ */

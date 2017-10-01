@@ -10,9 +10,10 @@
 
 #define Z80_BUSREQ_PIN  9
 #define Z80_WAIT_PIN  8
-//#define Z80_BUSACK_PIN    7
+#define Z80_BUSACK_PIN    2
 
 //#define Z80_INT_PIN   62
 //#define Z80_NMI_PIN   63
 #define Z80_HALT_PIN  62
 
+#define ALLOW_Z80_MREQ_PIN 5
