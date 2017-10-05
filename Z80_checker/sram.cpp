@@ -1,12 +1,14 @@
 #include <Arduino.h>
 #include "sram.h"
 
-void sram_bus_activate() {
-  *((&SRAM_ADDRL_PORT)-1) = 0xff;
-  *((&SRAM_ADDRH_PORT)-1) = 0xff;
-  *((&SRAM_BANK_PORT)-1) |= SRAM_BANK_MASK;
+void sram_bus_init() {
+  *((&SRAM_ADDRL_PORT)-1) = 0xff; 
+  *((&SRAM_ADDRH_PORT)-1) = 0xff; 
+
+  sram_bank(0);
+
   pinMode(SRAM_E2_PIN,OUTPUT);
-  digitalWrite(SRAM_E2_PIN,HIGH);
+  sram_enable();
   pinMode(SRAM_CS_PIN,OUTPUT);
   pinMode(SRAM_OE_PIN,OUTPUT);
   pinMode(SRAM_WE_PIN,OUTPUT);
@@ -15,23 +17,12 @@ void sram_bus_activate() {
   digitalWrite(SRAM_WE_PIN,HIGH);
 }
 
-void sram_bus_inactivate() {
-  *((&SRAM_ADDRL_PORT)-1) = 0x00;
-  *((&SRAM_ADDRH_PORT)-1) = 0x00;
-  *((&SRAM_BANK_PORT)-1) &= ~SRAM_BANK_MASK;
-  pinMode(SRAM_E2_PIN,OUTPUT);
-  digitalWrite(SRAM_E2_PIN,LOW);
-  pinMode(SRAM_CS_PIN,INPUT);
-  pinMode(SRAM_OE_PIN,INPUT);
-  pinMode(SRAM_WE_PIN,INPUT);
-}
-
-void sram_E2_enable() {
+void sram_enable() {
   digitalWrite(SRAM_E2_PIN, HIGH);
 }
 
-void sram_E2_disable() {
-    digitalWrite(SRAM_E2_PIN, LOW);
+void sram_disable() {
+  digitalWrite(SRAM_E2_PIN, LOW);
 }
 
 void sram_select() {
@@ -48,7 +39,8 @@ inline void addr16_set(uint16_t addr) {
   SRAM_ADDRH_PORT = (uint8_t) addr;
 }
 
-inline void sram_bank(uint8_t bank) {
+void sram_bank(uint8_t bank) {
+  *((&SRAM_BANK_PORT)-1) |= SRAM_BANK_MASK;  
   SRAM_BANK_PORT &= ~SRAM_BANK_MASK;
   SRAM_BANK_PORT |= bank & SRAM_BANK_MASK;
 }

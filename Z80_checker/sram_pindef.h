@@ -23,7 +23,7 @@
 #define SRAM_OE_PIN       40
 #define SRAM_WE_PIN       41
 // PH6
-#define SRAM_E2_PIN       79
+#define SRAM_E2_PIN       9
 
 #endif /* _SRAM_PINDEF_H_ */
 
