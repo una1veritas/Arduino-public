@@ -97,38 +97,42 @@ void loop() {
   static uint8_t m1;
 
   if ( Z80_mreq_read() ) {
-    atmega_databus_mode(OUTPUT);
     m1 = Z80_m1();
+    atmega_databus_mode(OUTPUT);
     addr = addrbus();
     data = mem[addr & 0xff];
     databus_write(data);
-    while ( Z80_mreq_read() ) {
-    }
+    while ( Z80_mreq_read() );
     atmega_databus_mode(INPUT);
-    Serial.print(hexstr(addr, 4));
     if ( m1 ) {
       Serial.print(" M  ");
+      Serial.print("[");
+      Serial.print(hexstr(addr, 4));
+      Serial.print("] ");
+      Serial.print(hexstr(data,2));
+      opcode(data,buf);
+      m1 = buf[0];
+      Serial.print("\t");
+      Serial.print(buf+1);
+      Serial.println();
     } else {
       Serial.print(" R  ");
+      Serial.print("[");
+      Serial.print(hexstr(addr, 4));
+      Serial.print("] ");
+      Serial.print(hexstr(data,2));
+      Serial.println();
     }
-    Serial.print(hexstr(data,2));
-    if ( m1 ) {
-      Serial.print(" ");
-      opcode(data,buf);
-      Serial.print((int) buf[0]);
-      Serial.print(" ");
-      Serial.print(buf+1);
-    }
-    Serial.println();
   } else if ( Z80_mreq_write() ) {
     atmega_databus_mode(INPUT);
     addr = addrbus();
     data = databus();
     mem[addr & 0xff] = data;
-    while ( Z80_mreq_write() ) {
-    }
-    Serial.print(hexstr(addr, 4));
+    while ( Z80_mreq_write() );
     Serial.print("  W ");
+    Serial.print("[");
+    Serial.print(hexstr(addr, 4));
+    Serial.print("] ");
     Serial.print(hexstr(data,2));
     Serial.println();
   } else if ( Z80_iorq_read() ) {
@@ -150,8 +154,10 @@ void loop() {
     data = databus();
     Z80_wait_cancel();
     while ( Z80_iorq_write() );
-    Serial.print(hexstr(addr, 4));
     Serial.print("  O ");
+    Serial.print("[");
+    Serial.print(hexstr(addr, 4));
+    Serial.print("] ");
     Serial.print(hexstr(data,2));
     if ( isprint(data) ) {
       Serial.print(" '");
