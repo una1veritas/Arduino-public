@@ -1,12 +1,25 @@
 #include "Z80.h"
 
+#define DDR(port)  (*((&port)-1))
+#define PIN(port)  (*((&port)-2))
 
-void Z80_init() {
+uint8_t Z80_bus_init() {
   pinMode(Z80_RESET_PIN, OUTPUT);
   digitalWrite(Z80_RESET_PIN, HIGH);
-  
   pinMode(Z80_BUSREQ_PIN, OUTPUT);
   digitalWrite(Z80_BUSREQ_PIN, HIGH);
+  pinMode(Z80_WAIT_PIN, OUTPUT);
+  digitalWrite(Z80_WAIT_PIN, HIGH);
+
+  pinMode(Z80_HALT_PIN, INPUT);
+  pinMode(Z80_MREQ_PIN, INPUT);
+  pinMode(Z80_IORQ_PIN, INPUT);
+  pinMode(Z80_RD_PIN, INPUT);
+  pinMode(Z80_WR_PIN, INPUT);
+  pinMode(Z80_BUSACK_PIN, INPUT);
+    
+  while ( !digitalRead(Z80_BUSACK_PIN) );
+  return digitalRead(Z80_BUSACK_PIN);
 }
 
 void Z80_reset() {

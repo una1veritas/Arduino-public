@@ -12,7 +12,7 @@
  7 HOLD <-- 100k ohm -- 3.3V
  8 Vcc  3.3V
  */
-const int SRAM_CS = 9;
+const int SRAM_CS = 53;
 
 SPISRAM myRAM(SRAM_CS, SPISRAM::BUS_MBits); // CS pin
 char buffer[128];
@@ -20,7 +20,7 @@ char buffer[128];
 void setup() {
   char tmp[16];
   
-  Serial.begin(115200);
+  Serial.begin(57600);
   
   SPI.begin();
   myRAM.begin();
@@ -62,17 +62,28 @@ void setup() {
 void loop()
 {
   long err = 0;
+  uint8_t val0, val1;
   Serial.println("\nRandom read/write...");
   for(int i=0; i < 100; i++){
     int addr = random() & 0x7fff;
-    byte val = i;
+    val0 = addr^i;
+    val1 = ~val0;
     Serial.print( addr, HEX );
     Serial.print( " " );
-    Serial.print( val, HEX );
-    myRAM.write(addr, val);
+    Serial.print( val0, HEX );
     Serial.print( " " );
-    Serial.println( myRAM.read(addr), HEX );
-    if (val != myRAM.read(addr)) err++;
+    Serial.print( val1, HEX );
+    myRAM.write(addr, val0);
+    myRAM.write(addr+1, val1);
+    Serial.print( " " );
+    Serial.print( myRAM.read(addr), HEX );
+    Serial.print( " " );
+    Serial.print( myRAM.read(addr+1), HEX );
+    if (val0 != myRAM.read(addr) || val1 != myRAM.read(addr+1) ) { 
+      err++;
+      Serial.print(" !");
+    }
+    Serial.println();
   }
   Serial.print("error count = ");
   Serial.println(err);

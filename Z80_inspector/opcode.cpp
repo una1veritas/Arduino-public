@@ -2,79 +2,79 @@
 
 #include <avr/pgmspace.h>
 
-const char code_00[] PROGMEM = "\01NOP"; 
-const char code_01[] PROGMEM = "\03LD BC,nn"; 
-const char code_02[] PROGMEM = "\01LD (BC),A"; 
-const char code_03[] PROGMEM = "\01INC BC"; 
-const char code_04[] PROGMEM = "\01INC B"; 
-const char code_05[] PROGMEM = "\01DEC B"; 
-const char code_06[] PROGMEM = "\02LD B,n"; 
-const char code_07[] PROGMEM = "\01RLCA"; 
-const char code_08[] PROGMEM = "\01EX AF,AF'"; 
-const char code_09[] PROGMEM = "\01ADD HL,BC"; 
-const char code_0A[] PROGMEM = "\01LD A,(BC)"; 
-const char code_0B[] PROGMEM = "\01DEC BC"; 
-const char code_0C[] PROGMEM = "\01INC C"; 
-const char code_0D[] PROGMEM = "\01DEC C"; 
-const char code_0E[] PROGMEM = "\02LD C,n"; 
-const char code_0F[] PROGMEM = "\01RRCA"; 
-const char code_10[] PROGMEM = "\03DJNZ nn"; 
-const char code_11[] PROGMEM = "\03LD DE,nn"; 
-const char code_12[] PROGMEM = "\01LD (DE),A"; 
-const char code_13[] PROGMEM = "\01INC DE"; 
-const char code_14[] PROGMEM = "\01INC D"; 
-const char code_15[] PROGMEM = "\01DEC D"; 
-const char code_16[] PROGMEM = "\02LD D,n"; 
-const char code_17[] PROGMEM = "\01RLA"; 
-const char code_18[] PROGMEM = "\02JR n"; 
-const char code_19[] PROGMEM = "\01ADD HL,DE"; 
-const char code_1A[] PROGMEM = "\01LD A,(DE)"; 
-const char code_1B[] PROGMEM = "\01DEC DE"; 
-const char code_1C[] PROGMEM = "\01INC E"; 
-const char code_1D[] PROGMEM = "\01DEC E"; 
-const char code_1E[] PROGMEM = "\01LD E,n"; 
-const char code_1F[] PROGMEM = "\01RRA"; 
+const char code_00[] PROGMEM = "NOP"; 
+const char code_01[] PROGMEM = "LD BC,nn"; 
+const char code_02[] PROGMEM = "LD (BC),A"; 
+const char code_03[] PROGMEM = "INC BC"; 
+const char code_04[] PROGMEM = "INC B"; 
+const char code_05[] PROGMEM = "DEC B"; 
+const char code_06[] PROGMEM = "LD B,n"; 
+const char code_07[] PROGMEM = "RLCA"; 
+const char code_08[] PROGMEM = "EX AF,AF'"; 
+const char code_09[] PROGMEM = "ADD HL,BC"; 
+const char code_0A[] PROGMEM = "LD A,(BC)"; 
+const char code_0B[] PROGMEM = "DEC BC"; 
+const char code_0C[] PROGMEM = "INC C"; 
+const char code_0D[] PROGMEM = "DEC C"; 
+const char code_0E[] PROGMEM = "LD C,n"; 
+const char code_0F[] PROGMEM = "RRCA"; 
+const char code_10[] PROGMEM = "DJNZ nn"; 
+const char code_11[] PROGMEM = "LD DE,nn"; 
+const char code_12[] PROGMEM = "LD (DE),A"; 
+const char code_13[] PROGMEM = "INC DE"; 
+const char code_14[] PROGMEM = "INC D"; 
+const char code_15[] PROGMEM = "DEC D"; 
+const char code_16[] PROGMEM = "LD D,n"; 
+const char code_17[] PROGMEM = "RLA"; 
+const char code_18[] PROGMEM = "JR n"; 
+const char code_19[] PROGMEM = "ADD HL,DE"; 
+const char code_1A[] PROGMEM = "LD A,(DE)"; 
+const char code_1B[] PROGMEM = "DEC DE"; 
+const char code_1C[] PROGMEM = "INC E"; 
+const char code_1D[] PROGMEM = "DEC E"; 
+const char code_1E[] PROGMEM = "LD E,n"; 
+const char code_1F[] PROGMEM = "RRA"; 
 const char code_20[] PROGMEM = "JR NZ,n"; 
-const char code_21[] PROGMEM = "\x03LD HL,nn"; 
+const char code_21[] PROGMEM = "LD HL,nn"; 
 const char code_22[] PROGMEM = "LD (nn),HL"; 
-const char code_23[] PROGMEM = "\x01INC HL"; 
+const char code_23[] PROGMEM = "INC HL"; 
 const char code_24[] PROGMEM = "INC H"; 
 const char code_25[] PROGMEM = "DEC H"; 
 const char code_26[] PROGMEM = "LD H,n"; 
 const char code_27[] PROGMEM = "DAA"; 
-const char code_28[] PROGMEM = "\2JR Z,n"; 
-const char code_29[] PROGMEM = "\1ADD HL,HL"; 
-const char code_2A[] PROGMEM = "\3LD HL,(nn)"; 
+const char code_28[] PROGMEM = "JR Z,n"; 
+const char code_29[] PROGMEM = "ADD HL,HL"; 
+const char code_2A[] PROGMEM = "LD HL,(nn)"; 
 const char code_2B[] PROGMEM = "DEC HL"; 
 const char code_2C[] PROGMEM = "INC L"; 
 const char code_2D[] PROGMEM = "DEC L"; 
 const char code_2E[] PROGMEM = "LD L,n"; 
 const char code_2F[] PROGMEM = "CPL"; 
-const char code_30[] PROGMEM = "\x03JR NC,nn"; 
-const char code_31[] PROGMEM = "\x03LD SP,nn"; 
-const char code_32[] PROGMEM = "\x03LD (nn),A"; 
-const char code_33[] PROGMEM = "\x01INC SP"; 
-const char code_34[] PROGMEM = "\x01INC (HL)"; 
-const char code_35[] PROGMEM = "\01DEC (HL)"; 
-const char code_36[] PROGMEM = "\x02LD (HL),n"; 
-const char code_37[] PROGMEM = "\x01SCF"; 
-const char code_38[] PROGMEM = "\x03JR C,nn"; 
-const char code_39[] PROGMEM = "\1ADD HL,SP"; 
-const char code_3A[] PROGMEM = "\3LD A,(nn)"; 
-const char code_3B[] PROGMEM = "\1DEC SP"; 
-const char code_3C[] PROGMEM = "\1INC A"; 
-const char code_3D[] PROGMEM = "\1DEC A"; 
-const char code_3E[] PROGMEM = "\2LD A,n"; 
-const char code_3F[] PROGMEM = "\1CCF"; 
-const char code_40[] PROGMEM = "\1LD B,B"; 
-const char code_41[] PROGMEM = "\1LD B,C"; 
-const char code_42[] PROGMEM = "\1LD B,D"; 
-const char code_43[] PROGMEM = "\1LD B,E"; 
-const char code_44[] PROGMEM = "\1LD B,H"; 
-const char code_45[] PROGMEM = "\1LD B,L"; 
-const char code_46[] PROGMEM = "\1LD B,(HL)"; 
-const char code_47[] PROGMEM = "\1LD B,A"; 
-const char code_48[] PROGMEM = "\1LD C,B"; 
+const char code_30[] PROGMEM = "JR NC,nn"; 
+const char code_31[] PROGMEM = "LD SP,nn"; 
+const char code_32[] PROGMEM = "LD (nn),A"; 
+const char code_33[] PROGMEM = "INC SP"; 
+const char code_34[] PROGMEM = "INC (HL)"; 
+const char code_35[] PROGMEM = "DEC (HL)"; 
+const char code_36[] PROGMEM = "LD (HL),n"; 
+const char code_37[] PROGMEM = "SCF"; 
+const char code_38[] PROGMEM = "JR C,nn"; 
+const char code_39[] PROGMEM = "ADD HL,SP"; 
+const char code_3A[] PROGMEM = "LD A,(nn)"; 
+const char code_3B[] PROGMEM = "DEC SP"; 
+const char code_3C[] PROGMEM = "INC A"; 
+const char code_3D[] PROGMEM = "DEC A"; 
+const char code_3E[] PROGMEM = "LD A,n"; 
+const char code_3F[] PROGMEM = "CCF"; 
+const char code_40[] PROGMEM = "LD B,B"; 
+const char code_41[] PROGMEM = "LD B,C"; 
+const char code_42[] PROGMEM = "LD B,D"; 
+const char code_43[] PROGMEM = "LD B,E"; 
+const char code_44[] PROGMEM = "LD B,H"; 
+const char code_45[] PROGMEM = "LD B,L"; 
+const char code_46[] PROGMEM = "LD B,(HL)"; 
+const char code_47[] PROGMEM = "LD B,A"; 
+const char code_48[] PROGMEM = "LD C,B"; 
 const char code_49[] PROGMEM = "LD C,C"; 
 const char code_4A[] PROGMEM = "LD C,D"; 
 const char code_4B[] PROGMEM = "LD C,E"; 
@@ -120,33 +120,33 @@ const char code_72[] PROGMEM = "LD (HL),D";
 const char code_73[] PROGMEM = "LD (HL),E"; 
 const char code_74[] PROGMEM = "LD (HL),H"; 
 const char code_75[] PROGMEM = "LD (HL),L"; 
-const char code_76[] PROGMEM = "\1HLT"; 
-const char code_77[] PROGMEM = "\1LD (HL),A"; 
-const char code_78[] PROGMEM = "\1LD A,B"; 
-const char code_79[] PROGMEM = "\1LD A,C"; 
-const char code_7A[] PROGMEM = "\1LD A,D"; 
-const char code_7B[] PROGMEM = "\1LD A,E"; 
-const char code_7C[] PROGMEM = "\1LD A,H"; 
-const char code_7D[] PROGMEM = "\1LD A,L"; 
-const char code_7E[] PROGMEM = "\1LD A,(HL)"; 
-const char code_7F[] PROGMEM = "\1LD A,A"; 
-const char code_80[] PROGMEM = "\1ADD A,B"; 
-const char code_81[] PROGMEM = "\1ADD A,C"; 
-const char code_82[] PROGMEM = "\1ADD A,D"; 
-const char code_83[] PROGMEM = "\1ADD A,E"; 
-const char code_84[] PROGMEM = "\1ADD A,H"; 
-const char code_85[] PROGMEM = "\1ADD A,L"; 
-const char code_86[] PROGMEM = "\1ADD A,(HL)"; 
-const char code_87[] PROGMEM = "\1ADD A,A"; 
-const char code_88[] PROGMEM = "\1ADC A,B"; 
-const char code_89[] PROGMEM = "\1ADC A,C"; 
-const char code_8A[] PROGMEM = "\1ADC A,D"; 
-const char code_8B[] PROGMEM = "\1ADC A,E"; 
-const char code_8C[] PROGMEM = "\1ADC A,H"; 
-const char code_8D[] PROGMEM = "\1ADC A,L"; 
-const char code_8E[] PROGMEM = "\1ADC A,(HL)"; 
-const char code_8F[] PROGMEM = "\1ADC A,A"; 
-const char code_90[] PROGMEM = "\1SUB B"; 
+const char code_76[] PROGMEM = "HALT"; 
+const char code_77[] PROGMEM = "LD (HL),A"; 
+const char code_78[] PROGMEM = "LD A,B"; 
+const char code_79[] PROGMEM = "LD A,C"; 
+const char code_7A[] PROGMEM = "LD A,D"; 
+const char code_7B[] PROGMEM = "LD A,E"; 
+const char code_7C[] PROGMEM = "LD A,H"; 
+const char code_7D[] PROGMEM = "LD A,L"; 
+const char code_7E[] PROGMEM = "LD A,(HL)"; 
+const char code_7F[] PROGMEM = "LD A,A"; 
+const char code_80[] PROGMEM = "ADD A,B"; 
+const char code_81[] PROGMEM = "ADD A,C"; 
+const char code_82[] PROGMEM = "ADD A,D"; 
+const char code_83[] PROGMEM = "ADD A,E"; 
+const char code_84[] PROGMEM = "ADD A,H"; 
+const char code_85[] PROGMEM = "ADD A,L"; 
+const char code_86[] PROGMEM = "ADD A,(HL)"; 
+const char code_87[] PROGMEM = "ADD A,A"; 
+const char code_88[] PROGMEM = "ADC A,B"; 
+const char code_89[] PROGMEM = "ADC A,C"; 
+const char code_8A[] PROGMEM = "ADC A,D"; 
+const char code_8B[] PROGMEM = "ADC A,E"; 
+const char code_8C[] PROGMEM = "ADC A,H"; 
+const char code_8D[] PROGMEM = "ADC A,L"; 
+const char code_8E[] PROGMEM = "ADC A,(HL)"; 
+const char code_8F[] PROGMEM = "ADC A,A"; 
+const char code_90[] PROGMEM = "SUB B"; 
 const char code_91[] PROGMEM = "SUB C"; 
 const char code_92[] PROGMEM = "SUB D"; 
 const char code_93[] PROGMEM = "SUB E"; 
@@ -169,7 +169,7 @@ const char code_A3[] PROGMEM = "AND E";
 const char code_A4[] PROGMEM = "AND H"; 
 const char code_A5[] PROGMEM = "AND L"; 
 const char code_A6[] PROGMEM = "AND (HL)"; 
-const char code_A7[] PROGMEM = "\1AND A"; 
+const char code_A7[] PROGMEM = "AND A"; 
 const char code_A8[] PROGMEM = "XOR B"; 
 const char code_A9[] PROGMEM = "XOR C"; 
 const char code_AA[] PROGMEM = "XOR D"; 
@@ -206,7 +206,7 @@ const char code_C8[] PROGMEM = "RET Z";
 const char code_C9[] PROGMEM = "RET"; 
 const char code_CA[] PROGMEM = "JP Z,nn"; 
 const char code_CB[] PROGMEM = "*CB"; 
-/*
+
 const char code_CB00[] PROGMEM = "RLC B"; 
 const char code_CB01[] PROGMEM = "RLC C"; 
 const char code_CB02[] PROGMEM = "RLC D"; 
@@ -455,7 +455,7 @@ const char code_CBFC[] PROGMEM = "SET 7,H";
 const char code_CBFD[] PROGMEM = "SET 7,L"; 
 const char code_CBFE[] PROGMEM = "SET 7,(HL)"; 
 const char code_CBFF[] PROGMEM = "SET 7,A"; 
-*/
+
 const char code_CC[] PROGMEM = "CALL Z,nn"; 
 const char code_CD[] PROGMEM = "CALL nn"; 
 const char code_CE[] PROGMEM = "ADC A,n"; 
@@ -463,7 +463,7 @@ const char code_CF[] PROGMEM = "RST 8";
 const char code_D0[] PROGMEM = "RET NC"; 
 const char code_D1[] PROGMEM = "POP DE"; 
 const char code_D2[] PROGMEM = "JP NC,nn"; 
-const char code_D3[] PROGMEM = "\x01OUT (n),A"; 
+const char code_D3[] PROGMEM = "OUT (n),A"; 
 const char code_D4[] PROGMEM = "CALL NC,nn"; 
 const char code_D5[] PROGMEM = "PUSH DE"; 
 const char code_D6[] PROGMEM = "SUB n"; 
@@ -474,7 +474,7 @@ const char code_DA[] PROGMEM = "JP C,nn";
 const char code_DB[] PROGMEM = "IN A,(n)"; 
 const char code_DC[] PROGMEM = "CALL C,nn"; 
 const char code_DD[] PROGMEM = "*DD"; 
-/*
+
 const char code_DD09[] PROGMEM = "ADD IX,BC"; 
 const char code_DD19[] PROGMEM = "ADD IX,DE"; 
 const char code_DD21[] PROGMEM = "LD IX,nn"; 
@@ -499,7 +499,7 @@ const char code_DD72[] PROGMEM = "LD (IX+nn),D";
 const char code_DD73[] PROGMEM = "LD (IX+nn),E"; 
 const char code_DD74[] PROGMEM = "LD (IX+nn),H"; 
 const char code_DD75[] PROGMEM = "LD (IX+nn),L"; 
-const char code_DD76n[] PROGMEM = "LD (IX+nn),n"; 
+const char code_DD76[] PROGMEM = "LD (IX+nn),n"; 
 const char code_DD77[] PROGMEM = "LD (IX+nn),A"; 
 const char code_DD7E[] PROGMEM = "LD A,(IX+nn)"; 
 const char code_DD86[] PROGMEM = "ADD A,(IX+nn)"; 
@@ -510,6 +510,7 @@ const char code_DDA6[] PROGMEM = "AND (IX+nn)";
 const char code_DDAE[] PROGMEM = "XOR (IX+nn)"; 
 const char code_DDB6[] PROGMEM = "OR (IX+nn)"; 
 const char code_DDBE[] PROGMEM = "CP (IX+nn)"; 
+/*
 const char code_DDCBnn06[] PROGMEM = "RLC (IX+nn)"; 
 const char code_DDCBnn0E[] PROGMEM = "RRC (IX+nn)"; 
 const char code_DDCBnn16[] PROGMEM = "RL (IX+nn)"; 
@@ -555,15 +556,15 @@ const char code_E2[] PROGMEM = "JP PO,nn";
 const char code_E3[] PROGMEM = "EX (SP),HL"; 
 const char code_E4[] PROGMEM = "CALL PO,nn"; 
 const char code_E5[] PROGMEM = "PUSH HL"; 
-const char code_E6[] PROGMEM = "\02AND n"; 
-const char code_E7[] PROGMEM = "\01RST 20H"; 
-const char code_E8[] PROGMEM = "\01RET PE"; 
-const char code_E9[] PROGMEM = "\03JP (HL)"; 
-const char code_EA[] PROGMEM = "\03JP PE,nn"; 
-const char code_EB[] PROGMEM = "\01EX DE,HL"; 
-const char code_EC[] PROGMEM = "\03CALL PE,nn"; 
+const char code_E6[] PROGMEM = "AND n"; 
+const char code_E7[] PROGMEM = "RST 20H"; 
+const char code_E8[] PROGMEM = "RET PE"; 
+const char code_E9[] PROGMEM = "JP (HL)"; 
+const char code_EA[] PROGMEM = "JP PE,nn"; 
+const char code_EB[] PROGMEM = "EX DE,HL"; 
+const char code_EC[] PROGMEM = "CALL PE,nn"; 
 const char code_ED[] PROGMEM = "*ED"; 
-/*
+
 const char code_ED40[] PROGMEM = "IN B,(C)"; 
 const char code_ED41[] PROGMEM = "OUT (C),B"; 
 const char code_ED42[] PROGMEM = "SBC HL,BC"; 
@@ -622,8 +623,8 @@ const char code_EDB8[] PROGMEM = "LDDR";
 const char code_EDB9[] PROGMEM = "CPDR"; 
 const char code_EDBA[] PROGMEM = "INDR"; 
 const char code_EDBB[] PROGMEM = "OTDR"; 
-*/
-const char code_EE[] PROGMEM = "\x02XOR n"; 
+
+const char code_EE[] PROGMEM = "XOR n"; 
 const char code_EF[] PROGMEM = "RST 28H"; 
 const char code_F0[] PROGMEM = "RET P"; 
 const char code_F1[] PROGMEM = "POP AF"; 
@@ -637,9 +638,9 @@ const char code_F8[] PROGMEM = "RET M";
 const char code_F9[] PROGMEM = "LD SP,HL"; 
 const char code_FA[] PROGMEM = "JP M,nn"; 
 const char code_FB[] PROGMEM = "EI"; 
-const char code_FC[] PROGMEM = "\03CALL M,nn"; 
+const char code_FC[] PROGMEM = "CALL M,nn"; 
 const char code_FD[] PROGMEM = "*FD"; 
-/*
+
 const char code_FD09[] PROGMEM = "ADD IY,BC"; 
 const char code_FD19[] PROGMEM = "ADD IY,DE"; 
 const char code_FD21[] PROGMEM = "LD IY,nn"; 
@@ -675,6 +676,7 @@ const char code_FDA6[] PROGMEM = "AND (IY+nn)";
 const char code_FDAE[] PROGMEM = "XOR (IY+nn)"; 
 const char code_FDB6[] PROGMEM = "OR (IY+nn)"; 
 const char code_FDBE[] PROGMEM = "CP (IY+nn)"; 
+/*
 const char code_FDCBnn06[] PROGMEM = "RLC (IY+nn)"; 
 const char code_FDCBnn0E[] PROGMEM = "RRC (IY+nn)"; 
 const char code_FDCBnn16[] PROGMEM = "RL (IY+nn)"; 
@@ -712,8 +714,8 @@ const char code_FDE5[] PROGMEM = "PUSH IY";
 const char code_FDE9[] PROGMEM = "JP (IY)"; 
 const char code_FDF9[] PROGMEM = "LD SP,IY"; 
 */
-const char code_FE[] PROGMEM = "\x02CP n"; 
-const char code_FF[] PROGMEM = "\x01RST 38H"; 
+const char code_FE[] PROGMEM = "CP n"; 
+const char code_FF[] PROGMEM = "RST 38H"; 
 
 const char* const opcode_table[] PROGMEM = {
   code_00, code_01, code_02, code_03, 
@@ -782,12 +784,315 @@ const char* const opcode_table[] PROGMEM = {
   code_FC, code_FD, code_FE, code_FF, 
 };
 
+const char* const opcode_CB_table[] PROGMEM = {
+  code_CB00, code_CB01, code_CB02, code_CB03, 
+  code_CB04, code_CB05, code_CB06, code_CB07,
+  code_CB08, code_CB09, code_CB0A, code_CB0B,
+  code_CB0C, code_CB0D, code_CB0E, code_CB0F,
+  code_CB10, code_CB11, code_CB12, code_CB13,
+  code_CB14, code_CB15, code_CB16, code_CB17,
+  code_CB18, code_CB19, code_CB1A, code_CB1B,
+  code_CB1C, code_CB1D, code_CB1E, code_CB1F,
+  code_CB20, code_CB21, code_CB22, code_CB23,
+  code_CB24, code_CB25, code_CB26, code_CB27,
+  code_CB28, code_CB29, code_CB2A, code_CB2B,
+  code_CB2C, code_CB2D, code_CB2E, code_CB2F,  
+code_CB38,  
+code_CB39,  
+code_CB3A,  
+code_CB3B,  
+code_CB3C,  
+code_CB3D,  
+code_CB3E,  
+code_CB3F,  
+code_CB40,  
+code_CB41,  
+code_CB42,  
+code_CB43,  
+code_CB44,  
+code_CB45,  
+code_CB46,  
+code_CB47,  
+code_CB48,  
+code_CB49,  
+code_CB4A,  
+code_CB4B,  
+code_CB4C,  
+code_CB4D,  
+code_CB4E,  
+code_CB4F,  
+code_CB50,  
+code_CB51,  
+code_CB52,  
+code_CB53,  
+code_CB54,  
+code_CB55,  
+code_CB56,  
+code_CB57,  
+code_CB58,  
+code_CB59,  
+code_CB5A,  
+code_CB5B,  
+code_CB5C,  
+code_CB5D,  
+code_CB5E,  
+code_CB5F,  
+code_CB60,  
+code_CB61,  
+code_CB62,  
+code_CB63,  
+code_CB64,  
+code_CB65,  
+code_CB66,  
+code_CB67,  
+code_CB68,  
+code_CB69,  
+code_CB6A,  
+code_CB6B,  
+code_CB6C,  
+code_CB6D,  
+code_CB6E,  
+code_CB6F,  
+code_CB70,  
+code_CB71,  
+code_CB72,  
+code_CB73,  
+code_CB74,  
+code_CB75,  
+code_CB76,  
+code_CB77,  
+code_CB78,  
+code_CB79,  
+code_CB7A,  
+code_CB7B,  
+code_CB7C,  
+code_CB7D,  
+code_CB7E,  
+code_CB7F,  
+code_CB80,  
+code_CB81,  
+code_CB82,  
+code_CB83,  
+code_CB84,  
+code_CB85,  
+code_CB86,  
+code_CB87,  
+code_CB88,  
+code_CB89,  
+code_CB8A,  
+code_CB8B,  
+code_CB8C,  
+code_CB8D,  
+code_CB8E,  
+code_CB8F,  
+code_CB90,  
+code_CB91,  
+code_CB92,  
+code_CB93,  
+code_CB94,  
+code_CB95,  
+code_CB96,  
+code_CB97,  
+code_CB98,  
+code_CB99,  
+code_CB9A,  
+code_CB9B,  
+code_CB9C,  
+code_CB9D,  
+code_CB9E,  
+code_CB9F,  
+code_CBA0,  
+code_CBA1,  
+code_CBA2,  
+code_CBA3,  
+code_CBA4,  
+code_CBA5,  
+code_CBA6,  
+code_CBA7,  
+code_CBA8,  
+code_CBA9,  
+code_CBAA,  
+code_CBAB,  
+code_CBAC,  
+code_CBAD,  
+code_CBAE,  
+code_CBAF,  
+code_CBB0,  
+code_CBB1,  
+code_CBB2,  
+code_CBB3,  
+code_CBB4,  
+code_CBB5,  
+code_CBB6,  
+code_CBB7,  
+code_CBB8,  
+code_CBB9,  
+code_CBBA,  
+code_CBBB,  
+code_CBBC,  
+code_CBBD,  
+code_CBBE,  
+code_CBBF,  
+code_CBC0,  
+code_CBC1,  
+code_CBC2,  
+code_CBC3,  
+code_CBC4,  
+code_CBC5,  
+code_CBC6,  
+code_CBC7,  
+code_CBC8,  
+code_CBC9,  
+code_CBCA,  
+code_CBCB,  
+code_CBCC,  
+code_CBCD,  
+code_CBCE,  
+code_CBCF,  
+code_CBD0,  
+code_CBD1,  
+code_CBD2,  
+code_CBD3,  
+code_CBD4,  
+code_CBD5,  
+code_CBD6,  
+code_CBD7,  
+code_CBD8,  
+code_CBD9,  
+code_CBDA,  
+code_CBDB,  
+code_CBDC,  
+code_CBDD,  
+code_CBDE,  
+code_CBDF,  
+code_CBE0,  
+code_CBE1,  
+code_CBE2,  
+code_CBE3,  
+code_CBE4,  
+code_CBE5,  
+code_CBE6,  
+code_CBE7,  
+code_CBE8,  
+code_CBE9,  
+code_CBEA,  
+code_CBEB,  
+code_CBEC,  
+code_CBED,  
+code_CBEE,  
+code_CBEF,  
+code_CBF0,  
+code_CBF1,  
+code_CBF2,  
+code_CBF3,  
+code_CBF4,  
+code_CBF5,  
+code_CBF6,  
+code_CBF7,  
+code_CBF8,  
+code_CBF9,  
+code_CBFA,  
+code_CBFB,  
+code_CBFC,  
+code_CBFD,  
+code_CBFE,  
+code_CBFF, 
+};
+
+const char* const opcode_DD_table[] PROGMEM = {
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+NULL, code_DD09, NULL, NULL, NULL, NULL, NULL, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+NULL, code_DD19, NULL, NULL, NULL, NULL, NULL, NULL, 
+NULL, code_DD21, code_DD22, code_DD23, NULL, NULL, NULL, NULL, 
+NULL, code_DD29, code_DD2A, code_DD2B, NULL, NULL, NULL, NULL, 
+NULL, NULL, NULL, NULL, code_DD34, code_DD35, code_DD36, NULL, 
+NULL, code_DD39, NULL, NULL, NULL, NULL, NULL, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DD46, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DD4E, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DD56, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DD5E, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DD66, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DD6E, NULL, 
+code_DD70, code_DD71, code_DD72, code_DD73, code_DD74, code_DD75, code_DD76, code_DD77, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DD7E, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DD86, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DD8E, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DD96, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DD9E, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DDA6, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DDAE, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DDB6, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_DDBE, NULL, 
+};
+
+const char* const opcode_FD_table[] PROGMEM = {
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+NULL, code_FD09, NULL, NULL, NULL, NULL, NULL, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+NULL, code_FD19, NULL, NULL, NULL, NULL, NULL, NULL, 
+NULL, code_FD21, code_FD22, code_FD23, NULL, NULL, NULL, NULL, 
+NULL, code_FD29, code_FD2A, code_FD2B, NULL, NULL, NULL, NULL, 
+NULL, NULL, NULL, NULL, code_FD34, code_FD35, code_FD36, NULL, 
+NULL, code_FD39, NULL, NULL, NULL, NULL, NULL, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FD46, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FD4E, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FD56, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FD5E, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FD66, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FD6E, NULL, 
+code_FD70, code_FD71, code_FD72, code_FD73, code_FD74, code_FD75, code_FD76, code_FD77, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FD7E, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FD86, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FD8E, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FD96, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FD9E, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FDA6, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FDAE, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FDB6, NULL, 
+NULL, NULL, NULL, NULL, NULL, NULL, code_FDBE, NULL, 
+};
+
+const char* const opcode_ED40_table[] PROGMEM = {
+  code_ED40, code_ED41, code_ED42, code_ED43, code_ED44, code_ED45, code_ED46, code_ED47, 
+  code_ED48, code_ED49, code_ED4A, code_ED4B, NULL,      code_ED4D, NULL,      code_ED4F, 
+  code_ED50, code_ED51, code_ED52, code_ED53, NULL,      NULL,      code_ED56, code_ED57, 
+  code_ED58, code_ED59, code_ED5A, code_ED5B, NULL,      NULL,      code_ED5E, code_ED5F, 
+  code_ED60, code_ED61, code_ED62, code_ED63, NULL,      NULL,      NULL,      code_ED67, 
+  code_ED68, code_ED69, code_ED6A, code_ED6B, NULL,      NULL,      NULL,      code_ED6F, 
+  NULL,      NULL,      code_ED72, code_ED73, NULL,      NULL,      NULL,      NULL,      
+  code_ED78, code_ED79, code_ED7A, code_ED7B, NULL,      NULL,      NULL,      NULL,      
+  NULL,      NULL,      NULL,      NULL,      NULL,      NULL,      NULL,      NULL,      
+  NULL,      NULL,      NULL,      NULL,      NULL,      NULL,      NULL,      NULL,      
+  NULL,      NULL,      NULL,      NULL,      NULL,      NULL,      NULL,      NULL,      
+  NULL,      NULL,      NULL,      NULL,      NULL,      NULL,      NULL,      NULL,      
+  code_EDA0, code_EDA1, code_EDA2, code_EDA3, NULL,      NULL,      NULL,      NULL,      
+  code_EDA8, code_EDA9, code_EDAA, code_EDAB, NULL,      NULL,      NULL,      NULL,      
+  code_EDB0, code_EDB1, code_EDB2, code_EDB3, NULL,      NULL,      NULL,      NULL,      
+  code_EDB8, code_EDB9, code_EDBA, code_EDBB,
+}; 
 // Then set up a table to refer to your strings.
 //    strcpy_P(buffer, (char*)pgm_read_word(&(string_table[i]))); // Necessary casts and dereferencing, just 
 
 char * opcode(uint32_t code, char * buf) {
-  int i = code & 0xff;
-  strcpy_P(buf, (char*)pgm_read_word(&(opcode_table[i])));
+  if ( code < 256 ) {
+    strcpy_P(buf, (char*)pgm_read_word(&(opcode_table[code])));
+  } else {
+    buf[0] = 0;
+    if ( (code & 0xff00) == 0xcb00 ) {
+      strcpy_P(buf, (char*)pgm_read_word(&(opcode_CB_table[code & 0xff])));
+    } else if ( (code & 0xff00) == 0xdd00 ) {
+      if ( (code & 0xff) < 0xc0 )
+        strcpy_P(buf, (char*)pgm_read_word(&(opcode_DD_table[code & 0xff])));
+    } else if ( (code & 0xff00) == 0xed00 ) {
+      if ( (code & 0xff) <= 0xbb && (code & 0xff) >= 0x40 )
+        if ( (char*)pgm_read_word(&(opcode_ED40_table[(code & 0xff) - 0x40])) )
+        strcpy_P(buf, (char*)pgm_read_word(&(opcode_ED40_table[(code & 0xff) - 0x40])));
+    } else if ( (code & 0xff00) == 0xfd00 ) {
+      if ( (code & 0xff) < 0xc0 )
+        strcpy_P(buf, (char*)pgm_read_word(&(opcode_FD_table[code & 0xff])));
+    }
+  }
   return buf;
 }
 

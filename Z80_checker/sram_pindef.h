@@ -7,23 +7,25 @@
 #define SRAM_ADDRH_PORT   PORTC
 #define SRAM_ADDRL_MASK   0xff
 #define SRAM_ADDRH_MASK   0xff
-#define SRAM_DATA_PORT    PORTF
+#define SRAM_ADDRX_PORT   PORTH
+#define SRAM_ADDRX_MASK   0x01
+#define SRAM_ADDRX_PIN    17
+
+#define SRAM_DATA_OUT     PORTA
+#define SRAM_DATA_IN      PINA
+#define SRAM_DATA_DDR     DDRA
 #define SRAM_DATA_MASK    0xff
 
-// PH0
-#define SRAM_BANK_PORT    PORTH
-#define SRAM_BANK_MASK    0x01
-#define SRAM_BANK_PIN     17
+// PD7
+#define SRAM_CS_PIN       38
 
-
-// PG5
-#define SRAM_CS_PIN       4
 // RD, WR, ALE
-//#define SRAM_ALE_PIN    39
+#define SRAM_ALE_PIN    39
 #define SRAM_OE_PIN       40
 #define SRAM_WE_PIN       41
-// PH6
-#define SRAM_E2_PIN       9
+
+//VCC
+//#define SRAM_E2_PIN       9
 
 #endif /* _SRAM_PINDEF_H_ */
 

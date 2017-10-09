@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include "Z80_pindef.h"
 
-void Z80_init();
+uint8_t Z80_bus_init();
 uint8_t Z80_bus_activate(void);
 uint8_t Z80_bus_request();
 void Z80_reset(void);

@@ -13,7 +13,7 @@
 #include "SPISRAM.h"
 
 SPISRAM::SPISRAM(const byte csPin, const byte addr_width) :
-		_csPin(csPin), _addrbus(addr_width), _writeptr(0), _readptr(0) {
+		_csPin(csPin), _buswidth(addr_width), _readptr(0), _writeptr(0) {
 }
 
 bool SPISRAM::init() {
@@ -28,7 +28,7 @@ bool SPISRAM::init() {
 	deselect();
 	_writeptr = 0;
 	_readptr = 0;
-	return t = SEQ_MODE;
+	return (t == SEQ_MODE);
 }
 
 byte SPISRAM::read(const long & address) {
@@ -72,24 +72,25 @@ void SPISRAM::write(const long & address, byte *buffer, const long & size) {
 
 
 int SPISRAM::available(void) {
-	if (_addrbus == 16 ) {
-		if ( _writeptr >= _readptr )
-			return _writeptr - _readptr;
-		return _writeptr + 0x10000 - _readptr;
-	} else if (_addrbus == 24 ) {
+	if (_buswidth == 24 ) {
 		if ( _writeptr >= _readptr )
 			return _writeptr - _readptr;
 		return _writeptr + 0x1000000 - _readptr;
+	} else {
+	//	if (_buswidth == 16 ) {
+		if ( _writeptr >= _readptr )
+			return _writeptr - _readptr;
+		return _writeptr + 0x10000 - _readptr;
 	}
 }
 
-
+/*
 void SPISRAM::setSPIMode(void) {
 	SPI.setBitOrder(MSBFIRST);
 	SPI.setClockDivider(SPI_CLOCK_DIV4);
 	SPI.setDataMode(SPI_MODE0);
 }
-
+*/
 void SPISRAM::csLow() {
 	digitalWrite(_csPin, LOW);
 }
@@ -99,10 +100,13 @@ void SPISRAM::csHigh() {
 }
 
 void SPISRAM::select(void) {
-	setSPIMode();
+	//SPI.beginTransaction(SPISettings(20000000,MSBFIRST,SPI_MODE0));
+	SPI.beginTransaction(SPISettings(20000000,MSBFIRST,SPI_MODE0));
 	csLow();
+	//setSPIMode();
 }
 
 void SPISRAM::deselect(void) {
 	csHigh();
+	SPI.endTransaction();
 }

@@ -21,7 +21,7 @@
 class SPISRAM : public Stream {
 private:
 	const byte _csPin;
-	const byte _addrbus;
+	const byte _buswidth;
 	long _readptr, _writeptr;
 //	byte clock_divider;
 //	byte spi_mode;
@@ -43,7 +43,7 @@ private:
 
 	void set_access(const byte mode, const long & address) {
 		SPI.transfer(mode);
-		if (_addrbus == BUS_MBits)
+		if (_buswidth == BUS_MBits)
 			SPI.transfer(address >> 16 & 0xff);
 		SPI.transfer(address >> 8 & 0xff);
 		SPI.transfer(address & 0xff);
@@ -70,13 +70,13 @@ public:
 
 	SPISRAM(const byte csPin, const byte addrwidth = BUS_WIDTH_23K256);
 
-	byte buswidth() const { return _addrbus; }
+	byte buswidth() const { return _buswidth; }
 
 	bool init();
 	inline bool begin() {
 		return init();
 	}
-	inline void setSPIMode();
+	//inline void setSPIMode();
 
 	byte read(const long & address);
 	byte operator[](const long & address) { return read(address); }

@@ -2,20 +2,15 @@
 #include "Z80.h"
 #include "sram.h"
 
-void clock_start(uint8_t presc, uint16_t top);
-void clock_enable();
-void clock_disable();
+void OC1A_start(uint8_t presc, uint16_t top);
+void OC1A_enable();
+void OC1A_disable();
 
-void atmega_sramcontrol_mode(uint8_t);
-void atmega_addrbus_mode(uint8_t);
-void atmega_databus_mode(uint8_t);
-uint16_t addrbus(void);
-uint8_t databus(void);
-uint8_t databus_write(uint8_t);
+uint32_t sram_check(uint32_t maxaddr);
 
 char * opcode(uint32_t code, char * buf);
 
-const uint16_t mem_size = 256;
+const uint16_t mem_size = (1<<8);
 uint8_t mem[mem_size] = {
 0x31, 0xff, 0x00, 0x21, 0x18, 0x00, 0x06, 0x00, 
 0x78, 0x3c, 0x32, 0x27, 0x00, 0x47, 0x7e, 0xa7, 
@@ -45,49 +40,35 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(19200);
   Serial.println("Hi.");
-
-  sram_bus_init();
-  sram_bank(0);
-  sram_disable();
-
-  atmega_sramcontrol_mode(INPUT);
-  atmega_addrbus_mode(INPUT);
-  atmega_databus_mode(INPUT);
   
-  Serial.println("init Z80 and inactivate.");
-  clock_start(5, 800);
-  clock_enable();
-  Z80_init();
-  Z80_reset();
-  Serial.println("resetted.");
-  Z80_bus_activate();
-  Z80_bus_request();
-  Serial.println("bus requested.");
-
-
-  Serial.println("write sram.");
-  sram_bus_init(); // also enables
+  sram_bus_init(); 
   sram_select();
-  for(uint16_t i = 0; i < 256; i++) {
+
+  //Serial.print("sram check ");
+  //Serial.println(sram_check(0x20000), HEX);
+
+  Serial.println("loading program...");
+  for(uint16_t i = 0; i < mem_size; i++) {
     sram_write(i,mem[i]);
   }
-  for(uint16_t i = 0; i < 256; i++) {
+  for(uint16_t i = 0; i < mem_size; i++) {
+    if ( (i&0x0f) == 0 ) {
+      Serial.println();
+      Serial.print(hexstr(i,4));
+      Serial.print(": ");
+    }
     Serial.print(hexstr(sram_read(i),2));
     Serial.print(" ");
-    if ( (i & 0x0f) == 0x0f )
-      Serial.println();
   }
   Serial.println();
   sram_deselect();
-  sram_disable();
-  atmega_sramcontrol_mode(INPUT);
-  atmega_addrbus_mode(INPUT);
-  atmega_databus_mode(INPUT);
 
-  Serial.println("Z80 reset.");
-  Z80_bus_activate();
+  OC1A_start(5, 1600);
+  OC1A_enable();
+  Z80_bus_init();
   Z80_reset();
 
+  DDRL = 0x00; DDRK = 0x00;
 }
 
 void loop() {
@@ -98,12 +79,12 @@ void loop() {
 
   if ( Z80_mreq_read() ) {
     m1 = Z80_m1();
-    atmega_databus_mode(OUTPUT);
-    addr = addrbus();
+    addr = (PINL | (uint16_t) PINK<<8);
     data = mem[addr & 0xff];
-    databus_write(data);
+    DDRF = 0xff;
+    PORTF = data;
     while ( Z80_mreq_read() );
-    atmega_databus_mode(INPUT);
+    DDRF = 0x00;
     if ( m1 ) {
       Serial.print(" M  ");
       Serial.print("[");
@@ -124,9 +105,9 @@ void loop() {
       Serial.println();
     }
   } else if ( Z80_mreq_write() ) {
-    atmega_databus_mode(INPUT);
-    addr = addrbus();
-    data = databus();
+    addr = (PINL | (uint16_t) PINK<<8);
+    DDRF = 0x00; PORTF = 0;
+    data = PINF;
     mem[addr & 0xff] = data;
     while ( Z80_mreq_write() );
     Serial.print("  W ");
@@ -137,21 +118,21 @@ void loop() {
     Serial.println();
   } else if ( Z80_iorq_read() ) {
     Z80_wait_request();
-    atmega_databus_mode(OUTPUT);
-    addr = addrbus();
-    data = databus_write(0xaa);
+    DDRF = 0xff;
+    addr = (PINL | (uint16_t) PINK<<8);
+    PORTF = 0xaa;
     Z80_wait_cancel();
     while ( Z80_iorq_read() );
-    atmega_databus_mode(INPUT);
+    DDRF = 0x00;
     Serial.print(hexstr(addr, 4));
     Serial.print(" I  ");
     Serial.print(hexstr(data,2));
     Serial.println();
   } else if ( Z80_iorq_write() ) {
-    atmega_databus_mode(INPUT);
+    DDRF = 0x00;
     Z80_wait_request();
-    addr = addrbus();
-    data = databus();
+    addr = (PINL | (uint16_t) PINK<<8);
+    data = PINF;
     Z80_wait_cancel();
     while ( Z80_iorq_write() );
     Serial.print("  O ");
@@ -167,20 +148,18 @@ void loop() {
     Serial.println();    
   } else if ( !digitalRead(Z80_HALT_PIN) ) {
     Serial.println("halted.");
-    clock_disable();
+    OC1A_disable();
     while ( !digitalRead(Z80_HALT_PIN) );
-    clock_enable();
+    OC1A_enable();
   }
 }
 
-void clock_start(uint8_t presc, uint16_t top) {
+void OC1A_start(uint8_t presc, uint16_t top) {
   const uint8_t MODE = 4;
-
   cli();
   
-  TCCR1A = 0;
-  TCCR1B = 0;
-  TCCR1C = 0;
+  TCCR1A = 0; TCCR1B = 0; TCCR1C = 0; 
+  
   TCNT1 = 0;
   OCR1A = top - 1;
 
@@ -191,54 +170,45 @@ void clock_start(uint8_t presc, uint16_t top) {
   sei();
 }
 
-void clock_disable() {
+void OC1A_disable() {
   pinMode(Z80_CLK_PIN, INPUT);
-  digitalWrite(Z80_CLK_PIN, HIGH);
+  digitalWrite(Z80_CLK_PIN, LOW);
 }
 
-void clock_enable() {
+void OC1A_enable() {
   pinMode(Z80_CLK_PIN, OUTPUT);
 }
 
-void atmega_sramcontrol_mode(uint8_t inout) {
-  pinMode(SRAM_CS_PIN, inout); // Z80_MREQ
-  pinMode(SRAM_OE_PIN, inout); // Z80_RD
-  pinMode(SRAM_WE_PIN, inout); // Z80_WR
-}
 
-void atmega_addrbus_mode(uint8_t inout) {
-  if ( inout == OUTPUT ) {
-    DDRA = 0xff;
-    DDRC = 0xff;
-  } else {
-    DDRA = 0x00;
-    DDRC = 0x00;    
+uint32_t sram_check(uint32_t maxaddr) {
+  uint8_t randbytes[17];
+  uint8_t readout;
+  uint32_t errcount = 0;
+  uint32_t addr;
+  
+  for(uint16_t i = 0; i < 17; ++i) {
+    randbytes[i] = random(0, 256);
   }
-}
 
-void atmega_databus_mode(uint8_t inout) {
-  if ( inout == OUTPUT ) {
-    DDRF = 0xff;
-  } else {
-    DDRF = 0x00;
+  uint32_t block = 0x2000;
+  for(addr = 0; addr < maxaddr; addr += block ) {
+    Serial.println(addr, HEX);
+    for(uint16_t i = 0; i < block; i++) {
+      sram_write(addr+i,randbytes[(addr+i)%17]);
+    }
+    for(uint16_t i = 0; i < block; i++) {
+      readout = sram_read(addr+i);
+      if ( readout != randbytes[(addr+i)%17] ) {
+        errcount++;
+      }
+    }
+    if ( errcount > 0 ) {
+      Serial.print("err occurred: ");
+      Serial.println(errcount);
+      break;
+    }
   }
-}
-
-uint16_t addrbus(void) {
-  return ((uint16_t) PINC)<<8 | PINA;
-}
-
-uint16_t addrbus_write(uint16_t addr) {
-  PORTA = addr & 0xff;
-  PORTC = addr>>8 & 0xff;
   return addr;
 }
 
-uint8_t databus(void) {
-  return PINF;
-}
 
-uint8_t databus_write(uint8_t data) {
-  PORTF = data;
-  return data;
-}
