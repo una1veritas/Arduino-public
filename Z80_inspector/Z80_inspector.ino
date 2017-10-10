@@ -64,7 +64,7 @@ void setup() {
   
   Z80_bus_init();
   Z80_status_init();
-  OC1A_clock_start(4,160);
+  OC1A_clock_start(4,80);
   Serial.println("Z80 is going to reset.");
   Z80_reset(LOW);
   delay(500);
