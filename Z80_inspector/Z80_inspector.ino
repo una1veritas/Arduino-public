@@ -38,7 +38,7 @@ const uint8_t rom0000[rom0000_size] PROGMEM = {
 0x00, 0x17, 
 };
 
-const uint8_t MEM_SKIPCHECK = 1;
+const uint8_t MEM_SKIPCHECK = 0;
 uint32_t longopcode = 0;
 
 void setup() {
@@ -62,10 +62,20 @@ void setup() {
   Serial.println("\nLoad program to SPI Sram");
   spisram_load(rom0000, rom0000_size);
   
+  Serial.println("Waking up Z80.");
   Z80_bus_init();
   Z80_status_init();
-  OC1A_clock_start(4,80);
+  OC1A_clock_start(4,1600);
+  while ( Z80_mreq() && Z80_read() && Z80_M1() );
+  Z80_databus_write(0);
+  Z80_busreq(LOW);
+  while ( Z80_busack() );
+  Z80_databus_mode(INPUT);
+  Serial.println("Z80 inactivated.");
+  
   Serial.println("Z80 is going to reset.");
+  Z80_busreq(HIGH);
+  while ( !Z80_busack() );
   Z80_reset(LOW);
   delay(500);
   Z80_reset(HIGH);
