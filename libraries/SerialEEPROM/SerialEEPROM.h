@@ -14,27 +14,38 @@
 class EEPROM_I2C {
 private:
 	const unsigned char _addr;
-	uint8_t _rx_stat, _tx_stat;
+	const unsigned char _buswidth;
+	uint8_t _txrx_stat;
 
 private:
-	static const byte DEV_ADDRESS = 0x50; // 7 bits followed by R/W bit
+	static const byte DEV_BASE_ADDRESS = 0x50; // 7-bit-address form
+
+	void wire_disable(void);
+	void wire_enable(void);
+
+	byte dev_addr(uint32_t addr);
+	byte ready(void);
 
 public:
-	EEPROM_I2C(const unsigned char addr = 0) : _addr(addr), _rx_stat(0), _tx_stat(0) {
+	enum {
+		BUSWIDTH_512KBIT = 16,  // Microchip 24LC512
+		BUSWIDTH_1024KBIT = 17, // AT24C1024B
+	};
+
+	EEPROM_I2C(const unsigned char addr = 0, const unsigned char buswidth = BUSWIDTH_1024KBIT) :
+		_addr(addr), _buswidth(buswidth), _txrx_stat(0) { }
+
+	byte status(void) {
+		return _txrx_stat;
 	}
 
-	uint8_t reset(void) {
-		_rx_stat = 0;
-		_tx_stat = 0;
-		return 0;
-	}
+	void reset(void); // do I2C software reset
 
-	uint8_t begin(void) {
-		return reset();
-	}
+	uint8_t begin(void) { return ready(); }
 
-	uint8_t read(uint16_t addr);
-	uint8_t write(uint16_t addr, uint8_t data);
+	byte read(uint32_t addr);
+	byte raw_write(uint32_t addr, byte data);
+	byte write(uint32_t addr, byte data);
 };
 
 
