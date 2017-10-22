@@ -4,6 +4,7 @@
 #include "sram_def.h"
 
 void sram_bus_init() ;
+void sram_bus_release();
 void sram_select();
 void sram_deselect();
 

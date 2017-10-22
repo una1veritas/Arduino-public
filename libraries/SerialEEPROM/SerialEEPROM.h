@@ -13,8 +13,8 @@
 
 class EEPROM_I2C {
 private:
-	const unsigned char _addr;
-	const unsigned char _buswidth;
+	unsigned char _devaddr;
+	unsigned char _buswidth;
 	uint8_t _txrx_stat;
 
 private:
@@ -32,8 +32,7 @@ public:
 		BUSWIDTH_1024KBIT = 17, // AT24C1024B
 	};
 
-	EEPROM_I2C(const unsigned char addr = 0, const unsigned char buswidth = BUSWIDTH_1024KBIT) :
-		_addr(addr), _buswidth(buswidth), _txrx_stat(0) { }
+	EEPROM_I2C(const unsigned char addr = 0, const unsigned char buswidth = BUSWIDTH_1024KBIT);
 
 	byte status(void) {
 		return _txrx_stat;
@@ -41,11 +40,15 @@ public:
 
 	void reset(void); // do I2C software reset
 
-	uint8_t begin(void) { return ready(); }
+	byte begin(void) { return ready(); }
 
 	byte read(uint32_t addr);
-	byte raw_write(uint32_t addr, byte data);
 	byte write(uint32_t addr, byte data);
+	byte update(uint32_t addr, byte data);
+
+	byte * read(uint32_t addr, byte * dataptr, uint16_t nbytes);
+	byte * write(uint32_t addr, byte * dataptr, uint16_t nbytes);
+	byte * update(uint32_t addr, byte * dataptr, uint16_t nbytes);
 };
 
 

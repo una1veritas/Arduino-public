@@ -12,7 +12,7 @@ void sram_bus_init() {
   DDR(SRAM_DATA_OUT) = 0x00; 
 
   pinMode(SRAM_ALE_OE_PIN,OUTPUT);
-  digitalWrite(SRAM_ALE_PIN,HIGH);
+  digitalWrite(SRAM_ALE_OE_PIN,HIGH);
   pinMode(SRAM_ALE_PIN,OUTPUT);
   digitalWrite(SRAM_ALE_PIN,LOW);
   
@@ -22,6 +22,21 @@ void sram_bus_init() {
   digitalWrite(SRAM_CS_PIN,HIGH);
   digitalWrite(SRAM_OE_PIN,HIGH);
   digitalWrite(SRAM_WE_PIN,HIGH);
+}
+
+void sram_bus_release() {
+  DDR(SRAM_ADDRL_PORT) = 0; 
+  DDR(SRAM_ADDRH_PORT) = 0; 
+  DDR(SRAM_DATA_OUT) = 0; 
+  pinMode(SRAM_CS_PIN,INPUT);
+  pinMode(SRAM_OE_PIN,INPUT);
+  pinMode(SRAM_WE_PIN,INPUT);
+  digitalWrite(SRAM_CS_PIN,HIGH);
+  digitalWrite(SRAM_OE_PIN,HIGH);
+  digitalWrite(SRAM_WE_PIN,HIGH);
+
+  pinMode(SRAM_ALE_OE_PIN,OUTPUT);
+  digitalWrite(SRAM_ALE_OE_PIN,HIGH);
 }
 
 void sram_select() {
@@ -48,9 +63,10 @@ void sram_bank(uint8_t bank) {
 uint8_t sram_read(uint16_t addr) {
   unsigned char val;
   SRAM_DATA_OUT = 0x00;
-  addr16_set(addr);
   SRAM_DATA_DDR = 0x00; /*&= ~SRAM_DATA_MASK; */
+  addr16_set(addr);
   digitalWrite(SRAM_OE_PIN,LOW);
+  //__asm__ __volatile("NOP");
   val = SRAM_DATA_IN;
   digitalWrite(SRAM_OE_PIN,HIGH);
   return val;

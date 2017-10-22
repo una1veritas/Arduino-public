@@ -38,33 +38,33 @@ void EEPROM_I2C::reset(void) {
 
 	// start bit
 	digitalWrite(SCL,HIGH);
-	delayMicroseconds(10);
+	delayMicroseconds(5);
 	digitalWrite(SDA,LOW);
-	delayMicroseconds(10);
+	delayMicroseconds(5);
 	digitalWrite(SCL,LOW);
-	delayMicroseconds(10);
+	delayMicroseconds(5);
 	digitalWrite(SDA, HIGH);
-	delayMicroseconds(10);
+	delayMicroseconds(5);
 	for(int i = 0; i < 9; ++i) {
 		digitalWrite(SCL,HIGH);
-		delayMicroseconds(20);
+		delayMicroseconds(10);
 		digitalWrite(SCL,LOW);
-		delayMicroseconds(20);
+		delayMicroseconds(10);
 	}
 	digitalWrite(SCL,HIGH);
-	delayMicroseconds(10);
+	delayMicroseconds(5);
 	digitalWrite(SDA,LOW);
-	delayMicroseconds(10);
+	delayMicroseconds(5);
 	digitalWrite(SCL,LOW);
-	delayMicroseconds(20);
+	delayMicroseconds(10);
 
 	digitalWrite(SCL,HIGH);
-	delayMicroseconds(10);
+	delayMicroseconds(5);
 	digitalWrite(SDA,HIGH);
-	delayMicroseconds(10);
+	delayMicroseconds(5);
 	digitalWrite(SCL,LOW);
 
-	delayMicroseconds(20);
+	delayMicroseconds(10);
 	digitalWrite(SCL,HIGH);
 
 	pinMode(SDA, INPUT);
@@ -74,13 +74,24 @@ void EEPROM_I2C::reset(void) {
 	_txrx_stat = 0;
 }
 
-uint8_t EEPROM_I2C::dev_addr(uint32_t addr) {
-	uint8_t devaddr = DEV_BASE_ADDRESS;
+EEPROM_I2C::EEPROM_I2C(const unsigned char addr, const unsigned char buswidth) {
+	_devaddr = DEV_BASE_ADDRESS;
+	_buswidth = buswidth;
+	_txrx_stat = 0;
 	if ( _buswidth == BUSWIDTH_1024KBIT ) {
-		devaddr |= (_addr & 0x06) | (addr>>16 & 0x01);
+		_devaddr |= ((addr & 0x03)<<1);
+	} else if ( _buswidth == BUSWIDTH_512KBIT ) {
+		_devaddr |= (addr & 0x07);
 	}
-	return DEV_BASE_ADDRESS;
 }
+
+uint8_t EEPROM_I2C::dev_addr(uint32_t addr) {
+	if ( _buswidth == BUSWIDTH_1024KBIT ) {
+		return (_devaddr | (addr>>16 & 1));
+	}
+	return _devaddr;
+}
+
 uint8_t EEPROM_I2C::read(uint32_t addr) {
 	uint8_t val = 0;
     Wire.beginTransmission( dev_addr(addr) );
@@ -95,31 +106,81 @@ uint8_t EEPROM_I2C::read(uint32_t addr) {
     return val;
 }
 
-uint8_t EEPROM_I2C::raw_write(uint32_t addr, uint8_t data) {
+uint8_t EEPROM_I2C::write(uint32_t addr, uint8_t data) {
     Wire.beginTransmission( dev_addr(addr) );
     Wire.write( (byte) (addr >> 8) );
     Wire.write( (byte) addr );
     Wire.write(data);
     _txrx_stat = Wire.endTransmission();
-    if (_txrx_stat != 0) return data;
+    if (_txrx_stat != 0) return 0;
 
-    //wait up to 50ms for the write to complete
-    for (uint8_t i=100; i; --i) {
-        delayMicroseconds(500);                    //no point in waiting too fast
-        Wire.beginTransmission( dev_addr(addr) );
-        Wire.write((byte)0);        //high addr byte
-        Wire.write((byte)0);                              //low addr byte
-        _txrx_stat = Wire.endTransmission();
-        if (_txrx_stat == 0) break;
+    for (uint8_t i=10; i; --i) {
+        delay(1);                    //no point in waiting too fast
+        if ( ready() )
+        	break;
     }
+    if (_txrx_stat != 0) return 0;
     return data;
 }
 
-uint8_t EEPROM_I2C::write(uint32_t addr, uint8_t data) {
+uint8_t EEPROM_I2C::update(uint32_t addr, uint8_t data) {
 	uint8_t readout = read(addr);
 	if ( status() )
 		return 0;
 	if ( readout != data )
-		return raw_write(addr, data);
+		return write(addr, data);
 	return data;
+}
+
+byte * EEPROM_I2C::read(uint32_t addr, byte * dataptr, uint16_t nbytes) {
+	uint16_t ntrans;
+
+	for(uint16_t n = 0; n < nbytes; n += ntrans) {
+		ntrans = (nbytes - n) > BUFFER_LENGTH ? BUFFER_LENGTH : (nbytes - n);
+	    Wire.beginTransmission( dev_addr(addr) );
+	    Wire.write( (byte) (addr >> 8) );
+	    Wire.write( (byte) addr );
+	    _txrx_stat = Wire.endTransmission();
+	    if (_txrx_stat != 0)
+	    	return NULL;        //read error
+	    Wire.requestFrom( dev_addr(addr), (uint8_t) ntrans);
+		if (_txrx_stat != 0) return NULL;
+	    for(unsigned int i = 0; i < ntrans; ++i)
+	    	dataptr[n+i] = Wire.read();
+
+	    addr += ntrans;
+	}
+	return dataptr;
+}
+
+byte * EEPROM_I2C::write(uint32_t addr, byte * dataptr, uint16_t nbytes) {
+	unsigned char ntrans;
+	for(unsigned int n = 0; n < nbytes; n += ntrans) {
+		ntrans = (nbytes - n) > BUFFER_LENGTH ? BUFFER_LENGTH : (nbytes - n);
+		if ( (addr & 0xff00) != ((addr+ntrans) & 0xff00) ) {
+			ntrans -= ((addr + ntrans) & 0x00ff);
+		}
+		Wire.beginTransmission( dev_addr(addr) );
+		Wire.write( (byte) (addr >> 8) );
+		Wire.write( (byte) addr );
+		Wire.write( dataptr+n, ntrans);
+		_txrx_stat = Wire.endTransmission();
+		for (uint8_t i=10; i; --i) {
+			delay(1);                    //no point in waiting too fast
+			if ( ready() )
+				break;
+		}
+		if (_txrx_stat != 0) return NULL;
+
+		addr += ntrans;
+	}
+	return dataptr;
+}
+byte * EEPROM_I2C::update(uint32_t addr, byte * dataptr, uint16_t nbytes) {
+	for(byte i = 0; i < nbytes; ++i) {
+		update(addr+i,dataptr[i]);
+		if ( status() )
+			return NULL;
+	}
+	return dataptr;
 }

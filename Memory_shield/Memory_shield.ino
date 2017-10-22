@@ -1,5 +1,10 @@
+#include <SPI.h>
+#include <Wire.h>
+
+#include "common.h"
 #include "sram.h"
-#include "sd_def.h"
+#include "mega_def.h"
+#include "Z80.h"
 
 uint32_t sram_check(uint32_t maxaddr) {
   uint8_t randbytes[17];
@@ -29,10 +34,19 @@ uint32_t sram_check(uint32_t maxaddr) {
       //Serial.print(hexstr(readout, 2));
       //Serial.print(" ");
       if ( readout != randbytes[(addr+i)%17] ) {
+        Serial.println();
+        Serial.print(hexstr(addr+i, 6));
+        Serial.print(" ");
+        Serial.print(randbytes[(addr+i)%17], HEX);
+        Serial.print("/");
+        Serial.print(readout, HEX);
+        Serial.print(", ");
         errcount++;
+        if ( errcount > 100 )
+          break;
       }
       //if ( (i&0x0f) == 0x0f)
-      //  Serial.println();
+      //Serial.println();
     }
     Serial.print(" -- ");
     Serial.println(hexstr(addr+block-1, 6));
@@ -62,25 +76,114 @@ char * hexstr(uint32_t val, uint8_t digits) {
   return buf;
 }
 
+class OC1AClock {
+  private:
+    uint8_t prescaler;
+    uint16_t topvalue;
+  public:
+  
+  OC1AClock(uint8_t presc, uint16_t top) : prescaler(presc), topvalue(top) {}
+
+  void start(void) {
+    const uint8_t MODE = 4;
+    cli();
+    
+    TCCR1A = 0; TCCR1B = 0; TCCR1C = 0; 
+    
+    TCNT1 = 0;
+    OCR1A = topvalue - 1;
+  
+    TCCR1A |= (1 << COM1A0) | (MODE & 0x3);
+    TCCR1B |= ((MODE >> 2 & 0x03) << 3) |  (prescaler<<CS10);
+    TCCR1C |= (1 << FOC1A);
+  
+    sei();
+  }
+  
+  void stop() {
+    TCCR1B &= ~(0x07<<CS10);
+  }
+  
+  void restart(void) {
+    TCCR1B |= (prescaler<<CS10);
+  }
+
+  void restart(uint8_t presc, uint16_t top) {
+    stop();
+    topvalue = top;
+    prescaler = presc;
+    cli();
+    TCNT1 = 0;
+    OCR1A = topvalue - 1;
+    sei();
+    restart();
+  }
+};
+
+OC1AClock z80clock(4, 6400);
+
 void setup() {
   // put your setup code here, to run once:
 
-  Serial.begin(19200);
+  Serial.begin(57600);
   while (!Serial);
-  Serial1.begin(19200);
+  Serial1.begin(57600);
   while (!Serial1);
 
-  Serial.println("me.");
-  Serial1.println("Hi.");
+  Serial.println("This is Serial.");
+  Serial1.println("This is Serial1.");
 
-  sram_bus_init();
-  if ( !sram_check(0x80000) ) {
-    Serial.println("sram_check passed.");
+  pinMode(SD_CS_PIN, OUTPUT);
+  digitalWrite(SD_CS_PIN, HIGH);
+  SPI.begin();
+
+  Wire.begin();
+
+  pinMode(MEGA_MEMEN_PIN, OUTPUT);
+  digitalWrite(MEGA_MEMEN_PIN, HIGH);  // disable MREQ to CS
+  DDR(Z80_DATA_BUS) = 0xff;
+  Z80_DATA_BUS = 0x00;
+  DDR(Z80_DATA_BUS) = 0x00;
+  
+  Serial.println("starting Z80..");
+  z80_bus_init();
+  z80clock.start();
+  z80_reset(500);
+
+  z80clock.restart(3,400);
+  uint16_t oldaddr = 0xffff, addr = 0;
+  uint8_t data = 0;
+  while (1) {
+    if ( !digitalRead(Z80_RD_PIN) ) {
+      addr = ((uint16_t)PINC<<8) | PINL;
+      data = PINA;
+      Serial.print(hexstr(addr,4));
+      Serial.print(" ");
+      Serial.print(hexstr(data,2));
+      Serial.println();
+      while ( !digitalRead(Z80_RD_PIN) ) ;
+      if ( oldaddr + 1 != addr ) {
+        Serial.println("leap!!!");
+        while (1);
+      } else {
+        oldaddr = addr;
+      }
+    }
   }
 
+  pinMode(Z80_BUSACK_PIN, INPUT);
+  if ( !digitalRead(Z80_BUSACK_PIN) ) {
+    sram_bus_init();
+    Serial.println("sram_check ");
+    if ( !sram_check(0x80000) ) {
+      Serial.println("sram_check passed.");
+    }
+    sram_bus_release();
+  }
 } 
 
 void loop() {
   // put your main code here, to run repeatedly:
 
 }
+
