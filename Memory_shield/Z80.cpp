@@ -49,3 +49,6 @@ void z80_reset(unsigned long dur) {
   digitalWrite(Z80_RESET_PIN, HIGH);
 }
 
+void z80_busreq(uint8_t val) { digitalWrite(Z80_BUSREQ_PIN, val); }
+byte z80_busack(void) { return digitalRead(Z80_BUSACK_PIN); }
+

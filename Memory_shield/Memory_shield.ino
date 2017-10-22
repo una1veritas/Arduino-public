@@ -60,6 +60,43 @@ uint32_t sram_check(uint32_t maxaddr) {
   return errcount;
 }
 
+const uint16_t rom_0000_size = (1<<8);
+const uint8_t rom_0000[rom_0000_size] PROGMEM = {
+0x21, 0x5a, 0x00, 0xcd, 0x51, 0x00, 0xdb, 0x00, 
+0xfe, 0xff, 0x20, 0xfa, 0xdb, 0x01, 0x47, 0xfe, 
+0x1a, 0x28, 0x10, 0xd3, 0x02, 0x3e, 0x28, 0xd3, 
+0x02, 0x78, 0xcd, 0x25, 0x00, 0x3e, 0x29, 0xd3, 
+0x02, 0x18, 0xe3, 0x76, 0x47, 0xcb, 0x3f, 0xcb, 
+0x3f, 0xcb, 0x3f, 0xcb, 0x3f, 0x21, 0x41, 0x00, 
+0x85, 0x6f, 0x7e, 0xd3, 0x02, 0x78, 0xe6, 0x0f, 
+0x21, 0x41, 0x00, 0x85, 0x6f, 0x7e, 0xd3, 0x02, 
+0xc9, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 
+0x37, 0x38, 0x39, 0x41, 0x42, 0x43, 0x44, 0x45, 
+0x46, 0x0e, 0x02, 0x7e, 0xa7, 0xc8, 0xed, 0xa3, 
+0x18, 0xf9, 0x48, 0x69, 0x2c, 0x20, 0x49, 0x27, 
+0x6d, 0x20, 0x5a, 0x38, 0x30, 0x21, 0x0a, 0x0d, 
+0x00, 0x17, 
+};
+
+void sram_load(const uint8_t * mem, uint16_t msize) {
+  for(uint16_t i = 0; i < msize; ++i) {
+    uint8_t code = pgm_read_byte(mem+i);
+    sram_write(i,code);
+  }
+  for(uint16_t i = 0; i < msize; ++i) {
+    if ( (i& 0x0f) == 0x00 ) {
+      Serial.print(hexstr(i, 4));
+      Serial.print(": ");
+    }
+    Serial.print(hexstr(sram_read(i), 2));
+    Serial.print(" ");
+    if ( (i& 0x0f) == 0x0f ) {
+      Serial.println();
+    }
+  }
+  Serial.println();  
+}
+
 char * hexstr(uint32_t val, uint8_t digits) {
   static char buf[8+1];
   digits = digits >= 8 ? 8 : digits;
@@ -120,7 +157,7 @@ class OC1AClock {
   }
 };
 
-OC1AClock z80clock(4, 6400);
+OC1AClock z80clock(4, 1600);
 
 void setup() {
   // put your setup code here, to run once:
@@ -141,49 +178,44 @@ void setup() {
 
   pinMode(MEGA_MEMEN_PIN, OUTPUT);
   digitalWrite(MEGA_MEMEN_PIN, HIGH);  // disable MREQ to CS
-  DDR(Z80_DATA_BUS) = 0xff;
-  Z80_DATA_BUS = 0x00;
-  DDR(Z80_DATA_BUS) = 0x00;
+  pinMode(MEGA_IOWAITEN_PIN, OUTPUT);
+  digitalWrite(MEGA_IOWAITEN_PIN, HIGH);  // disable IOREQ to WAIT
   
   Serial.println("starting Z80..");
   z80_bus_init();
   z80clock.start();
   z80_reset(500);
 
-  z80clock.restart(3,400);
-  uint16_t oldaddr = 0xffff, addr = 0;
-  uint8_t data = 0;
-  while (1) {
-    if ( !digitalRead(Z80_RD_PIN) ) {
-      addr = ((uint16_t)PINC<<8) | PINL;
-      data = PINA;
-      Serial.print(hexstr(addr,4));
-      Serial.print(" ");
-      Serial.print(hexstr(data,2));
-      Serial.println();
-      while ( !digitalRead(Z80_RD_PIN) ) ;
-      if ( oldaddr + 1 != addr ) {
-        Serial.println("leap!!!");
-        while (1);
-      } else {
-        oldaddr = addr;
-      }
-    }
-  }
-
-  pinMode(Z80_BUSACK_PIN, INPUT);
-  if ( !digitalRead(Z80_BUSACK_PIN) ) {
+  z80_busreq(LOW);
+  while ( z80_busack() );
+  if ( !z80_busack() ) {
+    Serial.println("BUSREQ succeeded.");
     sram_bus_init();
     Serial.println("sram_check ");
     if ( !sram_check(0x80000) ) {
       Serial.println("sram_check passed.");
     }
     sram_bus_release();
+    z80_busreq(HIGH);
   }
+
+  digitalWrite(MEGA_MEMEN_PIN, LOW);  // enable MREQ to CS
+
 } 
 
 void loop() {
   // put your main code here, to run repeatedly:
+  uint16_t addr = 0;
+  uint8_t data = 0;
 
+  if ( !(digitalRead(Z80_MREQ_PIN) || digitalRead(Z80_RD_PIN)) ) {
+    addr = ((uint16_t)PINC<<8) | PINL;
+    data = PINA;
+    Serial.print(hexstr(addr,4));
+    Serial.print(" ");
+    Serial.print(hexstr(data,2));
+    Serial.println();
+    while ( !(digitalRead(Z80_MREQ_PIN) || digitalRead(Z80_RD_PIN)) ) ;
+  }
 }
 
