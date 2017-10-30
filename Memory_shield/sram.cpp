@@ -72,12 +72,39 @@ uint8_t sram_read(uint16_t addr) {
   return val;
 }
 
-void sram_write(uint16_t addr, uint8_t data) {
+uint8_t sram_write(uint16_t addr, uint8_t data) {
   addr16_set(addr);
   SRAM_DATA_DDR = SRAM_DATA_MASK;
   SRAM_DATA_OUT = data;
   digitalWrite(SRAM_WE_PIN, LOW);
   digitalWrite(SRAM_WE_PIN, HIGH);
+  return data;
+}
+
+uint16_t sram_check(uint16_t addr, const uint16_t nbytes) {
+  uint16_t errcount = 0;
+  uint8_t randbytes[31];
+  uint8_t readout;
+
+  randomSeed(millis());
+  for(uint16_t i = 0; i < 31; i++) {
+    randbytes[i] = random(0, 256);
+  }
+  sram_select();
+  for(uint16_t i = 0; i < nbytes; i++) {
+    sram_write((uint16_t)(addr+i),randbytes[(addr+i) % 31]);
+  }
+  
+  for(uint16_t i = 0; i < nbytes; i++) {
+    readout = sram_read(addr+i);
+    if ( readout != randbytes[(addr+i) % 31] ) {
+      errcount++;
+    } else {
+      sram_write(addr+i, 0x00);
+    }
+  }
+  sram_deselect();
+  return errcount;
 }
 
 

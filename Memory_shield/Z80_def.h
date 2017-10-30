@@ -9,6 +9,9 @@
 #define Z80_ADDRL_BUS   PORTL
 #define Z80_ADDRH_BUS   PORTC
 
+#define Z80_INT_PIN     3
+#define Z80_NMI_PIN     4
+#define Z80_HALT_PIN    5
 #define Z80_MREQ_PIN    38   // CS (PD7)
 #define Z80_IORQ_PIN    2
 #define Z80_RD_PIN      40   // RD

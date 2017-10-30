@@ -6,89 +6,41 @@
 #include "mega_def.h"
 #include "Z80.h"
 
-uint32_t sram_check(uint32_t maxaddr) {
-  uint8_t randbytes[17];
-  uint8_t readout;
-  uint32_t errcount = 0;
-  uint32_t addr;
-  
-  for(uint16_t i = 0; i < 17; ++i) {
-    randbytes[i] = random(0, 256);
-  }
 
-  sram_select();
-
-  uint32_t block = 0x2000;
-  for(addr = 0; addr < maxaddr; addr += block ) {
-    sram_bank(addr>>16 & 0x07);
-    Serial.print("addr ");
-    Serial.print(hexstr(addr, 6));
-    Serial.print(" (bank ");
-    Serial.print(hexstr(addr>>16 & 0x07, 2));
-    Serial.print(")");
-    for(uint16_t i = 0; i < block; i++) {
-      sram_write((uint16_t)(addr+i),randbytes[(addr+i)%17]);
-    }
-    for(uint16_t i = 0; i < block; i++) {
-      readout = sram_read((uint16_t)(addr+i));
-      //Serial.print(hexstr(readout, 2));
-      //Serial.print(" ");
-      if ( readout != randbytes[(addr+i)%17] ) {
-        Serial.println();
-        Serial.print(hexstr(addr+i, 6));
-        Serial.print(" ");
-        Serial.print(randbytes[(addr+i)%17], HEX);
-        Serial.print("/");
-        Serial.print(readout, HEX);
-        Serial.print(", ");
-        errcount++;
-        if ( errcount > 100 )
-          break;
-      }
-      //if ( (i&0x0f) == 0x0f)
-      //Serial.println();
-    }
-    Serial.print(" -- ");
-    Serial.println(hexstr(addr+block-1, 6));
-    if ( errcount > 0 ) {
-      Serial.print("err occurred: ");
-      Serial.println(errcount);
-      break;
-    }
-  }
-  sram_deselect();
-  return errcount;
-}
-
-const uint16_t rom_0000_size = (1<<8);
-const uint8_t rom_0000[rom_0000_size] PROGMEM = {
-0x21, 0x5a, 0x00, 0xcd, 0x51, 0x00, 0xdb, 0x00, 
-0xfe, 0xff, 0x20, 0xfa, 0xdb, 0x01, 0x47, 0xfe, 
-0x1a, 0x28, 0x10, 0xd3, 0x02, 0x3e, 0x28, 0xd3, 
-0x02, 0x78, 0xcd, 0x25, 0x00, 0x3e, 0x29, 0xd3, 
-0x02, 0x18, 0xe3, 0x76, 0x47, 0xcb, 0x3f, 0xcb, 
-0x3f, 0xcb, 0x3f, 0xcb, 0x3f, 0x21, 0x41, 0x00, 
-0x85, 0x6f, 0x7e, 0xd3, 0x02, 0x78, 0xe6, 0x0f, 
-0x21, 0x41, 0x00, 0x85, 0x6f, 0x7e, 0xd3, 0x02, 
-0xc9, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 
-0x37, 0x38, 0x39, 0x41, 0x42, 0x43, 0x44, 0x45, 
-0x46, 0x0e, 0x02, 0x7e, 0xa7, 0xc8, 0xed, 0xa3, 
-0x18, 0xf9, 0x48, 0x69, 0x2c, 0x20, 0x49, 0x27, 
-0x6d, 0x20, 0x5a, 0x38, 0x30, 0x21, 0x0a, 0x0d, 
-0x00, 0x17, 
+const uint8_t rom_0000[0x100] PROGMEM = {
+  0x31, 0x00, 0x10, 0xc3, 0x00, 0x10, 0x00, 0x00, 
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+  0xe1, 0x18, 0xc5, 
 };
 
-void sram_load(const uint8_t * mem, uint16_t msize) {
+const uint8_t rom_1000[0x100] PROGMEM = {
+  0x21, 0x11, 0x10, 0x7e, 0x32, 0x10, 0x10, 0xa7, 
+  0x28, 0x05, 0xd3, 0x01, 0x23, 0x20, 0xf4, 0x76, 
+  0x00, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x2c, 0x20, 
+  0x66, 0x72, 0x69, 0x65, 0x6e, 0x64, 0x73, 0x21, 
+  0x0d, 0x0a, 0x00, 
+};
+
+void sram_load(const uint16_t addr, const uint8_t * mem, uint16_t msize) {
   for(uint16_t i = 0; i < msize; ++i) {
     uint8_t code = pgm_read_byte(mem+i);
-    sram_write(i,code);
+    sram_select();
+    sram_write(addr+i,code);
+    sram_deselect();
   }
   for(uint16_t i = 0; i < msize; ++i) {
     if ( (i& 0x0f) == 0x00 ) {
-      Serial.print(hexstr(i, 4));
+      Serial.print(hexstr(addr+i, 4));
       Serial.print(": ");
     }
-    Serial.print(hexstr(sram_read(i), 2));
+    sram_select();
+    Serial.print(hexstr(sram_read(addr+i), 2));
+    sram_deselect();
     Serial.print(" ");
     if ( (i& 0x0f) == 0x0f ) {
       Serial.println();
@@ -157,7 +109,10 @@ class OC1AClock {
   }
 };
 
-OC1AClock z80clock(4, 1600);
+OC1AClock z80clock(4, 200);
+
+uint8_t io_read(uint16_t port);
+void io_write(uint16_t port, uint8_t data);
 
 void setup() {
   // put your setup code here, to run once:
@@ -176,10 +131,10 @@ void setup() {
 
   Wire.begin();
 
-  pinMode(MEGA_MEMEN_PIN, OUTPUT);
-  digitalWrite(MEGA_MEMEN_PIN, HIGH);  // disable MREQ to CS
-  pinMode(MEGA_IOWAITEN_PIN, OUTPUT);
-  digitalWrite(MEGA_IOWAITEN_PIN, HIGH);  // disable IOREQ to WAIT
+//  pinMode(MEGA_MEMEN_PIN, OUTPUT);
+//  digitalWrite(MEGA_MEMEN_PIN, HIGH);  // disable MREQ to CS
+//  pinMode(MEGA_IOWAITEN_PIN, OUTPUT);
+//  digitalWrite(MEGA_IOWAITEN_PIN, HIGH);  // disable IOREQ to WAIT
   
   Serial.println("starting Z80..");
   z80_bus_init();
@@ -192,14 +147,17 @@ void setup() {
     Serial.println("BUSREQ succeeded.");
     sram_bus_init();
     Serial.println("sram_check ");
-    if ( !sram_check(0x80000) ) {
+    if ( !memory_check(0, 0x10000 /* 0x80000 */) ) {
       Serial.println("sram_check passed.");
+      sram_load(0x0000, rom_0000, sizeof(rom_0000));
+      sram_load(0x1000, rom_1000, sizeof(rom_1000));
     }
     sram_bus_release();
-    z80_busreq(HIGH);
   }
 
-  digitalWrite(MEGA_MEMEN_PIN, LOW);  // enable MREQ to CS
+//  digitalWrite(MEGA_MEMEN_PIN, LOW);  // enable MREQ to CS
+  z80_busreq(HIGH);
+  z80_reset(500);
 
 } 
 
@@ -212,10 +170,102 @@ void loop() {
     addr = ((uint16_t)PINC<<8) | PINL;
     data = PINA;
     Serial.print(hexstr(addr,4));
-    Serial.print(" ");
+    Serial.print(" R  ");
     Serial.print(hexstr(data,2));
     Serial.println();
     while ( !(digitalRead(Z80_MREQ_PIN) || digitalRead(Z80_RD_PIN)) ) ;
+  } else if ( !(digitalRead(Z80_MREQ_PIN) || digitalRead(Z80_WR_PIN)) ) {
+    addr = ((uint16_t)PINC<<8) | PINL;
+    data = PINA;
+    Serial.print(hexstr(addr,4));
+    Serial.print("  W ");
+    Serial.print(hexstr(data,2));
+    Serial.println();
+    while ( !(digitalRead(Z80_MREQ_PIN) || digitalRead(Z80_WR_PIN)) ) ;
+  } else if ( !(digitalRead(Z80_IORQ_PIN) || digitalRead(Z80_WR_PIN)) ) {
+    addr = ((uint16_t)PINC<<8) | PINL;
+    data = PINA;
+    digitalWrite(Z80_WAIT_PIN, LOW);
+    io_write(addr, data);
+    digitalWrite(Z80_WAIT_PIN, HIGH);
+    Serial.print(hexstr(addr,4));
+    Serial.print("  O ");
+    Serial.print(hexstr(data,2));
+    Serial.println();    
+    while ( !(digitalRead(Z80_IORQ_PIN) || digitalRead(Z80_WR_PIN)) ) ;
+  } else if ( !(digitalRead(Z80_IORQ_PIN) || digitalRead(Z80_RD_PIN)) ) {
+    addr = ((uint16_t)PINC<<8) | PINL;
+    digitalWrite(Z80_WAIT_PIN, LOW);
+    data = io_read(addr);
+    digitalWrite(Z80_WAIT_PIN, HIGH);
+    DDR(PORTA) = 0xff;
+    PORTA = data;
+    Serial.print(hexstr(addr,4));
+    Serial.print(" I  ");
+    Serial.print(hexstr(data,2));
+    Serial.println();    
+    while ( !(digitalRead(Z80_IORQ_PIN) || digitalRead(Z80_RD_PIN)) ) ;
+    DDR(PORTA) = 0x00;
+    PORTA = 0x00;
   }
+
+}
+
+uint32_t memory_check(uint32_t startaddr, uint32_t maxaddr) {
+  uint32_t errs, errtotal = 0;
+  uint32_t block = 0x2000;
+  for(uint32_t addr = startaddr; addr < maxaddr; addr += block ) {
+    sram_bank(addr>>16 & 0x07);
+    Serial.print("[bank ");
+    Serial.print(hexstr(addr>>16 & 0x07, 2));
+    Serial.print("] ");
+    Serial.print(hexstr(addr & 0xffff, 4));
+    Serial.print(" - ");
+    Serial.print(hexstr( (addr+block-1) & 0xffff, 4));
+    
+    if ( (errs = sram_check(addr & 0xffff, block)) > 0 ) {
+      errtotal += errs;
+      Serial.print(" err: ");
+      Serial.println(errs);
+    } else {
+      Serial.println(" ok. ");      
+    }
+  }
+  return errtotal;
+}
+
+uint8_t io_read(uint16_t port) {
+  switch(port & 0xff) {
+  case 0x00:
+    if ( Serial1.available() )
+      return 0xff;
+      return 0x00;
+    break;
+  case 0x01:
+    return (uint8_t) Serial1.read();
+    break;
+  case 0x04:
+    return (uint8_t) Serial1.read();
+    break;
+  case 0x40:
+    // timer/clock control
+    break;
+  }
+  return 0;
+}
+
+void io_write(uint16_t port, uint8_t data) {
+  switch(port & 0xff) {
+  case 0x01:
+    Serial1.write(data);
+    break;
+  case 0x04:
+    Serial1.write(data);
+    break;
+  case 0x40:
+    // timer/clock control
+    break;
+  }
+  return;
 }
 
