@@ -125,6 +125,7 @@ I2CEEPROM eeprom;
 SPISRAM spisram(SPISRAM_CS_PIN);
 
 BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file);
+
 uint8_t io_read(uint16_t port);
 void io_write(uint16_t port, uint8_t data);
 
@@ -167,7 +168,11 @@ void setup() {
 	  File romfile = SD.open(F("ROM.HEX"));
 	  if ( romfile ) {
 		  Serial.println(F("succeeded."));
-		  eeprom_load_ihex(eeprom, romfile);
+		  BYTE errcode;
+		  if ( (errcode = eeprom_load_ihex(eeprom, romfile)) ) {
+			  Serial.print(F("ihex read error "));
+			  Serial.println(errcode, HEX);
+		  }
 		  romfile.close();
 	  } else {
 		  Serial.println(F("failed."));
@@ -308,9 +313,13 @@ void io_write(uint16_t port, uint8_t data) {
   case 0x04:
     Serial1.write(data);
     break;
-  case 0x40:
-    // timer/clock control
-    break;
+  default:
+	  Serial.println();
+	  Serial.print("out ");
+	  Serial.print(hexstr(port,4));
+	  Serial.print(" ");
+	  Serial.println(hexstr(data,2));
+	  break;
   }
   return;
 }
@@ -323,16 +332,15 @@ int sdfgets(File & file, char * buf, unsigned int lim) {
 
 BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 	enum {
-		STARTCODE = 0, // awaiting start code ':'
+		STARTCODE = 1, // awaiting start code ':'
 		BYTECOUNT,
 		ADDRESS,
 		RECORDTYPE,
 		DATA,
 		CHECKSUM,
-		ENDOFFILE,
-		CHECKSUMERROR = 0xfd,
-		FILEREADERROR = 0xfe,
-		SYNTAXERROR = 0xff,
+		ENDOFFILE = 0,
+		ERRORFLAG = 0x80,
+		FILEIOERROR = ERRORFLAG | 0x40,
 	};
 	unsigned char sta = STARTCODE;
 	unsigned long baseaddress = 0;
@@ -348,27 +356,27 @@ BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 	do {
 		if (sta == STARTCODE) {
 			if ( sdfgets(buf, 1) != 1 ) {
-				sta = FILEREADERROR;
+				sta = FILEIOERROR;
 				break;
 			} else if (buf[0] == ':') {
 				xsum = 0;
 				sta = BYTECOUNT;
 				//printf("start code, ");
 			} else if (!iscntrl(buf[0])) {
-				Serial.println("failed to find startcode.");
-				sta = SYNTAXERROR;
+				//Serial.println("failed to find startcode.");
+				sta |= ERRORFLAG;
 				break;
 			}
 		} else if (sta == BYTECOUNT) {
 			if ( sdfgets(buf, 2) != 2 ) {
-				sta = FILEREADERROR;
+				sta = FILEIOERROR;
 				break;
 			} else {
 				bytecount = strtol(buf, &ptr, 16);
 				if (*ptr != (char) 0) {
-					Serial.println("failed to read byte count.");
+					//Serial.println("failed to read byte count.");
 					Serial.println(buf);
-					sta = SYNTAXERROR;
+					sta |= ERRORFLAG;
 					break;
 				}
 				xsum += bytecount;
@@ -377,17 +385,17 @@ BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 			}
 		} else if (sta == ADDRESS) {
 			if ( sdfgets(buf, 4) != 4 ) {
-				sta = FILEREADERROR;
+				sta = FILEIOERROR;
 				break;
 			} else {
 				address = strtol(buf, &ptr, 16);
 				if (*ptr != (char) 0) {
-					Serial.println("failed to read address.");
-					sta = SYNTAXERROR;
+					//Serial.println("failed to read address.");
+					sta |= ERRORFLAG;
 					break;
 				}
-				Serial.print(hexstr(address, 4));
-				Serial.print(" ");
+				//Serial.print(hexstr(address, 4));
+				//Serial.print(" ");
 				//printf("address %04X, ",address);
 				xsum += address >> 8 & 0xff;
 				xsum += address & 0xff;
@@ -395,13 +403,13 @@ BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 			}
 		} else if (sta == RECORDTYPE) {
 			if ( sdfgets(buf, 2) != 2) {
-				sta = FILEREADERROR;
+				sta = FILEIOERROR;
 				break;
 			} else {
 				recordtype = strtol(buf, &ptr, 16);
 				if (*ptr != (char) 0) {
-					Serial.println("failed to read record type.");
-					sta = SYNTAXERROR;
+					//Serial.println("failed to read record type.");
+					sta |= ERRORFLAG;
 					break;
 				}
 				xsum += recordtype;
@@ -415,13 +423,13 @@ BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 			}
 		} else if (sta == DATA) {
 			if ( sdfgets(buf, 2) != 2 ) {
-				sta = FILEREADERROR;
+				sta = FILEIOERROR;
 				break;
 			} else {
 				bytes[byteindex] = strtol(buf, &ptr, 16);
 				if (*ptr != (char) 0) {
-					Serial.println("failed while reading data.");
-					sta = SYNTAXERROR;
+					//Serial.println("failed while reading data.");
+					sta |= ERRORFLAG;
 					break;
 				}
 				xsum += bytes[byteindex];
@@ -435,43 +443,37 @@ BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 			}
 		} else if (sta == CHECKSUM) {
 			if ( sdfgets(buf, 2) != 2 ) {
-				sta = FILEREADERROR;
+				sta = FILEIOERROR;
 				break;
 			} else {
 				xsum += strtol(buf, &ptr, 16);
 				if (*ptr != (char) 0) {
-					sta = SYNTAXERROR;
+					sta |= ERRORFLAG;
 					break;
 				}
 				//printf(": %02X, ", xsum );
 				if (xsum) {
-					Serial.println("Got a check sum error.");
-					sta = CHECKSUMERROR;
+					//Serial.println("Got a check sum error.");
+					sta |= ERRORFLAG;
 					break;
 				}
 				if (recordtype == 1) {
-					Serial.println("end-of-file.");
+					//Serial.println("end-of-file.");
 					sta = ENDOFFILE;
+					break;
 				} else {
 					for (unsigned int i = 0; i < byteindex; i++) {
 						rom.update(baseaddress+address+i, bytes[i]);
-						Serial.print(hexstr(bytes[i], 2));
-						Serial.print(" ");
+						//Serial.print(hexstr(bytes[i], 2));
+						//Serial.print(" ");
 					}
-					Serial.println();
+					//Serial.println();
 					totalbytecount += bytecount;
 					sta = STARTCODE;
 				}
 			}
 		}
-	} while ( file.available() > 0 && (sta != ENDOFFILE));
+	} while ( file.available() > 0 );
 
-	if ( sta == ENDOFFILE ) {
-		Serial.println("ihex read finished.");
-		return 0;
-	} else {
-		Serial.print("sta = ");
-		Serial.println(sta, HEX);
-		return sta;
-	}
+	return sta;
 }
