@@ -1,17 +1,17 @@
 /*
- * SerialEEPROM.h
+ * I2CEEPROM.h
  *
  *  Created on: 2017/10/19
  *      Author: sin
  */
 
-#ifndef SERIALEEPROM_H_
-#define SERIALEEPROM_H_
+#ifndef I2CEEPROM_H_
+#define I2CEEPROM_H_
 
 #include <Arduino.h>
 #include <Wire.h>
 
-class EEPROM_I2C {
+class I2CEEPROM {
 private:
 	unsigned char _devaddr;
 	unsigned char _buswidth;
@@ -32,7 +32,7 @@ public:
 		BUSWIDTH_1024KBIT = 17, // AT24C1024B
 	};
 
-	EEPROM_I2C(const unsigned char addr = 0, const unsigned char buswidth = BUSWIDTH_1024KBIT);
+	I2CEEPROM(const unsigned char addr = 0, const unsigned char buswidth = BUSWIDTH_1024KBIT);
 
 	byte status(void) {
 		return _txrx_stat;
@@ -53,4 +53,4 @@ public:
 
 
 
-#endif /* SERIALEEPROM_H_ */
+#endif /* I2CEEPROM_H_ */

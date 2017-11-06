@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "common.h"
-#include "sram.h"
+#include "mem.h"
 
 void sram_bus_init() {
   DDR(SRAM_ADDRL_PORT) = SRAM_ADDRL_MASK; 
@@ -11,17 +11,15 @@ void sram_bus_init() {
 
   DDR(SRAM_DATA_OUT) = 0x00; 
 
-  pinMode(SRAM_ALE_OE_PIN,OUTPUT);
-  digitalWrite(SRAM_ALE_OE_PIN,HIGH);
-  pinMode(SRAM_ALE_PIN,OUTPUT);
-  digitalWrite(SRAM_ALE_PIN,LOW);
+#ifndef USE_XMEM_ALE
+  /* make both ALE input and output pins to be in Z-state */
+  pinMode(SRAM_ALE_OE_PIN,OUTPUT);   digitalWrite(SRAM_ALE_OE_PIN,HIGH);
+//  pinMode(SRAM_ALE_PIN,OUTPUT); //  digitalWrite(SRAM_ALE_PIN,LOW);
+#endif // USE_XMEM_ALE
   
-  pinMode(SRAM_CS_PIN,OUTPUT);
-  pinMode(SRAM_OE_PIN,OUTPUT);
-  pinMode(SRAM_WE_PIN,OUTPUT);
-  digitalWrite(SRAM_CS_PIN,HIGH);
-  digitalWrite(SRAM_OE_PIN,HIGH);
-  digitalWrite(SRAM_WE_PIN,HIGH);
+  pinMode(SRAM_CS_PIN,OUTPUT);   digitalWrite(SRAM_CS_PIN,HIGH);
+  pinMode(SRAM_OE_PIN,OUTPUT);   digitalWrite(SRAM_OE_PIN,HIGH);
+  pinMode(SRAM_WE_PIN,OUTPUT);   digitalWrite(SRAM_WE_PIN,HIGH);
 }
 
 void sram_bus_release() {

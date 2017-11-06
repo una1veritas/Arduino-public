@@ -1,5 +1,5 @@
-#ifndef _SRAM_DEF_H_
-#define _SRAM_DEF_H_
+#ifndef _MEM_DEF_H_
+#define _MEM_DEF_H_
 
 #include <AVR/io.h>
 
@@ -34,15 +34,21 @@
 #define SRAM_ALE_PIN    39
 #define SRAM_ALE_PORT   PORTG
 #define SRAM_ALE        PG2
+#define SRAM_ALE_OE_PIN  17
+#define SRAM_ALE_OE_PORT PORTH
+#define SRAM_ALE_OE      PH0
 #define SRAM_OE_PIN     40
 #define SRAM_OE_PORT    PORTG
 #define SRAM_OE         PG1
 #define SRAM_WE_PIN     41
 #define SRAM_WE_PORT    PORTG
 #define SRAM_WE         PG0
-#define SRAM_ALE_OE_PIN  17
-#define SRAM_ALE_OE_PORT PORTH
-#define SRAM_ALE_OE      PH0
 
-#endif /* _SRAM_DEF_H_ */
+/* microMMC/SD card adapter */
+#define SD_CS_PIN       4
+
+/* Serial SRAM 23LCV1024 */
+#define SPISRAM_CS_PIN 53
+
+#endif /* _MEM_DEF_H_ */
 

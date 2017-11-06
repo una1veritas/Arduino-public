@@ -8,18 +8,18 @@ INO_SRCS += \
 
 CPP_SRCS += \
 ../Z80.cpp \
-../sram.cpp 
+../mem.cpp 
 
 LINK_OBJ += \
 ./Z80.cpp.o \
-./sram.cpp.o 
+./mem.cpp.o 
 
 INO_DEPS += \
 ./Z80_memshield.ino.d 
 
 CPP_DEPS += \
 ./Z80.cpp.d \
-./sram.cpp.d 
+./mem.cpp.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -37,7 +37,7 @@ Z80_memshield.o: ../Z80_memshield.ino
 	@echo 'Finished building: $<'
 	@echo ' '
 
-sram.cpp.o: ../sram.cpp
+mem.cpp.o: ../mem.cpp
 	@echo 'Building file: $<'
 	@echo 'Starting C++ compile'
 	-MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -D__IN_ECLIPSE__=1 -x c++ "$<"  "$@"

@@ -1,29 +1,38 @@
 #include <SPI.h>
+#include <SD.h>
 #include <Wire.h>
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+#include "SPISRAM.h"
+#include "I2CEEPROM.h"
+
 #include "common.h"
-#include "sram.h"
-#include "mega_def.h"
+#include "mem.h"
 #include "Z80.h"
 
 
 const uint8_t rom_0000[0x100] PROGMEM = {
-  0x31, 0x00, 0x10, 0xc3, 0x00, 0x10, 0x00, 0x00, 
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-  0xe1, 0x18, 0xc5, 
+		/* 0000 */
+		0x21, 0x00, 0x01, 0xF9, 0xC3, 0x00, 0x10, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0020 */
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0xC9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
 const uint8_t rom_1000[0x100] PROGMEM = {
-  0x21, 0x11, 0x10, 0x7e, 0x32, 0x10, 0x10, 0xa7, 
-  0x28, 0x05, 0xd3, 0x01, 0x23, 0x20, 0xf4, 0x76, 
-  0x00, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x2c, 0x20, 
-  0x66, 0x72, 0x69, 0x65, 0x6e, 0x64, 0x73, 0x21, 
-  0x0d, 0x0a, 0x00, 
+		/* 1000 */
+		0x21, 0x0F, 0x10, 0xCD, 0x07, 0x10, 0x76, 0x7E,
+		0xA7, 0xC8, 0xD3, 0x02, 0x23, 0x18, 0xF8, 0x48,
+		0x69, 0x2C, 0x20, 0x74, 0x68, 0x65, 0x72, 0x65,
+		0x21, 0x0D, 0x0A, 0x00,
 };
 
 void sram_load(const uint16_t addr, const uint8_t * mem, uint16_t msize) {
@@ -109,8 +118,13 @@ class OC1AClock {
   }
 };
 
-OC1AClock z80clock(4, 200);
+OC1AClock clock(4, 1600);
 
+I2CEEPROM eeprom;
+
+SPISRAM spisram(SPISRAM_CS_PIN);
+
+BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file);
 uint8_t io_read(uint16_t port);
 void io_write(uint16_t port, uint8_t data);
 
@@ -122,37 +136,66 @@ void setup() {
   Serial1.begin(57600);
   while (!Serial1);
 
-  Serial.println("This is Serial.");
-  Serial1.println("This is Serial1.");
+  Serial.println(F("This is Serial."));
+  Serial1.println(F("This is Z80 via Serial1."));
 
   pinMode(SD_CS_PIN, OUTPUT);
   digitalWrite(SD_CS_PIN, HIGH);
+  pinMode(SPISRAM_CS_PIN, OUTPUT);
+  digitalWrite(SPISRAM_CS_PIN, HIGH);
   SPI.begin();
-
   Wire.begin();
 
-//  pinMode(MEGA_MEMEN_PIN, OUTPUT);
-//  digitalWrite(MEGA_MEMEN_PIN, HIGH);  // disable MREQ to CS
-//  pinMode(MEGA_IOWAITEN_PIN, OUTPUT);
-//  digitalWrite(MEGA_IOWAITEN_PIN, HIGH);  // disable IOREQ to WAIT
+  Serial.print(F("I2C EEPROM "));
+  if ( eeprom.begin() ) {
+	  Serial.print(F(" started."));
+  } else {
+	  Serial.print(F(" failed."));
+	  while (1);
+  }
+  Serial.print(F("SPI SRAM "));
+  if ( spisram.begin() ) {
+	  Serial.println(F(" started."));
+  } else {
+	  Serial.println(F("start failed."));
+	  while (1);
+  }
+  Serial.print(F("SD "));
+  if ( SD.begin(SD_CS_PIN) ) {
+	  Serial.println(F("started."));
+	  Serial.print(F("open ROM.HEX "));
+	  File romfile = SD.open(F("ROM.HEX"));
+	  if ( romfile ) {
+		  Serial.println(F("succeeded."));
+		  eeprom_load_ihex(eeprom, romfile);
+		  romfile.close();
+	  } else {
+		  Serial.println(F("failed."));
+	  }
+  } else {
+	  Serial.println(F("start failed."));
+	  while (1);
+  }
   
-  Serial.println("starting Z80..");
-  z80_bus_init();
-  z80clock.start();
+  Serial.println(F("starting Z80.."));
+  z80_bus_setup();
+  clock.start();
   z80_reset(500);
 
+  Serial.print(F("BUSREQ "));
   z80_busreq(LOW);
-  while ( z80_busack() );
-  if ( !z80_busack() ) {
-    Serial.println("BUSREQ succeeded.");
+  if ( !z80_busack(1000) ) {
+    Serial.println(F("succeeded."));
     sram_bus_init();
-    Serial.println("sram_check ");
+    Serial.println(F("sram_check "));
     if ( !memory_check(0, 0x10000 /* 0x80000 */) ) {
-      Serial.println("sram_check passed.");
+      Serial.println(F("sram_check passed."));
       sram_load(0x0000, rom_0000, sizeof(rom_0000));
       sram_load(0x1000, rom_1000, sizeof(rom_1000));
     }
     sram_bus_release();
+  } else {
+        Serial.println(F(" failed."));
   }
 
 //  digitalWrite(MEGA_MEMEN_PIN, LOW);  // enable MREQ to CS
@@ -166,45 +209,47 @@ void loop() {
   uint16_t addr = 0;
   uint8_t data = 0;
 
-  if ( !(digitalRead(Z80_MREQ_PIN) || digitalRead(Z80_RD_PIN)) ) {
+  if ( !z80_mreq_rd() ) {
     addr = ((uint16_t)PINC<<8) | PINL;
     data = PINA;
     Serial.print(hexstr(addr,4));
-    Serial.print(" R  ");
+    Serial.print(F(" R  "));
     Serial.print(hexstr(data,2));
     Serial.println();
-    while ( !(digitalRead(Z80_MREQ_PIN) || digitalRead(Z80_RD_PIN)) ) ;
-  } else if ( !(digitalRead(Z80_MREQ_PIN) || digitalRead(Z80_WR_PIN)) ) {
+    while ( !z80_mreq_rd() ) ;
+  } else if ( !z80_mreq_wr() ) {
     addr = ((uint16_t)PINC<<8) | PINL;
     data = PINA;
     Serial.print(hexstr(addr,4));
-    Serial.print("  W ");
+    Serial.print(F("  W "));
     Serial.print(hexstr(data,2));
     Serial.println();
-    while ( !(digitalRead(Z80_MREQ_PIN) || digitalRead(Z80_WR_PIN)) ) ;
-  } else if ( !(digitalRead(Z80_IORQ_PIN) || digitalRead(Z80_WR_PIN)) ) {
+    while ( !z80_mreq_wr() ) ;
+  } else if ( !z80_iorq_wr() ) {
+	  // IORQ LOW implies via 10k wait LOW
     addr = ((uint16_t)PINC<<8) | PINL;
     data = PINA;
-    digitalWrite(Z80_WAIT_PIN, LOW);
     io_write(addr, data);
-    digitalWrite(Z80_WAIT_PIN, HIGH);
     Serial.print(hexstr(addr,4));
-    Serial.print("  O ");
+    Serial.print(F("  O "));
     Serial.print(hexstr(data,2));
-    Serial.println();    
-    while ( !(digitalRead(Z80_IORQ_PIN) || digitalRead(Z80_WR_PIN)) ) ;
-  } else if ( !(digitalRead(Z80_IORQ_PIN) || digitalRead(Z80_RD_PIN)) ) {
+    Serial.println();
+    z80_wait_disable();
+    while ( !z80_iorq_wr() ) ;
+    z80_wait_enable();
+  } else if ( !z80_iorq_rd() ) {
+	  // IORQ LOW implies via 10k wait LOW
     addr = ((uint16_t)PINC<<8) | PINL;
-    digitalWrite(Z80_WAIT_PIN, LOW);
     data = io_read(addr);
-    digitalWrite(Z80_WAIT_PIN, HIGH);
     DDR(PORTA) = 0xff;
     PORTA = data;
     Serial.print(hexstr(addr,4));
-    Serial.print(" I  ");
+    Serial.print(F(" I  "));
     Serial.print(hexstr(data,2));
-    Serial.println();    
-    while ( !(digitalRead(Z80_IORQ_PIN) || digitalRead(Z80_RD_PIN)) ) ;
+    Serial.println();
+    z80_wait_disable();
+    while ( !z80_iorq_rd() ) ;
+    z80_wait_enable();
     DDR(PORTA) = 0x00;
     PORTA = 0x00;
   }
@@ -257,6 +302,7 @@ uint8_t io_read(uint16_t port) {
 void io_write(uint16_t port, uint8_t data) {
   switch(port & 0xff) {
   case 0x01:
+  case 0x02:
     Serial1.write(data);
     break;
   case 0x04:
@@ -269,3 +315,163 @@ void io_write(uint16_t port, uint8_t data) {
   return;
 }
 
+int sdfgets(File & file, char * buf, unsigned int lim) {
+	int n = file.readByte(buf,lim);
+	buf[n] = 0;
+	return n;
+}
+
+BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
+	enum {
+		STARTCODE = 0, // awaiting start code ':'
+		BYTECOUNT,
+		ADDRESS,
+		RECORDTYPE,
+		DATA,
+		CHECKSUM,
+		ENDOFFILE,
+		CHECKSUMERROR = 0xfd,
+		FILEREADERROR = 0xfe,
+		SYNTAXERROR = 0xff,
+	};
+	unsigned char sta = STARTCODE;
+	unsigned long baseaddress = 0;
+	unsigned int address = 0;
+	char buf[256];
+	unsigned char bytes[256];
+	unsigned int byteindex, bytecount;
+	unsigned char xsum, recordtype;
+
+	//Serial.println("ihex file read start.");
+	unsigned int totalbytecount = 0;
+	char * ptr;
+	do {
+		if (sta == STARTCODE) {
+			if ( sdfgets(buf, 1) != 1 ) {
+				sta = FILEREADERROR;
+				break;
+			} else if (buf[0] == ':') {
+				xsum = 0;
+				sta = BYTECOUNT;
+				//printf("start code, ");
+			} else if (!iscntrl(buf[0])) {
+				Serial.println("failed to find startcode.");
+				sta = SYNTAXERROR;
+				break;
+			}
+		} else if (sta == BYTECOUNT) {
+			if ( sdfgets(buf, 2) != 2 ) {
+				sta = FILEREADERROR;
+				break;
+			} else {
+				bytecount = strtol(buf, &ptr, 16);
+				if (*ptr != (char) 0) {
+					Serial.println("failed to read byte count.");
+					Serial.println(buf);
+					sta = SYNTAXERROR;
+					break;
+				}
+				xsum += bytecount;
+				sta = ADDRESS;
+				//printf("byte count %d, ",bytecount);
+			}
+		} else if (sta == ADDRESS) {
+			if ( sdfgets(buf, 4) != 4 ) {
+				sta = FILEREADERROR;
+				break;
+			} else {
+				address = strtol(buf, &ptr, 16);
+				if (*ptr != (char) 0) {
+					Serial.println("failed to read address.");
+					sta = SYNTAXERROR;
+					break;
+				}
+				Serial.print(hexstr(address, 4));
+				Serial.print(" ");
+				//printf("address %04X, ",address);
+				xsum += address >> 8 & 0xff;
+				xsum += address & 0xff;
+				sta = RECORDTYPE;
+			}
+		} else if (sta == RECORDTYPE) {
+			if ( sdfgets(buf, 2) != 2) {
+				sta = FILEREADERROR;
+				break;
+			} else {
+				recordtype = strtol(buf, &ptr, 16);
+				if (*ptr != (char) 0) {
+					Serial.println("failed to read record type.");
+					sta = SYNTAXERROR;
+					break;
+				}
+				xsum += recordtype;
+				if (bytecount) {
+					sta = DATA;
+					byteindex = 0;
+				} else {
+					sta = CHECKSUM;
+				}
+				//printf("type %02X, ", recordtype);
+			}
+		} else if (sta == DATA) {
+			if ( sdfgets(buf, 2) != 2 ) {
+				sta = FILEREADERROR;
+				break;
+			} else {
+				bytes[byteindex] = strtol(buf, &ptr, 16);
+				if (*ptr != (char) 0) {
+					Serial.println("failed while reading data.");
+					sta = SYNTAXERROR;
+					break;
+				}
+				xsum += bytes[byteindex];
+				//printf("%02X ", bytes[byteindex]);
+				byteindex++;
+				if (byteindex < bytecount) {
+					sta = DATA;
+				} else {
+					sta = CHECKSUM;
+				}
+			}
+		} else if (sta == CHECKSUM) {
+			if ( sdfgets(buf, 2) != 2 ) {
+				sta = FILEREADERROR;
+				break;
+			} else {
+				xsum += strtol(buf, &ptr, 16);
+				if (*ptr != (char) 0) {
+					sta = SYNTAXERROR;
+					break;
+				}
+				//printf(": %02X, ", xsum );
+				if (xsum) {
+					Serial.println("Got a check sum error.");
+					sta = CHECKSUMERROR;
+					break;
+				}
+				if (recordtype == 1) {
+					Serial.println("end-of-file.");
+					sta = ENDOFFILE;
+				} else {
+					for (unsigned int i = 0; i < byteindex; i++) {
+						rom.update(baseaddress+address+i, bytes[i]);
+						Serial.print(hexstr(bytes[i], 2));
+						Serial.print(" ");
+					}
+					Serial.println();
+					totalbytecount += bytecount;
+					sta = STARTCODE;
+				}
+			}
+		}
+	} while ( file.available() > 0 && (sta != ENDOFFILE));
+
+	if ( sta == ENDOFFILE ) {
+		Serial.println("ihex read finished.");
+		return 0;
+	} else {
+		Serial.print("sta = ");
+		Serial.println(sta, HEX);
+		return sta;
+	}
+}

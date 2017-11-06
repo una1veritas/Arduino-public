@@ -1,32 +1,33 @@
 /*
- * EEPROM_I2C.cpp
+ * I2CEEPROM.cpp
  *
  *  Created on: 2017/10/20
  *      Author: sin
  */
 
 #include <Wire.h>
-#include "SerialEEPROM.h"
 
-byte EEPROM_I2C::ready(void) {
+#include "I2CEEPROM.h"
+
+byte I2CEEPROM::ready(void) {
     Wire.beginTransmission( dev_addr(0) );
     Wire.write((byte)0);
     return Wire.endTransmission() == 0;
 }
 
-void EEPROM_I2C::wire_enable(void) {
+void I2CEEPROM::wire_enable(void) {
     TWCR |= (_BV(TWEN) | _BV(TWIE) | _BV(TWEA));
     digitalWrite(SDA, HIGH);
     digitalWrite(SCL, HIGH);
 }
 
-void EEPROM_I2C::wire_disable(void) {
+void I2CEEPROM::wire_disable(void) {
     TWCR &= ~(_BV(TWEN) | _BV(TWIE) | _BV(TWEA));
     digitalWrite(SDA, LOW);
     digitalWrite(SCL, LOW);
 }
 
-void EEPROM_I2C::reset(void) {
+void I2CEEPROM::reset(void) {
 	wire_disable();
 
 	pinMode(SDA, OUTPUT);
@@ -74,7 +75,7 @@ void EEPROM_I2C::reset(void) {
 	_txrx_stat = 0;
 }
 
-EEPROM_I2C::EEPROM_I2C(const unsigned char addr, const unsigned char buswidth) {
+I2CEEPROM::I2CEEPROM(const unsigned char addr, const unsigned char buswidth) {
 	_devaddr = DEV_BASE_ADDRESS;
 	_buswidth = buswidth;
 	_txrx_stat = 0;
@@ -85,14 +86,14 @@ EEPROM_I2C::EEPROM_I2C(const unsigned char addr, const unsigned char buswidth) {
 	}
 }
 
-uint8_t EEPROM_I2C::dev_addr(uint32_t addr) {
+uint8_t I2CEEPROM::dev_addr(uint32_t addr) {
 	if ( _buswidth == BUSWIDTH_1024KBIT ) {
 		return (_devaddr | (addr>>16 & 1));
 	}
 	return _devaddr;
 }
 
-uint8_t EEPROM_I2C::read(uint32_t addr) {
+uint8_t I2CEEPROM::read(uint32_t addr) {
 	uint8_t val = 0;
     Wire.beginTransmission( dev_addr(addr) );
     Wire.write( (byte) (addr >> 8) );
@@ -106,7 +107,7 @@ uint8_t EEPROM_I2C::read(uint32_t addr) {
     return val;
 }
 
-uint8_t EEPROM_I2C::write(uint32_t addr, uint8_t data) {
+uint8_t I2CEEPROM::write(uint32_t addr, uint8_t data) {
     Wire.beginTransmission( dev_addr(addr) );
     Wire.write( (byte) (addr >> 8) );
     Wire.write( (byte) addr );
@@ -123,7 +124,7 @@ uint8_t EEPROM_I2C::write(uint32_t addr, uint8_t data) {
     return data;
 }
 
-uint8_t EEPROM_I2C::update(uint32_t addr, uint8_t data) {
+uint8_t I2CEEPROM::update(uint32_t addr, uint8_t data) {
 	uint8_t readout = read(addr);
 	if ( status() )
 		return 0;
@@ -132,7 +133,7 @@ uint8_t EEPROM_I2C::update(uint32_t addr, uint8_t data) {
 	return data;
 }
 
-byte * EEPROM_I2C::read(uint32_t addr, byte * dataptr, uint16_t nbytes) {
+byte * I2CEEPROM::read(uint32_t addr, byte * dataptr, uint16_t nbytes) {
 	uint16_t ntrans;
 
 	for(uint16_t n = 0; n < nbytes; n += ntrans) {
@@ -153,7 +154,7 @@ byte * EEPROM_I2C::read(uint32_t addr, byte * dataptr, uint16_t nbytes) {
 	return dataptr;
 }
 
-byte * EEPROM_I2C::write(uint32_t addr, byte * dataptr, uint16_t nbytes) {
+byte * I2CEEPROM::write(uint32_t addr, byte * dataptr, uint16_t nbytes) {
 	unsigned char ntrans;
 	for(unsigned int n = 0; n < nbytes; n += ntrans) {
 		ntrans = (nbytes - n) > BUFFER_LENGTH ? BUFFER_LENGTH : (nbytes - n);
@@ -176,7 +177,7 @@ byte * EEPROM_I2C::write(uint32_t addr, byte * dataptr, uint16_t nbytes) {
 	}
 	return dataptr;
 }
-byte * EEPROM_I2C::update(uint32_t addr, byte * dataptr, uint16_t nbytes) {
+byte * I2CEEPROM::update(uint32_t addr, byte * dataptr, uint16_t nbytes) {
 	for(byte i = 0; i < nbytes; ++i) {
 		update(addr+i,dataptr[i]);
 		if ( status() )

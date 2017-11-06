@@ -1,7 +1,7 @@
-#ifndef _SRAM_H_
-#define _SRAM_H_
+#ifndef _MEM_H_
+#define _MEM_H_
 
-#include "sram_def.h"
+#include "mem_def.h"
 
 void sram_bus_init() ;
 void sram_bus_release();
@@ -14,4 +14,4 @@ void sram_bank(uint8_t bank);
 
 uint16_t sram_check(uint16_t addr, const uint16_t nbytes);
 
-#endif /*  _SRAM_H_ */
+#endif /*  _MEM_H_ */
