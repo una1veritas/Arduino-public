@@ -31,7 +31,7 @@ bool SPISRAM::init() {
 	return (t == SEQ_MODE);
 }
 
-byte SPISRAM::read(const long & address) {
+byte SPISRAM::read(uint32_t address) {
 	byte data;
 	select();
 	set_access(READ, address);
@@ -40,7 +40,7 @@ byte SPISRAM::read(const long & address) {
 	return data;
 }
 
-void SPISRAM::read(const long & address, byte *buffer, const long & size) {
+void SPISRAM::read(uint32_t address, byte *buffer, size_t size) {
 	select();
 //	SPI.transfer(WRSR);
 //	SPI.transfer(SEQ_MODE);
@@ -52,14 +52,14 @@ void SPISRAM::read(const long & address, byte *buffer, const long & size) {
 	deselect();
 }
 
-void SPISRAM::write(const long & address, byte data) {
+void SPISRAM::write(uint32_t address, byte data) {
 	select();
 	set_access(WRITE, address);
 	SPI.transfer(data);
 	deselect();
 }
 
-void SPISRAM::write(const long & address, byte *buffer, const long & size) {
+void SPISRAM::write(uint32_t address, byte *buffer, size_t size) {
 	select();
 //	SPI.transfer(WRSR);
 //	SPI.transfer(SEQ_MODE);

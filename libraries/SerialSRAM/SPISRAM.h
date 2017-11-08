@@ -18,7 +18,9 @@
 #include <SPI.h>
 #include <Stream.h>
 
-class SPISRAM : public Stream {
+#include "extmem.h"
+
+class SPISRAM : public Stream, public extmem {
 private:
 	const byte _csPin;
 	const byte _buswidth;
@@ -78,11 +80,11 @@ public:
 	}
 	//inline void setSPIMode();
 
-	byte read(const long & address);
-	byte operator[](const long & address) { return read(address); }
-	void read(const long & address, byte *buffer, const long & size);
-	void write(const long & address, byte data);
-	void write(const long & address, byte *buffer, const long & size);
+	byte read(uint32_t address);
+	byte operator[](const uint32_t & address) { return read(address); }
+	void read(uint32_t address, byte *buffer, size_t size);
+	void write(uint32_t address, byte data);
+	void write(uint32_t address, byte *buffer, size_t size);
 /*
 	const long & readpoint() { return _readpt; }
 	const long & writepoint() { return _writept; }

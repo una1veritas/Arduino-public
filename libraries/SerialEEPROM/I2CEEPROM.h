@@ -11,7 +11,9 @@
 #include <Arduino.h>
 #include <Wire.h>
 
-class I2CEEPROM {
+#include "extmem.h"
+
+class I2CEEPROM : public extmem {
 private:
 	unsigned char _devaddr;
 	unsigned char _buswidth;
@@ -40,15 +42,21 @@ public:
 
 	void reset(void); // do I2C software reset
 
-	byte begin(void) { return ready(); }
+	bool begin(void) { return ready(); }
 
 	byte read(uint32_t addr);
-	byte write(uint32_t addr, byte data);
-	byte update(uint32_t addr, byte data);
+	void write(uint32_t addr, byte data);
+	void update(uint32_t addr, byte data);
 
-	byte * read(uint32_t addr, byte * dataptr, uint16_t nbytes);
-	byte * write(uint32_t addr, byte * dataptr, uint16_t nbytes);
-	byte * update(uint32_t addr, byte * dataptr, uint16_t nbytes);
+	void read(uint32_t addr, byte * dataptr, size_t nbytes);
+	void write(uint32_t addr, byte * dataptr, size_t nbytes);
+	void update(uint32_t addr, byte * dataptr, size_t nbytes);
+/*
+	int read();
+	int peek();
+	size_t write(uint8_t data);
+	int available();
+	*/
 };
 
 

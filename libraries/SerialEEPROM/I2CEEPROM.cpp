@@ -107,7 +107,7 @@ uint8_t I2CEEPROM::read(uint32_t addr) {
     return val;
 }
 
-uint8_t I2CEEPROM::write(uint32_t addr, uint8_t data) {
+void I2CEEPROM::write(uint32_t addr, uint8_t data) {
     Wire.beginTransmission( dev_addr(addr) );
     Wire.write( (byte) (addr >> 8) );
     Wire.write( (byte) addr );
@@ -121,22 +121,22 @@ uint8_t I2CEEPROM::write(uint32_t addr, uint8_t data) {
         	break;
     }
     if (_txrx_stat != 0) return 0;
-    return data;
+    return;
 }
 
-uint8_t I2CEEPROM::update(uint32_t addr, uint8_t data) {
+void I2CEEPROM::update(uint32_t addr, uint8_t data) {
 	uint8_t readout = read(addr);
 	if ( status() )
 		return 0;
 	if ( readout != data )
 		return write(addr, data);
-	return data;
+	return;
 }
 
-byte * I2CEEPROM::read(uint32_t addr, byte * dataptr, uint16_t nbytes) {
-	uint16_t ntrans;
+void I2CEEPROM::read(uint32_t addr, byte * dataptr, size_t nbytes) {
+	uint32_t ntrans;
 
-	for(uint16_t n = 0; n < nbytes; n += ntrans) {
+	for(uint32_t n = 0; n < nbytes; n += ntrans) {
 		ntrans = (nbytes - n) > BUFFER_LENGTH ? BUFFER_LENGTH : (nbytes - n);
 	    Wire.beginTransmission( dev_addr(addr) );
 	    Wire.write( (byte) (addr >> 8) );
@@ -151,10 +151,10 @@ byte * I2CEEPROM::read(uint32_t addr, byte * dataptr, uint16_t nbytes) {
 
 	    addr += ntrans;
 	}
-	return dataptr;
+	return;
 }
 
-byte * I2CEEPROM::write(uint32_t addr, byte * dataptr, uint16_t nbytes) {
+void I2CEEPROM::write(uint32_t addr, byte * dataptr, size_t nbytes) {
 	unsigned char ntrans;
 	for(unsigned int n = 0; n < nbytes; n += ntrans) {
 		ntrans = (nbytes - n) > BUFFER_LENGTH ? BUFFER_LENGTH : (nbytes - n);
@@ -175,13 +175,14 @@ byte * I2CEEPROM::write(uint32_t addr, byte * dataptr, uint16_t nbytes) {
 
 		addr += ntrans;
 	}
-	return dataptr;
+	return;
 }
-byte * I2CEEPROM::update(uint32_t addr, byte * dataptr, uint16_t nbytes) {
-	for(byte i = 0; i < nbytes; ++i) {
+
+void I2CEEPROM::update(uint32_t addr, byte * dataptr, size_t nbytes) {
+	for(uint32_t i = 0; i < nbytes; ++i) {
 		update(addr+i,dataptr[i]);
 		if ( status() )
 			return NULL;
 	}
-	return dataptr;
+	return;
 }
