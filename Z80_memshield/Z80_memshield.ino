@@ -12,6 +12,7 @@
 #include "common.h"
 #include "mem.h"
 #include "Z80.h"
+#include "iodef.h"
 
 
 const uint8_t rom_0000[0x100] PROGMEM = {
@@ -120,11 +121,15 @@ class OC1AClock {
 
 OC1AClock clock(4, 1600);
 
-I2CEEPROM eeprom;
-
+I2CEEPROM eeprom(0);
 SPISRAM spisram(SPISRAM_CS_PIN);
 
-BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file);
+enum XMEM {
+	XMEM_SRAM,
+	XMEM_SPISRAM,
+	XMEM_I2CEEPROM,
+};
+BYTE load_ihex(XMEM mem, File & file);
 
 uint8_t io_read(uint16_t port);
 void io_write(uint16_t port, uint8_t data);
@@ -164,19 +169,6 @@ void setup() {
   Serial.print(F("SD "));
   if ( SD.begin(SD_CS_PIN) ) {
 	  Serial.println(F("started."));
-	  Serial.print(F("open ROM.HEX "));
-	  File romfile = SD.open(F("ROM.HEX"));
-	  if ( romfile ) {
-		  Serial.println(F("succeeded."));
-		  BYTE errcode;
-		  if ( (errcode = eeprom_load_ihex(eeprom, romfile)) ) {
-			  Serial.print(F("ihex read error "));
-			  Serial.println(errcode, HEX);
-		  }
-		  romfile.close();
-	  } else {
-		  Serial.println(F("failed."));
-	  }
   } else {
 	  Serial.println(F("start failed."));
 	  while (1);
@@ -195,8 +187,21 @@ void setup() {
     Serial.println(F("sram_check "));
     if ( !memory_check(0, 0x10000 /* 0x80000 */) ) {
       Serial.println(F("sram_check passed."));
-      sram_load(0x0000, rom_0000, sizeof(rom_0000));
-      sram_load(0x1000, rom_1000, sizeof(rom_1000));
+      //sram_load(0x0000, rom_0000, sizeof(rom_0000));
+      //sram_load(0x1000, rom_1000, sizeof(rom_1000));
+	  Serial.print(F("open ROM.HEX "));
+	  File sdfile = SD.open(F("ROM.HEX"));
+	  if ( sdfile ) {
+		  Serial.println(F("succeeded."));
+		  BYTE errcode;
+		  if ( (errcode = load_ihex(XMEM_SRAM, sdfile)) ) {
+			  Serial.print(F("ihex read error "));
+			  Serial.println(errcode, HEX);
+		  }
+		  sdfile.close();
+	  } else {
+		  Serial.println(F("failed."));
+	  }
     }
     sram_bus_release();
   } else {
@@ -313,6 +318,18 @@ void io_write(uint16_t port, uint8_t data) {
   case 0x04:
     Serial1.write(data);
     break;
+
+  case 0x10: // 00
+	  break;
+  case 0x12: // 00
+	  break;
+  case 0x14: // 00
+	  break;
+  case 0x15: // 20
+	  break;
+  case 0x16: // 01
+	  break;
+
   default:
 	  Serial.println();
 	  Serial.print("out ");
@@ -325,12 +342,12 @@ void io_write(uint16_t port, uint8_t data) {
 }
 
 int sdfgets(File & file, char * buf, unsigned int lim) {
-	int n = file.readByte(buf,lim);
+	int n = file.read(buf,lim);
 	buf[n] = 0;
 	return n;
 }
 
-BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
+BYTE load_ihex(XMEM mem, File & file) {
 	enum {
 		STARTCODE = 1, // awaiting start code ':'
 		BYTECOUNT,
@@ -355,7 +372,7 @@ BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 	char * ptr;
 	do {
 		if (sta == STARTCODE) {
-			if ( sdfgets(buf, 1) != 1 ) {
+			if ( sdfgets(file, buf, 1) != 1 ) {
 				sta = FILEIOERROR;
 				break;
 			} else if (buf[0] == ':') {
@@ -368,7 +385,7 @@ BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 				break;
 			}
 		} else if (sta == BYTECOUNT) {
-			if ( sdfgets(buf, 2) != 2 ) {
+			if ( sdfgets(file, buf, 2) != 2 ) {
 				sta = FILEIOERROR;
 				break;
 			} else {
@@ -384,7 +401,7 @@ BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 				//printf("byte count %d, ",bytecount);
 			}
 		} else if (sta == ADDRESS) {
-			if ( sdfgets(buf, 4) != 4 ) {
+			if ( sdfgets(file, buf, 4) != 4 ) {
 				sta = FILEIOERROR;
 				break;
 			} else {
@@ -402,7 +419,7 @@ BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 				sta = RECORDTYPE;
 			}
 		} else if (sta == RECORDTYPE) {
-			if ( sdfgets(buf, 2) != 2) {
+			if ( sdfgets(file, buf, 2) != 2) {
 				sta = FILEIOERROR;
 				break;
 			} else {
@@ -422,7 +439,7 @@ BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 				//printf("type %02X, ", recordtype);
 			}
 		} else if (sta == DATA) {
-			if ( sdfgets(buf, 2) != 2 ) {
+			if ( sdfgets(file, buf, 2) != 2 ) {
 				sta = FILEIOERROR;
 				break;
 			} else {
@@ -442,7 +459,7 @@ BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 				}
 			}
 		} else if (sta == CHECKSUM) {
-			if ( sdfgets(buf, 2) != 2 ) {
+			if ( sdfgets(file, buf, 2) != 2 ) {
 				sta = FILEIOERROR;
 				break;
 			} else {
@@ -463,7 +480,11 @@ BYTE eeprom_load_ihex(I2CEEPROM & rom, File & file) {
 					break;
 				} else {
 					for (unsigned int i = 0; i < byteindex; i++) {
-						rom.update(baseaddress+address+i, bytes[i]);
+						if ( mem == XMEM_I2CEEPROM ) {
+							eeprom.update(baseaddress+address+i, bytes[i]);
+						} else if ( mem == XMEM_SRAM ) {
+							sram_write(baseaddress+address+i, bytes[i]);
+						}
 						//Serial.print(hexstr(bytes[i], 2));
 						//Serial.print(" ");
 					}

@@ -62,20 +62,24 @@ uint8_t sram_read(uint16_t addr) {
   unsigned char val;
   SRAM_DATA_OUT = 0x00;
   SRAM_DATA_DDR = 0x00; /*&= ~SRAM_DATA_MASK; */
+  sram_select();
   addr16_set(addr);
   digitalWrite(SRAM_OE_PIN,LOW);
   //__asm__ __volatile("NOP");
   val = SRAM_DATA_IN;
   digitalWrite(SRAM_OE_PIN,HIGH);
+  sram_deselect();
   return val;
 }
 
 uint8_t sram_write(uint16_t addr, uint8_t data) {
   addr16_set(addr);
+  sram_select();
   SRAM_DATA_DDR = SRAM_DATA_MASK;
   SRAM_DATA_OUT = data;
   digitalWrite(SRAM_WE_PIN, LOW);
   digitalWrite(SRAM_WE_PIN, HIGH);
+  sram_deselect();
   return data;
 }
 
@@ -88,7 +92,6 @@ uint16_t sram_check(uint16_t addr, const uint16_t nbytes) {
   for(uint16_t i = 0; i < 31; i++) {
     randbytes[i] = random(0, 256);
   }
-  sram_select();
   for(uint16_t i = 0; i < nbytes; i++) {
     sram_write((uint16_t)(addr+i),randbytes[(addr+i) % 31]);
   }
@@ -101,7 +104,6 @@ uint16_t sram_check(uint16_t addr, const uint16_t nbytes) {
       sram_write(addr+i, 0x00);
     }
   }
-  sram_deselect();
   return errcount;
 }
 
