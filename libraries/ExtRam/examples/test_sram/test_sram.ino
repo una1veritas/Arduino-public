@@ -25,8 +25,8 @@
  */
  
 #include <SPI.h>
-#include <sram.h>
 #include <HardwareSerial.h>
+#include "../../SRAM.h"
 
 SRAM ram(14); // Chip select pin = D14
 

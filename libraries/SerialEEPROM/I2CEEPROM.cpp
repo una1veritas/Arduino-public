@@ -133,7 +133,7 @@ void I2CEEPROM::update(uint32_t addr, uint8_t data) {
 	return;
 }
 
-void I2CEEPROM::read(uint32_t addr, byte * dataptr, size_t nbytes) {
+void I2CEEPROM::read(uint32_t addr, uint8_t * dataptr, size_t nbytes) {
 	uint32_t ntrans;
 
 	for(uint32_t n = 0; n < nbytes; n += ntrans) {
@@ -154,7 +154,7 @@ void I2CEEPROM::read(uint32_t addr, byte * dataptr, size_t nbytes) {
 	return;
 }
 
-void I2CEEPROM::write(uint32_t addr, byte * dataptr, size_t nbytes) {
+void I2CEEPROM::write(uint32_t addr, uint8_t * dataptr, size_t nbytes) {
 	unsigned char ntrans;
 	for(unsigned int n = 0; n < nbytes; n += ntrans) {
 		ntrans = (nbytes - n) > BUFFER_LENGTH ? BUFFER_LENGTH : (nbytes - n);
@@ -178,7 +178,7 @@ void I2CEEPROM::write(uint32_t addr, byte * dataptr, size_t nbytes) {
 	return;
 }
 
-void I2CEEPROM::update(uint32_t addr, byte * dataptr, size_t nbytes) {
+void I2CEEPROM::update(uint32_t addr, uint8_t * dataptr, size_t nbytes) {
 	for(uint32_t i = 0; i < nbytes; ++i) {
 		update(addr+i,dataptr[i]);
 		if ( status() )

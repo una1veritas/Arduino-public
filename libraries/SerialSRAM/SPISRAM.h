@@ -18,9 +18,9 @@
 #include <SPI.h>
 #include <Stream.h>
 
-#include "extmem.h"
+#include "ExtRam.h"
 
-class SPISRAM : public Stream, public extmem {
+class SPISRAM : public Stream, public ExtRam {
 private:
 	const byte _csPin;
 	const byte _buswidth;

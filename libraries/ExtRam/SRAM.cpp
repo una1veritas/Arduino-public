@@ -1,13 +1,13 @@
 /*
- * sram.cpp
+ * SRAM.cpp
  *
  *  Created on: 2017/09/19
  *      Author: sin
  */
 
-#include "sram.h"
+#include "SRAM.h"
 
-void sram_bus_setup() {
+void SRAM::bus_setup() {
   ADDRL_DIR = ADDRL_MASK; // fixed to be OUTPUT
   ADDRH_DIR = ADDRH_MASK; // fixed to be OUTPUT
   ADDRX_DIR |= ADDRX_MASK; // fixed to be OUTPUT
@@ -16,17 +16,18 @@ void sram_bus_setup() {
   CONTROL |= ( SRAM_WE | SRAM_OE | SRAM_CS ); //SRAM_ALE);
 }
 
-void sram_enable() {
+void SRAM::enable() {
   CONTROL &= ~SRAM_CS;  
 }
 
-void sram_disable() {
+void SRAM::disable() {
   CONTROL |= SRAM_CS;
 }
 
-uint8_t sram_read(uint32_t addr) {
+uint8_t SRAM::read(uint32_t addr) {
   unsigned char val;
   addr_set32(addr);
+  enable();
   DATA_DIR = 0x00;
   DATA_OUT = 0xff;
   CONTROL &= ~SRAM_OE;
@@ -34,14 +35,17 @@ uint8_t sram_read(uint32_t addr) {
   //__asm__ __volatile("nop");
   val = DATA_IN;
   CONTROL |= SRAM_OE; // valid data remains while
+  disable();
   return val;
 }
 
-void sram_write(uint32_t addr, uint8_t data) {
+void SRAM::write(uint32_t addr, uint8_t data) {
   addr_set32(addr);
+  enable();
   DATA_DIR = DATA_MASK;
   DATA_OUT = data;
   CONTROL &= ~SRAM_WE;
   CONTROL |= SRAM_WE;
+  disable();
 }
 

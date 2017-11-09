@@ -3,7 +3,7 @@
  * and PF0 - PF7 for D0 - D7
  */
 
-#include "sram.h"
+#include "../../SRAM.h"
 
 
 uint8_t crc8(uint8_t inbyte, uint8_t & crc) {
