@@ -113,23 +113,23 @@ void I2CEEPROM::write(uint32_t addr, uint8_t data) {
     Wire.write( (byte) addr );
     Wire.write(data);
     _txrx_stat = Wire.endTransmission();
-    if (_txrx_stat != 0) return 0;
+    if (_txrx_stat != 0)
+    	return;
 
     for (uint8_t i=10; i; --i) {
         delay(1);                    //no point in waiting too fast
         if ( ready() )
         	break;
     }
-    if (_txrx_stat != 0) return 0;
     return;
 }
 
 void I2CEEPROM::update(uint32_t addr, uint8_t data) {
 	uint8_t readout = read(addr);
 	if ( status() )
-		return 0;
+		return;
 	if ( readout != data )
-		return write(addr, data);
+		write(addr, data);
 	return;
 }
 

@@ -6,7 +6,7 @@
 #include "common.h"
 
 void z80_bus_setup();
-void z80_reset(unsigned long dur);
+void z80_reset(void);
 
 void z80_busreq(BYTE val);
 BYTE z80_busack(WORD wcnt = 0);

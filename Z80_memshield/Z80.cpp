@@ -43,16 +43,23 @@ void z80_bus_setup(void) {
 #ifdef Z80_WAIT_INTERNAL_PULLUP
   digitalWrite(Z80_WAIT_PIN, HIGH);
 #endif
-  pinMode(Z80_RESET_PIN, INPUT);  // digitalWrite(Z80_RESET_PIN, HIGH);
+  pinMode(Z80_RESET_PIN, OUTPUT); 	digitalWrite(Z80_RESET_PIN, HIGH);
 
 }
 
-void z80_reset(unsigned long dur) {
-	pinMode(Z80_RESET_PIN, OUTPUT);
-  digitalWrite(Z80_RESET_PIN, LOW);
-  delay(dur);
-  digitalWrite(Z80_RESET_PIN, HIGH);
-	pinMode(Z80_RESET_PIN, INPUT);
+
+
+
+void z80_reset(void) {
+	// keep RESET low while at least 3 clock cycles
+	uint8_t clkphase = digitalRead(Z80_CLK_PIN);
+	digitalWrite(Z80_RESET_PIN, LOW);
+	for(uint8_t i = 0; i < 4; ++i) {
+		while ( clkphase == digitalRead(Z80_CLK_PIN));
+		clkphase = digitalRead(Z80_CLK_PIN);
+	}
+	digitalWrite(Z80_RESET_PIN, HIGH);
+	return true;
 }
 
 void z80_busreq(BYTE val) {

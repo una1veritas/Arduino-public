@@ -2,7 +2,7 @@
 #include "common.h"
 #include "mem.h"
 
-void sram_bus_init() {
+void sram_bus_setup() {
   DDR(SRAM_ADDRL_PORT) = SRAM_ADDRL_MASK; 
   DDR(SRAM_ADDRH_PORT) = SRAM_ADDRH_MASK; 
   pinMode(SRAM_ADDRX0_PIN, OUTPUT);
@@ -60,9 +60,9 @@ void sram_bank(uint8_t bank) {
 
 uint8_t sram_read(uint16_t addr) {
   unsigned char val;
+  sram_select();
   SRAM_DATA_OUT = 0x00;
   SRAM_DATA_DDR = 0x00; /*&= ~SRAM_DATA_MASK; */
-  sram_select();
   addr16_set(addr);
   digitalWrite(SRAM_OE_PIN,LOW);
   //__asm__ __volatile("NOP");
@@ -73,8 +73,8 @@ uint8_t sram_read(uint16_t addr) {
 }
 
 uint8_t sram_write(uint16_t addr, uint8_t data) {
+	sram_select();
   addr16_set(addr);
-  sram_select();
   SRAM_DATA_DDR = SRAM_DATA_MASK;
   SRAM_DATA_OUT = data;
   digitalWrite(SRAM_WE_PIN, LOW);
@@ -86,23 +86,22 @@ uint8_t sram_write(uint16_t addr, uint8_t data) {
 uint16_t sram_check(uint16_t addr, const uint16_t nbytes) {
   uint16_t errcount = 0;
   uint8_t randbytes[31];
+  uint8_t orgval;
   uint8_t readout;
 
   randomSeed(millis());
   for(uint16_t i = 0; i < 31; i++) {
     randbytes[i] = random(0, 256);
   }
+
   for(uint16_t i = 0; i < nbytes; i++) {
-    sram_write((uint16_t)(addr+i),randbytes[(addr+i) % 31]);
-  }
-  
-  for(uint16_t i = 0; i < nbytes; i++) {
-    readout = sram_read(addr+i);
-    if ( readout != randbytes[(addr+i) % 31] ) {
-      errcount++;
-    } else {
-      sram_write(addr+i, 0x00);
-    }
+	  orgval = sram_read(addr+i);
+	  sram_write(addr+i, randbytes[(addr+i) % 31]);
+	  readout = sram_read(addr+i);
+	  if ( readout != randbytes[(addr+i) % 31] ) {
+		  errcount++;
+	  }
+	  sram_write(addr+i, orgval);
   }
   return errcount;
 }

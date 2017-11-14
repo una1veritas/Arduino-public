@@ -6,8 +6,9 @@
 #define DDR(port)  (*((&port)-1))
 #define PIN(port)  (*((&port)-2))
 
-typedef uint8_t BYTE;
-typedef uint16_t WORD;
-typedef volatile BYTE * PORT;
+typedef uint8_t 	BYTE;
+typedef uint16_t 	WORD;
+typedef uint32_t 	QWORD;
+typedef volatile BYTE * 	PORT;
 
 #endif /* _COMMON_H_ */

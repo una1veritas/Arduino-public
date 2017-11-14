@@ -12,6 +12,7 @@
 #include "common.h"
 #include "mem.h"
 #include "Z80.h"
+#include "OC1AClock.h"
 #include "iodef.h"
 
 
@@ -39,13 +40,12 @@ const uint8_t rom_1000[0x100] PROGMEM = {
 void sram_load(const uint16_t addr, const uint8_t * mem, uint16_t msize) {
   for(uint16_t i = 0; i < msize; ++i) {
     uint8_t code = pgm_read_byte(mem+i);
-    sram_select();
     sram_write(addr+i,code);
-    sram_deselect();
   }
+  /*
   for(uint16_t i = 0; i < msize; ++i) {
     if ( (i& 0x0f) == 0x00 ) {
-      Serial.print(hexstr(addr+i, 4));
+      Serial.print(hexstr(strbuff, addr+i, 4));
       Serial.print(": ");
     }
     sram_select();
@@ -57,10 +57,10 @@ void sram_load(const uint16_t addr, const uint8_t * mem, uint16_t msize) {
     }
   }
   Serial.println();  
+  */
 }
 
-char * hexstr(uint32_t val, uint8_t digits) {
-  static char buf[8+1];
+char * hexstr(char * buf, uint32_t val, uint8_t digits) {
   digits = digits >= 8 ? 8 : digits;
   for(uint8_t d = digits; d > 0; --d ) {
     buf[d-1] = (val & 0x0f);
@@ -75,65 +75,59 @@ char * hexstr(uint32_t val, uint8_t digits) {
   return buf;
 }
 
-class OC1AClock {
-  private:
-    uint8_t prescaler;
-    uint16_t topvalue;
-  public:
-  
-  OC1AClock(uint8_t presc, uint16_t top) : prescaler(presc), topvalue(top) {}
-
-  void start(void) {
-    const uint8_t MODE = 4;
-    cli();
-    
-    TCCR1A = 0; TCCR1B = 0; TCCR1C = 0; 
-    
-    TCNT1 = 0;
-    OCR1A = topvalue - 1;
-  
-    TCCR1A |= (1 << COM1A0) | (MODE & 0x3);
-    TCCR1B |= ((MODE >> 2 & 0x03) << 3) |  (prescaler<<CS10);
-    TCCR1C |= (1 << FOC1A);
-  
-    sei();
-  }
-  
-  void stop() {
-    TCCR1B &= ~(0x07<<CS10);
-  }
-  
-  void restart(void) {
-    TCCR1B |= (prescaler<<CS10);
-  }
-
-  void restart(uint8_t presc, uint16_t top) {
-    stop();
-    topvalue = top;
-    prescaler = presc;
-    cli();
-    TCNT1 = 0;
-    OCR1A = topvalue - 1;
-    sei();
-    restart();
-  }
-};
-
-OC1AClock clock(4, 1600);
+int str2byte(char * str) {
+	unsigned char c;
+	int val = 0;
+	for (int i = 0; i < 2; i++) {
+		c = toupper(str[i]);
+		if ( c > '9' )
+			c -= 7;
+		c -= '0';
+		if ( c & 0xf0 )
+			return -1;
+		val <<= 4;
+		val |= c;
+	}
+	return val;
+}
 
 I2CEEPROM eeprom(0);
 SPISRAM spisram(SPISRAM_CS_PIN);
 
-enum XMEM {
-	XMEM_SRAM,
-	XMEM_SPISRAM,
-	XMEM_I2CEEPROM,
+enum LOAD_DEST {
+	LOAD_DST_SRAM,
+	LOAD_DST_SPISRAM,
+	LOAD_DST_I2CEEPROM,
 };
-BYTE load_ihex(XMEM mem, File & file);
+uint8_t load_ihex(File & file, const uint8_t dst);
 
 uint8_t io_read(uint16_t port);
 void io_write(uint16_t port, uint8_t data);
+char strbuff[9];
 
+struct VirtualDiskDrive {
+	static const uint16_t 	TRACKS = 77;
+	static const uint16_t 	SECTORS_PER_TRACK = 26;
+	static const uint8_t 	SECTOR_BYTESIZE = 128;
+	static const uint16_t 	BLOCK_SIZE = 1024;
+	enum {
+		DMA_OK = 0,
+		DMA_NG = 1,
+		DMA_READ = 1,
+		DMA_WRITE = 2,
+		DMA_WRITEBACK = 3,
+	};
+
+	uint8_t result;
+	uint8_t request;
+	uint16_t track;
+	uint8_t sector;
+	uint16_t buffaddr;
+	File sdfile;
+};
+static VirtualDiskDrive vdd = { VirtualDiskDrive::DMA_OK, VirtualDiskDrive::DMA_OK, 0, 0, 0 };
+
+void dma_exec(void);
 void setup() {
   // put your setup code here, to run once:
 
@@ -175,28 +169,28 @@ void setup() {
   }
   
   Serial.println(F("starting Z80.."));
+  OC1AClock_setup(4, 200);
   z80_bus_setup();
-  clock.start();
-  z80_reset(500);
+  OC1AClock_start();
+  z80_reset();
 
   Serial.print(F("BUSREQ "));
   z80_busreq(LOW);
   if ( !z80_busack(1000) ) {
     Serial.println(F("succeeded."));
-    sram_bus_init();
+    sram_bus_setup();
     Serial.println(F("sram_check "));
     if ( !memory_check(0, 0x10000 /* 0x80000 */) ) {
       Serial.println(F("sram_check passed."));
-      //sram_load(0x0000, rom_0000, sizeof(rom_0000));
-      //sram_load(0x1000, rom_1000, sizeof(rom_1000));
-	  Serial.print(F("open ROM.HEX "));
-	  File sdfile = SD.open(F("ROM.HEX"));
+	  Serial.print(F("open BOOTROM.HEX "));
+	  File sdfile = SD.open(F("BOOTROM.HEX"));
 	  if ( sdfile ) {
 		  Serial.println(F("succeeded."));
 		  BYTE errcode;
-		  if ( (errcode = load_ihex(XMEM_SRAM, sdfile)) ) {
+		  if ( (errcode = load_ihex(sdfile, LOAD_DST_SRAM)) ) {
 			  Serial.print(F("ihex read error "));
 			  Serial.println(errcode, HEX);
+			  while (1);
 		  }
 		  sdfile.close();
 	  } else {
@@ -208,9 +202,14 @@ void setup() {
         Serial.println(F(" failed."));
   }
 
+  if ( (vdd.sdfile = SD.open("CPMBOOT.DSK")) ) {
+	  Serial.print(vdd.sdfile.name());
+	  Serial.println(" opened.");
+  }
+
 //  digitalWrite(MEGA_MEMEN_PIN, LOW);  // enable MREQ to CS
   z80_busreq(HIGH);
-  z80_reset(500);
+  z80_reset();
 
 } 
 
@@ -222,29 +221,29 @@ void loop() {
   if ( !z80_mreq_rd() ) {
     addr = ((uint16_t)PINC<<8) | PINL;
     data = PINA;
-    Serial.print(hexstr(addr,4));
+    Serial.print(hexstr(strbuff,addr,4));
     Serial.print(F(" R  "));
-    Serial.print(hexstr(data,2));
+    Serial.print(hexstr(strbuff,data,2));
     Serial.println();
     while ( !z80_mreq_rd() ) ;
   } else if ( !z80_mreq_wr() ) {
     addr = ((uint16_t)PINC<<8) | PINL;
     data = PINA;
-    Serial.print(hexstr(addr,4));
+    Serial.print(hexstr(strbuff,addr,4));
     Serial.print(F("  W "));
-    Serial.print(hexstr(data,2));
+    Serial.print(hexstr(strbuff,data,2));
     Serial.println();
     while ( !z80_mreq_wr() ) ;
   } else if ( !z80_iorq_wr() ) {
 	  // IORQ LOW implies via 10k wait LOW
     addr = ((uint16_t)PINC<<8) | PINL;
     data = PINA;
-    io_write(addr, data);
-    Serial.print(hexstr(addr,4));
+    Serial.print(hexstr(strbuff,addr,4));
     Serial.print(F("  O "));
-    Serial.print(hexstr(data,2));
+    Serial.print(hexstr(strbuff,data,2));
     Serial.println();
-    z80_wait_disable();
+    io_write(addr, data);
+    z80_wait_disable(); // force WAIT high
     while ( !z80_iorq_wr() ) ;
     z80_wait_enable();
   } else if ( !z80_iorq_rd() ) {
@@ -253,15 +252,22 @@ void loop() {
     data = io_read(addr);
     DDR(PORTA) = 0xff;
     PORTA = data;
-    Serial.print(hexstr(addr,4));
+    Serial.print(hexstr(strbuff,addr,4));
     Serial.print(F(" I  "));
-    Serial.print(hexstr(data,2));
+    Serial.print(hexstr(strbuff,data,2));
     Serial.println();
     z80_wait_disable();
     while ( !z80_iorq_rd() ) ;
     z80_wait_enable();
     DDR(PORTA) = 0x00;
     PORTA = 0x00;
+  }
+  if ( vdd.request == vdd.DMA_READ || vdd.request == vdd.DMA_WRITE ) {
+	  while ( z80_busack() );
+	  dma_exec();
+	  z80_busreq(HIGH);
+	  while ( !z80_busack() );
+	  Serial.println("now BUSACK high.");
   }
 
 }
@@ -272,18 +278,18 @@ uint32_t memory_check(uint32_t startaddr, uint32_t maxaddr) {
   for(uint32_t addr = startaddr; addr < maxaddr; addr += block ) {
     sram_bank(addr>>16 & 0x07);
     Serial.print("[bank ");
-    Serial.print(hexstr(addr>>16 & 0x07, 2));
+    Serial.print(hexstr(strbuff,addr>>16 & 0x07, 2));
     Serial.print("] ");
-    Serial.print(hexstr(addr & 0xffff, 4));
+    Serial.print(hexstr(strbuff,addr & 0xffff, 4));
     Serial.print(" - ");
-    Serial.print(hexstr( (addr+block-1) & 0xffff, 4));
+    Serial.print(hexstr(strbuff, (addr+block-1) & 0xffff, 4));
     
     if ( (errs = sram_check(addr & 0xffff, block)) > 0 ) {
       errtotal += errs;
       Serial.print(" err: ");
       Serial.println(errs);
     } else {
-      Serial.println(" ok. ");      
+      Serial.println(" ok. ");
     }
   }
   return errtotal;
@@ -291,18 +297,21 @@ uint32_t memory_check(uint32_t startaddr, uint32_t maxaddr) {
 
 uint8_t io_read(uint16_t port) {
   switch(port & 0xff) {
-  case 0x00:
+  case CON_STATUS:
     if ( Serial1.available() )
       return 0xff;
       return 0x00;
     break;
-  case 0x01:
+  case CON_IN:
     return (uint8_t) Serial1.read();
     break;
-  case 0x04:
+  case CON_READ_NOWAIT:
     return (uint8_t) Serial1.read();
     break;
-  case 0x40:
+  case DISK_DMA_RES:
+	  return vdd.result;
+	  break;
+  case RTC_CONT:
     // timer/clock control
     break;
   }
@@ -311,35 +320,92 @@ uint8_t io_read(uint16_t port) {
 
 void io_write(uint16_t port, uint8_t data) {
   switch(port & 0xff) {
-  case 0x01:
-  case 0x02:
+  case CON_IN:
+  case CON_OUT:
     Serial1.write(data);
     break;
   case 0x04:
     Serial1.write(data);
     break;
 
-  case 0x10: // 00
+  case DISK_TRACK_L:
+	  vdd.track &= 0xff00;
+	  vdd.track |= data;
 	  break;
-  case 0x12: // 00
+  case DISK_TRACK_H:
+	  vdd.track &= 0x00ff;
+	  vdd.track |= (((uint16_t)data)<<8);
 	  break;
-  case 0x14: // 00
+  case DISK_SECTOR:
+	  vdd.sector = data;
 	  break;
-  case 0x15: // 20
+  case DISK_DMA_ADDRL:
+	  vdd.buffaddr &= 0xff00;
+	  vdd.buffaddr |= data;
 	  break;
-  case 0x16: // 01
+  case DISK_DMA_ADDRH:
+	  vdd.buffaddr &= 0x00ff;
+	  vdd.buffaddr |= (((uint16_t)data)<<8);
 	  break;
-
+  case DISK_DMA_EXEC:
+	  vdd.request = data;
+	  z80_busreq(LOW);
+	  // dma_exec will be executed in busack-state after finished the OUT inst.
+	  break;
   default:
 	  Serial.println();
 	  Serial.print("out ");
-	  Serial.print(hexstr(port,4));
+	  Serial.print(hexstr(strbuff,port,4));
 	  Serial.print(" ");
-	  Serial.println(hexstr(data,2));
+	  Serial.println(hexstr(strbuff,data,2));
 	  break;
   }
   return;
 }
+
+void dma_exec(void) {
+	if ( vdd.request == vdd.DMA_READ ) {
+		Serial.print("track ");
+		Serial.print(vdd.track, HEX);
+		Serial.print(", sector ");
+		Serial.print(vdd.sector, HEX);
+		Serial.print(", DMA to address ");
+		Serial.println(hexstr(strbuff,vdd.buffaddr, 4));
+		if ( vdd.track > vdd.TRACKS || vdd.sector > vdd.SECTORS_PER_TRACK ) {
+			vdd.result = vdd.DMA_NG;
+			vdd.request = vdd.DMA_OK;
+			Serial.println("failed!");
+			return;
+		}
+		//Serial.println("seek.");
+		vdd.sdfile.seek(vdd.track * vdd.SECTORS_PER_TRACK + vdd.sector );
+		uint16_t i;
+		//Serial.println("load.");
+		sram_bus_setup();
+		for(i = 0; i < 128; ++i) {
+			int dbyte = vdd.sdfile.read();
+			if ( dbyte == -1 )
+				break;
+			sram_write(vdd.buffaddr+i,(uint8_t)dbyte);
+		}
+		sram_bus_release();
+		if ( i != 128 ) {
+			Serial.println("vdd read error!");
+			vdd.result = vdd.DMA_NG;
+			vdd.request = vdd.DMA_OK;
+			return;
+		} else {
+			vdd.result = vdd.DMA_OK;
+			vdd.request = vdd.DMA_OK;
+			return;
+		}
+	} else if ( vdd.request == vdd.DMA_WRITE ) {
+		Serial.println("DMA_WRITE");
+	} else {
+		Serial.println("undefined DMA function");
+	}
+}
+
 
 int sdfgets(File & file, char * buf, unsigned int lim) {
 	int n = file.read(buf,lim);
@@ -347,151 +413,140 @@ int sdfgets(File & file, char * buf, unsigned int lim) {
 	return n;
 }
 
-BYTE load_ihex(XMEM mem, File & file) {
+uint8_t load_ihex(File & file, const uint8_t dst) {
 	enum {
 		STARTCODE = 1, // awaiting start code ':'
 		BYTECOUNT,
 		ADDRESS,
 		RECORDTYPE,
+		HEADER,
 		DATA,
 		CHECKSUM,
 		ENDOFFILE = 0,
 		ERRORFLAG = 0x80,
+		SYNTAXERROR = ERRORFLAG | 0x20,
 		FILEIOERROR = ERRORFLAG | 0x40,
 	};
 	unsigned char sta = STARTCODE;
 	unsigned long baseaddress = 0;
 	unsigned int address = 0;
-	char buf[256];
+	char buf[8];
 	unsigned char bytes[256];
 	unsigned int byteindex, bytecount;
 	unsigned char xsum, recordtype;
 
+	int t;
 	//Serial.println("ihex file read start.");
 	unsigned int totalbytecount = 0;
-	char * ptr;
 	do {
 		if (sta == STARTCODE) {
 			if ( sdfgets(file, buf, 1) != 1 ) {
 				sta = FILEIOERROR;
 				break;
-			} else if (buf[0] == ':') {
+			}
+			if (buf[0] == ':') {
 				xsum = 0;
-				sta = BYTECOUNT;
+				sta = HEADER;
 				//printf("start code, ");
 			} else if (!iscntrl(buf[0])) {
 				//Serial.println("failed to find startcode.");
 				sta |= ERRORFLAG;
 				break;
 			}
-		} else if (sta == BYTECOUNT) {
-			if ( sdfgets(file, buf, 2) != 2 ) {
+		} else if (sta == HEADER) {
+			if ( sdfgets(file, buf, 8) != 8 ) {
 				sta = FILEIOERROR;
 				break;
-			} else {
-				bytecount = strtol(buf, &ptr, 16);
-				if (*ptr != (char) 0) {
-					//Serial.println("failed to read byte count.");
-					Serial.println(buf);
-					sta |= ERRORFLAG;
-					break;
-				}
-				xsum += bytecount;
-				sta = ADDRESS;
-				//printf("byte count %d, ",bytecount);
 			}
-		} else if (sta == ADDRESS) {
-			if ( sdfgets(file, buf, 4) != 4 ) {
-				sta = FILEIOERROR;
+			t = str2byte(buf);
+			if ( t < 0 ) {
+				sta = BYTECOUNT | SYNTAXERROR;
 				break;
-			} else {
-				address = strtol(buf, &ptr, 16);
-				if (*ptr != (char) 0) {
-					//Serial.println("failed to read address.");
-					sta |= ERRORFLAG;
-					break;
-				}
-				//Serial.print(hexstr(address, 4));
-				//Serial.print(" ");
-				//printf("address %04X, ",address);
-				xsum += address >> 8 & 0xff;
-				xsum += address & 0xff;
-				sta = RECORDTYPE;
 			}
-		} else if (sta == RECORDTYPE) {
-			if ( sdfgets(file, buf, 2) != 2) {
-				sta = FILEIOERROR;
+			bytecount = (uint8_t) t;
+			xsum += bytecount;
+			t = str2byte(buf+2);
+			if ( t < 0 ) {
+				sta = ADDRESS | SYNTAXERROR;
 				break;
-			} else {
-				recordtype = strtol(buf, &ptr, 16);
-				if (*ptr != (char) 0) {
-					//Serial.println("failed to read record type.");
-					sta |= ERRORFLAG;
-					break;
-				}
-				xsum += recordtype;
-				if (bytecount) {
-					sta = DATA;
-					byteindex = 0;
-				} else {
-					sta = CHECKSUM;
-				}
-				//printf("type %02X, ", recordtype);
 			}
+			address = t & 0xff;
+			xsum += (uint8_t) t;
+			address <<= 8;
+			t = str2byte(buf+4);
+			if ( t < 0 ) {
+				sta = ADDRESS | SYNTAXERROR;
+				break;
+			}
+			address |= (t & 0xff);
+			xsum += (uint8_t) t;
+			t = str2byte(buf+6);
+			if ( t < 0 ) {
+				sta = RECORDTYPE | SYNTAXERROR;
+				break;
+			}
+			recordtype = t & 0xff;
+			xsum += (uint8_t) t;
+			if ( bytecount ) {
+				sta = DATA;
+				byteindex = 0;
+			} else {
+				sta = CHECKSUM;
+			}
+			Serial.print(hexstr(strbuff,address,4));
+			Serial.print(": ");
 		} else if (sta == DATA) {
 			if ( sdfgets(file, buf, 2) != 2 ) {
 				sta = FILEIOERROR;
 				break;
+			}
+			t = str2byte(buf);
+			if ( t < -1 ) {
+				sta = DATA | SYNTAXERROR;
+				break;
+			}
+			bytes[byteindex] = (uint8_t) t;
+			xsum += bytes[byteindex];
+			//printf("%02X ", bytes[byteindex]);
+			byteindex++;
+			if (byteindex < bytecount) {
+				sta = DATA;
 			} else {
-				bytes[byteindex] = strtol(buf, &ptr, 16);
-				if (*ptr != (char) 0) {
-					//Serial.println("failed while reading data.");
-					sta |= ERRORFLAG;
-					break;
-				}
-				xsum += bytes[byteindex];
-				//printf("%02X ", bytes[byteindex]);
-				byteindex++;
-				if (byteindex < bytecount) {
-					sta = DATA;
-				} else {
-					sta = CHECKSUM;
-				}
+				sta = CHECKSUM;
 			}
 		} else if (sta == CHECKSUM) {
 			if ( sdfgets(file, buf, 2) != 2 ) {
 				sta = FILEIOERROR;
 				break;
+			}
+			t = str2byte(buf);
+			if ( t < 0 ) {
+				sta = DATA | SYNTAXERROR;
+				break;
+			}
+			xsum += (uint8_t) t;
+			if ( xsum ) {
+				//Serial.println("Got a check sum error.");
+				sta = CHECKSUM | ERRORFLAG;
+				break;
+			}
+			if (recordtype == 1) {
+				//Serial.println("end-of-file.");
+				sta = ENDOFFILE;
+				break;
 			} else {
-				xsum += strtol(buf, &ptr, 16);
-				if (*ptr != (char) 0) {
-					sta |= ERRORFLAG;
-					break;
-				}
-				//printf(": %02X, ", xsum );
-				if (xsum) {
-					//Serial.println("Got a check sum error.");
-					sta |= ERRORFLAG;
-					break;
-				}
-				if (recordtype == 1) {
-					//Serial.println("end-of-file.");
-					sta = ENDOFFILE;
-					break;
-				} else {
-					for (unsigned int i = 0; i < byteindex; i++) {
-						if ( mem == XMEM_I2CEEPROM ) {
-							eeprom.update(baseaddress+address+i, bytes[i]);
-						} else if ( mem == XMEM_SRAM ) {
-							sram_write(baseaddress+address+i, bytes[i]);
-						}
-						//Serial.print(hexstr(bytes[i], 2));
-						//Serial.print(" ");
+				for (unsigned int i = 0; i < byteindex; i++) {
+					if ( dst == LOAD_DST_I2CEEPROM ) {
+						eeprom.update(baseaddress+address+i, bytes[i]);
+					} else if ( dst == LOAD_DST_SRAM ) {
+						sram_write(baseaddress+address+i, bytes[i]);
 					}
-					//Serial.println();
-					totalbytecount += bytecount;
-					sta = STARTCODE;
+					Serial.print(hexstr(strbuff,bytes[i], 2));
+					Serial.print(" ");
 				}
+				Serial.println();
+				totalbytecount += bytecount;
+				sta = STARTCODE;
 			}
 		}
 	} while ( file.available() > 0 );

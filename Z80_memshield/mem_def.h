@@ -44,11 +44,5 @@
 #define SRAM_WE_PORT    PORTG
 #define SRAM_WE         PG0
 
-/* microMMC/SD card adapter */
-#define SD_CS_PIN       4
-
-/* Serial SRAM 23LCV1024 */
-#define SPISRAM_CS_PIN 53
-
 #endif /* _MEM_DEF_H_ */
 
