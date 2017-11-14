@@ -16,14 +16,6 @@ void SRAM::bus_setup() {
   CONTROL |= ( SRAM_WE | SRAM_OE | SRAM_CS ); //SRAM_ALE);
 }
 
-void SRAM::enable() {
-  CONTROL &= ~SRAM_CS;  
-}
-
-void SRAM::disable() {
-  CONTROL |= SRAM_CS;
-}
-
 uint8_t SRAM::read(uint32_t addr) {
   unsigned char val;
   addr_set32(addr);

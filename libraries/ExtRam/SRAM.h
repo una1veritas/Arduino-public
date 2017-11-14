@@ -44,8 +44,13 @@ public:
 	void bus_setup(void);
 	bool begin() { return true; }
 
-	void enable(void);
-	void disable(void);
+	void enable() {
+	  CONTROL &= ~SRAM_CS;
+	}
+
+	void disable() {
+	  CONTROL |= SRAM_CS;
+	}
 
 	uint8_t read(uint32_t addr);
 	void write(uint32_t addr, uint8_t data);
