@@ -42,22 +42,6 @@ void sram_load(const uint16_t addr, const uint8_t * mem, uint16_t msize) {
     uint8_t code = pgm_read_byte(mem+i);
     sram_write(addr+i,code);
   }
-  /*
-  for(uint16_t i = 0; i < msize; ++i) {
-    if ( (i& 0x0f) == 0x00 ) {
-      Serial.print(hexstr(strbuff, addr+i, 4));
-      Serial.print(": ");
-    }
-    sram_select();
-    Serial.print(hexstr(sram_read(addr+i), 2));
-    sram_deselect();
-    Serial.print(" ");
-    if ( (i& 0x0f) == 0x0f ) {
-      Serial.println();
-    }
-  }
-  Serial.println();  
-  */
 }
 
 char * hexstr(char * buf, uint32_t val, uint8_t digits) {
@@ -91,6 +75,8 @@ int str2byte(char * str) {
 	return val;
 }
 
+void sram_dump(uint16_t addr, uint16_t length);
+
 I2CEEPROM eeprom(0);
 SPISRAM spisram(SPISRAM_CS_PIN);
 
@@ -105,10 +91,10 @@ uint8_t io_read(uint16_t port);
 void io_write(uint16_t port, uint8_t data);
 char strbuff[9];
 
-struct VirtualDisk {
+struct SDVirtualDisk {
 	static const uint16_t 	TRACKS = 77;
 	static const uint16_t 	SECTORS_PER_TRACK = 26;
-	static const uint8_t 	SECTOR_BYTESIZE = 128;
+	static const uint8_t 	BYTES_PER_SECTOR = 128;
 	static const uint16_t 	BLOCK_SIZE = 1024;
 
 	uint16_t track;
@@ -189,6 +175,7 @@ void setup() {
 			  Serial.println(errcode, HEX);
 			  while (1);
 		  }
+		  sram_dump(0x0000, 0x80);
 		  sdfile.close();
 	  } else {
 		  Serial.println(F("failed."));
@@ -252,6 +239,8 @@ void loop() {
     data = io_read(addr);
     DDR(PORTA) = 0xff;
     PORTA = data;
+    DDR(PORTA) = 0x00;
+    PORTA = 0x00;
     Serial.print(hexstr(strbuff,addr,4));
     Serial.print(F(" I  "));
     Serial.print(hexstr(strbuff,data,2));
@@ -259,14 +248,12 @@ void loop() {
     z80_wait_disable();
     while ( !z80_iorq_rd() ) ;
     z80_wait_enable();
-    DDR(PORTA) = 0x00;
-    PORTA = 0x00;
   }
   if ( dma.request != DMA_MODE::DMA_NONE ) {
 	  while ( z80_busack() );
 	  dma_exec();
 	  z80_busreq(HIGH);
-	  while ( !z80_busack() );
+	  //while ( !z80_busack() );
 	  //Serial.println("now BUSACK high.");
   }
 
@@ -379,7 +366,7 @@ void dma_exec(void) {
 			Serial.println("vdisk file open failed!");
 			return;
 		}
-		vdisk.sdfile.seek(vdisk.track * vdisk.SECTORS_PER_TRACK + vdisk.sector );
+		vdisk.sdfile.seek( ((unsigned long)vdisk.track * vdisk.SECTORS_PER_TRACK + vdisk.sector) << 7 );
 		uint16_t i;
 		//Serial.println("load.");
 		sram_bus_setup();
@@ -390,6 +377,8 @@ void dma_exec(void) {
 			sram_write(vdisk.dstaddr+i,(uint8_t)dbyte);
 		}
 		vdisk.sdfile.close();
+		sram_dump(vdisk.dstaddr, 128);
+		sram_dump(0x2000, 0x80);
 		sram_bus_release();
 		if ( i != 128 ) {
 			Serial.println("vdisk read error!");
@@ -438,7 +427,7 @@ uint8_t load_ihex(File & file, const uint8_t dst) {
 	unsigned char xsum, recordtype;
 
 	int t;
-	//Serial.println("ihex file read start.");
+
 	unsigned int totalbytecount = 0;
 	do {
 		if (sta == STARTCODE) {
@@ -495,8 +484,7 @@ uint8_t load_ihex(File & file, const uint8_t dst) {
 			} else {
 				sta = CHECKSUM;
 			}
-			Serial.print(hexstr(strbuff,address,4));
-			Serial.print(": ");
+
 		} else if (sta == DATA) {
 			if ( sdfgets(file, buf, 2) != 2 ) {
 				sta = FILEIOERROR;
@@ -543,10 +531,7 @@ uint8_t load_ihex(File & file, const uint8_t dst) {
 					} else if ( dst == LOAD_DST_SRAM ) {
 						sram_write(baseaddress+address+i, bytes[i]);
 					}
-					Serial.print(hexstr(strbuff,bytes[i], 2));
-					Serial.print(" ");
 				}
-				Serial.println();
 				totalbytecount += bytecount;
 				sta = STARTCODE;
 			}
@@ -554,4 +539,21 @@ uint8_t load_ihex(File & file, const uint8_t dst) {
 	} while ( file.available() > 0 );
 
 	return sta;
+}
+
+void sram_dump(uint16_t addr, uint16_t length) {
+	for(uint16_t i = 0; i < length; ++i) {
+		if ( (i& 0x0f) == 0x00 ) {
+		  Serial.print(hexstr(strbuff, addr+i, 4));
+		  Serial.print(": ");
+		}
+		sram_select();
+		Serial.print(hexstr(strbuff, sram_read(addr+i), 2));
+		sram_deselect();
+		Serial.print(" ");
+		if ( (i& 0x0f) == 0x0f ) {
+		  Serial.println();
+		}
+	}
+	Serial.println();
 }

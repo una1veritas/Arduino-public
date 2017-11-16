@@ -26,12 +26,10 @@ void sram_bus_release() {
   DDR(SRAM_ADDRL_PORT) = 0; 
   DDR(SRAM_ADDRH_PORT) = 0; 
   DDR(SRAM_DATA_OUT) = 0; 
-  pinMode(SRAM_CS_PIN,INPUT);
-  pinMode(SRAM_OE_PIN,INPUT);
-  pinMode(SRAM_WE_PIN,INPUT);
-  digitalWrite(SRAM_CS_PIN,HIGH);
-  digitalWrite(SRAM_OE_PIN,HIGH);
-  digitalWrite(SRAM_WE_PIN,HIGH);
+  pinMode(SRAM_CS_PIN,INPUT);  	digitalWrite(SRAM_CS_PIN,HIGH);
+  pinMode(SRAM_OE_PIN,INPUT);  	digitalWrite(SRAM_OE_PIN,HIGH);
+  pinMode(SRAM_WE_PIN,INPUT);  	digitalWrite(SRAM_WE_PIN,HIGH);
+
 
 #ifdef USE_XMEM_ALE
   pinMode(SRAM_ALE_OE_PIN,OUTPUT);
@@ -85,7 +83,7 @@ uint8_t sram_write(uint16_t addr, uint8_t data) {
   return data;
 }
 
-uint16_t sram_check(uint16_t addr, const uint16_t nbytes) {
+uint16_t sram_check(uint16_t addr, const uint16_t nbytes, const bool presrv) {
   uint16_t errcount = 0;
   uint8_t randbytes[31];
   uint8_t orgval;
@@ -97,7 +95,10 @@ uint16_t sram_check(uint16_t addr, const uint16_t nbytes) {
   }
 
   for(uint16_t i = 0; i < nbytes; i++) {
-	  orgval = sram_read(addr+i);
+	  if ( presrv )
+		  orgval = sram_read(addr+i);
+	  else
+		  orgval = 0;
 	  sram_write(addr+i, randbytes[(addr+i) % 31]);
 	  readout = sram_read(addr+i);
 	  if ( readout != randbytes[(addr+i) % 31] ) {
