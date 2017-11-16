@@ -17,6 +17,7 @@ BYTE z80_mreq_rd();
 BYTE z80_mreq_wr();
 BYTE z80_iorq_rd();
 BYTE z80_iorq_wr();
+BYTE z80_m1();
 
 #endif /* _Z80_H_ */
 

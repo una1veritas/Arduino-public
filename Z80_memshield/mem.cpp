@@ -11,7 +11,7 @@ void sram_bus_setup() {
 
   DDR(SRAM_DATA_OUT) = 0x00; 
 
-#ifndef USE_XMEM_ALE
+#ifdef USE_XMEM_ALE
   /* make both ALE input and output pins to be in Z-state */
   pinMode(SRAM_ALE_OE_PIN,OUTPUT);   digitalWrite(SRAM_ALE_OE_PIN,HIGH);
 //  pinMode(SRAM_ALE_PIN,OUTPUT); //  digitalWrite(SRAM_ALE_PIN,LOW);
@@ -33,8 +33,10 @@ void sram_bus_release() {
   digitalWrite(SRAM_OE_PIN,HIGH);
   digitalWrite(SRAM_WE_PIN,HIGH);
 
+#ifdef USE_XMEM_ALE
   pinMode(SRAM_ALE_OE_PIN,OUTPUT);
   digitalWrite(SRAM_ALE_OE_PIN,HIGH);
+#endif // USE_XMEM_ALE
 }
 
 void sram_select() {

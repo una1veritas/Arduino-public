@@ -95,6 +95,11 @@ BYTE z80_iorq_wr(){
 	return digitalRead(Z80_IORQ_PIN) || digitalRead(Z80_WR_PIN);
 }
 
+#ifdef Z80_M1_PIN
+BYTE z80_m1() {
+	return digitalRead(Z80_M1_PIN);
+}
+#endif
 
 void z80_wait_enable() {
 	pinMode(Z80_WAIT_PIN, INPUT);

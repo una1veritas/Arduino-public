@@ -105,27 +105,24 @@ uint8_t io_read(uint16_t port);
 void io_write(uint16_t port, uint8_t data);
 char strbuff[9];
 
-struct VirtualDiskDrive {
+struct VirtualDisk {
 	static const uint16_t 	TRACKS = 77;
 	static const uint16_t 	SECTORS_PER_TRACK = 26;
 	static const uint8_t 	SECTOR_BYTESIZE = 128;
 	static const uint16_t 	BLOCK_SIZE = 1024;
-	enum {
-		DMA_OK = 0,
-		DMA_NG = 1,
-		DMA_READ = 1,
-		DMA_WRITE = 2,
-		DMA_WRITEBACK = 3,
-	};
 
-	uint8_t result;
-	uint8_t request;
 	uint16_t track;
 	uint8_t sector;
-	uint16_t buffaddr;
+	uint16_t dstaddr;
+
+	String filename;
 	File sdfile;
-};
-static VirtualDiskDrive vdd = { VirtualDiskDrive::DMA_OK, VirtualDiskDrive::DMA_OK, 0, 0, 0 };
+} vdisk;
+
+struct DMA {
+	uint8_t result;
+	uint8_t request;
+} dma;
 
 void dma_exec(void);
 void setup() {
@@ -202,9 +199,8 @@ void setup() {
         Serial.println(F(" failed."));
   }
 
-  if ( (vdd.sdfile = SD.open("CPMBOOT.DSK")) ) {
-	  Serial.print(vdd.sdfile.name());
-	  Serial.println(" opened.");
+  if ( SD.exists("CPMBOOT.DSK") ) {
+	  vdisk.filename = "CPMBOOT.DSK";
   }
 
 //  digitalWrite(MEGA_MEMEN_PIN, LOW);  // enable MREQ to CS
@@ -222,7 +218,11 @@ void loop() {
     addr = ((uint16_t)PINC<<8) | PINL;
     data = PINA;
     Serial.print(hexstr(strbuff,addr,4));
-    Serial.print(F(" R  "));
+    if ( z80_m1() == LOW ) {
+    	Serial.print(F(" M  "));
+    } else {
+    	Serial.print(F(" R  "));
+    }
     Serial.print(hexstr(strbuff,data,2));
     Serial.println();
     while ( !z80_mreq_rd() ) ;
@@ -262,12 +262,12 @@ void loop() {
     DDR(PORTA) = 0x00;
     PORTA = 0x00;
   }
-  if ( vdd.request == vdd.DMA_READ || vdd.request == vdd.DMA_WRITE ) {
+  if ( dma.request != DMA_MODE::DMA_NONE ) {
 	  while ( z80_busack() );
 	  dma_exec();
 	  z80_busreq(HIGH);
 	  while ( !z80_busack() );
-	  Serial.println("now BUSACK high.");
+	  //Serial.println("now BUSACK high.");
   }
 
 }
@@ -276,17 +276,14 @@ uint32_t memory_check(uint32_t startaddr, uint32_t maxaddr) {
   uint32_t errs, errtotal = 0;
   uint32_t block = 0x2000;
   for(uint32_t addr = startaddr; addr < maxaddr; addr += block ) {
-    sram_bank(addr>>16 & 0x07);
-    Serial.print("[bank ");
-    Serial.print(hexstr(strbuff,addr>>16 & 0x07, 2));
-    Serial.print("] ");
-    Serial.print(hexstr(strbuff,addr & 0xffff, 4));
+    Serial.print(hexstr(strbuff,addr & 0xffff, 6));
     Serial.print(" - ");
-    Serial.print(hexstr(strbuff, (addr+block-1) & 0xffff, 4));
-    
-    if ( (errs = sram_check(addr & 0xffff, block)) > 0 ) {
+    Serial.print(hexstr(strbuff, (addr+block-1) & 0xffff, 6));
+    sram_bank(addr>>16 & 0x07);
+    errs = sram_check(addr & 0xffff, block);
+    if ( errs > 0 ) {
       errtotal += errs;
-      Serial.print(" err: ");
+      Serial.print(" errors ");
       Serial.println(errs);
     } else {
       Serial.println(" ok. ");
@@ -308,8 +305,9 @@ uint8_t io_read(uint16_t port) {
   case CON_READ_NOWAIT:
     return (uint8_t) Serial1.read();
     break;
-  case DISK_DMA_RES:
-	  return vdd.result;
+
+  case DISK_DMA_RES: 	// 23
+	  return dma.result;
 	  break;
   case RTC_CONT:
     // timer/clock control
@@ -328,27 +326,25 @@ void io_write(uint16_t port, uint8_t data) {
     Serial1.write(data);
     break;
 
-  case DISK_TRACK_L:
-	  vdd.track &= 0xff00;
-	  vdd.track |= data;
+  case DISK_TRACK_L: 	// 16
+	  vdisk.track = data; // here TRACK_L clears high 8 bits
 	  break;
-  case DISK_TRACK_H:
-	  vdd.track &= 0x00ff;
-	  vdd.track |= (((uint16_t)data)<<8);
+  case DISK_TRACK_H: 	// 17
+	  vdisk.track = (((uint16_t)data)<<8) | (vdisk.track & 0xff);
 	  break;
-  case DISK_SECTOR:
-	  vdd.sector = data;
+  case DISK_SECTOR: 	// 18
+	  vdisk.sector = data;
 	  break;
-  case DISK_DMA_ADDRL:
-	  vdd.buffaddr &= 0xff00;
-	  vdd.buffaddr |= data;
+  case DISK_DMA_ADDRL: 	// 20
+	  vdisk.dstaddr &= 0xff00;
+	  vdisk.dstaddr |= data;
 	  break;
-  case DISK_DMA_ADDRH:
-	  vdd.buffaddr &= 0x00ff;
-	  vdd.buffaddr |= (((uint16_t)data)<<8);
+  case DISK_DMA_ADDRH: // 21
+	  vdisk.dstaddr &= 0x00ff;
+	  vdisk.dstaddr |= (((uint16_t)data)<<8);
 	  break;
-  case DISK_DMA_EXEC:
-	  vdd.request = data;
+  case DISK_DMA_EXEC: 	// 22
+	  dma.request = data;
 	  z80_busreq(LOW);
 	  // dma_exec will be executed in busack-state after finished the OUT inst.
 	  break;
@@ -364,42 +360,48 @@ void io_write(uint16_t port, uint8_t data) {
 }
 
 void dma_exec(void) {
-	if ( vdd.request == vdd.DMA_READ ) {
+	if ( dma.request == DMA_READ ) {
 		Serial.print("track ");
-		Serial.print(vdd.track, HEX);
+		Serial.print(vdisk.track, HEX);
 		Serial.print(", sector ");
-		Serial.print(vdd.sector, HEX);
+		Serial.print(vdisk.sector, HEX);
 		Serial.print(", DMA to address ");
-		Serial.println(hexstr(strbuff,vdd.buffaddr, 4));
-		if ( vdd.track > vdd.TRACKS || vdd.sector > vdd.SECTORS_PER_TRACK ) {
-			vdd.result = vdd.DMA_NG;
-			vdd.request = vdd.DMA_OK;
+		Serial.println(hexstr(strbuff,vdisk.dstaddr, 4));
+		if ( vdisk.track > vdisk.TRACKS || vdisk.sector > vdisk.SECTORS_PER_TRACK ) {
+			dma.result = DMA_NG;
+			dma.request = DMA_OK;
 			Serial.println("failed!");
 			return;
 		}
 		//Serial.println("seek.");
-		vdd.sdfile.seek(vdd.track * vdd.SECTORS_PER_TRACK + vdd.sector );
+		vdisk.sdfile = SD.open(vdisk.filename);
+		if ( !vdisk.sdfile ) {
+			Serial.println("vdisk file open failed!");
+			return;
+		}
+		vdisk.sdfile.seek(vdisk.track * vdisk.SECTORS_PER_TRACK + vdisk.sector );
 		uint16_t i;
 		//Serial.println("load.");
 		sram_bus_setup();
 		for(i = 0; i < 128; ++i) {
-			int dbyte = vdd.sdfile.read();
+			int dbyte = vdisk.sdfile.read();
 			if ( dbyte == -1 )
 				break;
-			sram_write(vdd.buffaddr+i,(uint8_t)dbyte);
+			sram_write(vdisk.dstaddr+i,(uint8_t)dbyte);
 		}
+		vdisk.sdfile.close();
 		sram_bus_release();
 		if ( i != 128 ) {
-			Serial.println("vdd read error!");
-			vdd.result = vdd.DMA_NG;
-			vdd.request = vdd.DMA_OK;
+			Serial.println("vdisk read error!");
+			dma.result = DMA_NG;
+			dma.request = DMA_OK;
 			return;
 		} else {
-			vdd.result = vdd.DMA_OK;
-			vdd.request = vdd.DMA_OK;
+			dma.result = DMA_OK;
+			dma.request = DMA_OK;
 			return;
 		}
-	} else if ( vdd.request == vdd.DMA_WRITE ) {
+	} else if ( dma.request == DMA_WRITE ) {
 		Serial.println("DMA_WRITE");
 	} else {
 		Serial.println("undefined DMA function");

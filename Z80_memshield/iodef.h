@@ -23,6 +23,18 @@
 #define DMA_NG		1
 #define DMA_WRITE_BACK	3
 */
+enum DMA_MODE {
+	DMA_NONE = 0,
+	DMA_HOME = 	1<<4,
+	DMA_BOOT = 	1<<5,
+	DMA_WRITE = 1<<6,
+	DMA_READ = 	1<<7,
+};
+
+enum DMA_RESULT {
+	DMA_OK = 0,
+	DMA_NG = 1,
+};
 
 /* Virtual I/O port assignment [AVR side]-------------------------------------------- */
 /*
