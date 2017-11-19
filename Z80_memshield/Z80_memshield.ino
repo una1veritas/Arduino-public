@@ -16,28 +16,54 @@
 #include "iodef.h"
 
 
-const uint8_t rom_0000[0x100] PROGMEM = {
-		/* 0000 */
-		0x21, 0x00, 0x01, 0xF9, 0xC3, 0x00, 0x10, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		/* 0020 */
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0xC9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+const uint8_t rom_0000_ipl[0x160] PROGMEM = {
+		/* 0000 */ 0x31, 0x00, 0x01, 0xc3, 0x00, 0x01, 0x00, 0x00,
+		/* 0008 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0010 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0018 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0020 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0028 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0030 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0038 */ 0xc9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0040 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0048 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0050 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0058 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0060 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0068 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0070 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0078 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0080 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0088 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0090 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0098 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 00a0 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 00a8 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 00b0 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 00b8 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 00c0 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 00c8 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 00d0 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 00d8 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 00e0 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 00e8 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 00f0 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 00f8 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		/* 0100 */ 0x21, 0x42, 0x01, 0xcd, 0x39, 0x01, 0x06, 0x31,
+		/* 0108 */ 0x11, 0x01, 0x00, 0x21, 0x00, 0xdc, 0x7a, 0xd3,
+		/* 0110 */ 0x10, 0x7b, 0xd3, 0x12, 0x7d, 0xd3, 0x14, 0x7c,
+		/* 0118 */ 0xd3, 0x15, 0x3e, 0x80, 0xd3, 0x16, 0xc5, 0x01,
+		/* 0120 */ 0x80, 0x00, 0x09, 0xc1, 0x1c, 0x7b, 0xfe, 0x1a,
+		/* 0128 */ 0x20, 0x03, 0x14, 0x1e, 0x00, 0x05, 0x20, 0xde,
+		/* 0130 */ 0x21, 0x55, 0x01, 0xcd, 0x39, 0x01, 0xc3, 0x00,
+		/* 0138 */ 0xf2, 0x7e, 0xa7, 0xc8, 0xd3, 0x02, 0x23, 0x18,
+		/* 0140 */ 0xf8, 0x76, 0x0d, 0x0a, 0x49, 0x50, 0x4c, 0x20,
+		/* 0148 */ 0x6c, 0x6f, 0x61, 0x64, 0x69, 0x6e, 0x67, 0x2e,
+		/* 0150 */ 0x2e, 0x2e, 0x0d, 0x0a, 0x00, 0x64, 0x6f, 0x6e,
+		/* 0158 */ 0x65, 0x2e, 0x0d, 0x0a, 0x00,
 };
 
-const uint8_t rom_1000[0x100] PROGMEM = {
-		/* 1000 */
-		0x21, 0x0F, 0x10, 0xCD, 0x07, 0x10, 0x76, 0x7E,
-		0xA7, 0xC8, 0xD3, 0x02, 0x23, 0x18, 0xF8, 0x48,
-		0x69, 0x2C, 0x20, 0x74, 0x68, 0x65, 0x72, 0x65,
-		0x21, 0x0D, 0x0A, 0x00,
-};
-
-void sram_load(const uint16_t addr, const uint8_t * mem, uint16_t msize) {
+void sram_load_rom(const uint16_t addr, const uint8_t * mem, uint16_t msize) {
   for(uint16_t i = 0; i < msize; ++i) {
     uint8_t code = pgm_read_byte(mem+i);
     sram_write(addr+i,code);
@@ -97,6 +123,7 @@ struct SDVirtualDisk {
 	static const uint8_t 	BYTES_PER_SECTOR = 128;
 	static const uint16_t 	BLOCK_SIZE = 1024;
 
+	uint8_t drive;
 	uint16_t track;
 	uint8_t sector;
 	uint16_t dstaddr;
@@ -105,12 +132,12 @@ struct SDVirtualDisk {
 	File sdfile;
 } vdisk;
 
-struct DMA {
+struct DiskDMA {
 	uint8_t result;
 	uint8_t request;
-} dma;
+} diskdma;
 
-void dma_exec(void);
+void diskdma_exec(void);
 void setup() {
   // put your setup code here, to run once:
 
@@ -152,7 +179,7 @@ void setup() {
   }
   
   Serial.println(F("starting Z80.."));
-  OC1AClock_setup(4, 200);
+  OC1AClock_setup(3, 16);
   z80_bus_setup();
   OC1AClock_start();
   z80_reset();
@@ -165,6 +192,8 @@ void setup() {
     Serial.println(F("sram_check "));
     if ( !memory_check(0, 0x10000 /* 0x80000 */) ) {
       Serial.println(F("sram_check passed."));
+      sram_load_rom(0, rom_0000_ipl, sizeof(rom_0000_ipl));
+      /*
 	  Serial.print(F("open BOOTROM.HEX "));
 	  File sdfile = SD.open(F("BOOTROM.HEX"));
 	  if ( sdfile ) {
@@ -180,6 +209,7 @@ void setup() {
 	  } else {
 		  Serial.println(F("failed."));
 	  }
+	  */
     }
     sram_bus_release();
   } else {
@@ -204,6 +234,7 @@ void loop() {
   if ( !z80_mreq_rd() ) {
     addr = ((uint16_t)PINC<<8) | PINL;
     data = PINA;
+#ifdef MONITOR_MEM_RD
     Serial.print(hexstr(strbuff,addr,4));
     if ( z80_m1() == LOW ) {
     	Serial.print(F(" M  "));
@@ -212,14 +243,17 @@ void loop() {
     }
     Serial.print(hexstr(strbuff,data,2));
     Serial.println();
+#endif
     while ( !z80_mreq_rd() ) ;
   } else if ( !z80_mreq_wr() ) {
     addr = ((uint16_t)PINC<<8) | PINL;
     data = PINA;
+#ifdef MONITOR_MEM_WR
     Serial.print(hexstr(strbuff,addr,4));
     Serial.print(F("  W "));
     Serial.print(hexstr(strbuff,data,2));
     Serial.println();
+#endif
     while ( !z80_mreq_wr() ) ;
   } else if ( !z80_iorq_wr() ) {
 	  // IORQ LOW implies via 10k wait LOW
@@ -249,9 +283,9 @@ void loop() {
     while ( !z80_iorq_rd() ) ;
     z80_wait_enable();
   }
-  if ( dma.request != DMA_MODE::DMA_NONE ) {
+  if ( diskdma.request != DMA_MODE::DMA_NONE ) {
 	  while ( z80_busack() );
-	  dma_exec();
+	  diskdma_exec();
 	  z80_busreq(HIGH);
 	  //while ( !z80_busack() );
 	  //Serial.println("now BUSACK high.");
@@ -294,11 +328,16 @@ uint8_t io_read(uint16_t port) {
     break;
 
   case DISK_DMA_RES: 	// 23
-	  return dma.result;
+	  return diskdma.result;
 	  break;
   case RTC_CONT:
     // timer/clock control
     break;
+  default:
+	  Serial.println();
+	  Serial.print("in ");
+	  Serial.println(hexstr(strbuff,port,4));
+	  break;
   }
   return 0;
 }
@@ -309,9 +348,9 @@ void io_write(uint16_t port, uint8_t data) {
   case CON_OUT:
     Serial1.write(data);
     break;
-  case 0x04:
-    Serial1.write(data);
-    break;
+//  case 0x04:
+ //   Serial1.write(data);
+ //   break;
 
   case DISK_TRACK_L: 	// 16
 	  vdisk.track = data; // here TRACK_L clears high 8 bits
@@ -331,7 +370,7 @@ void io_write(uint16_t port, uint8_t data) {
 	  vdisk.dstaddr |= (((uint16_t)data)<<8);
 	  break;
   case DISK_DMA_EXEC: 	// 22
-	  dma.request = data;
+	  diskdma.request = data;
 	  z80_busreq(LOW);
 	  // dma_exec will be executed in busack-state after finished the OUT inst.
 	  break;
@@ -346,24 +385,25 @@ void io_write(uint16_t port, uint8_t data) {
   return;
 }
 
-void dma_exec(void) {
-	if ( dma.request == DMA_READ ) {
-		Serial.print("track ");
+void diskdma_exec(void) {
+	Serial.println(diskdma.request,HEX);
+	if ( diskdma.request == DMA_READ ) {
+		Serial.print(F("DMA_READ "));
 		Serial.print(vdisk.track, HEX);
-		Serial.print(", sector ");
+		Serial.print('/');
 		Serial.print(vdisk.sector, HEX);
-		Serial.print(", DMA to address ");
+		Serial.print(F(" to addr "));
 		Serial.println(hexstr(strbuff,vdisk.dstaddr, 4));
+		diskdma.request = DMA_NONE;
 		if ( vdisk.track > vdisk.TRACKS || vdisk.sector > vdisk.SECTORS_PER_TRACK ) {
-			dma.result = DMA_NG;
-			dma.request = DMA_OK;
-			Serial.println("failed!");
+			diskdma.result = DMA_NG;
+			Serial.println(F("failed!"));
 			return;
 		}
 		//Serial.println("seek.");
 		vdisk.sdfile = SD.open(vdisk.filename);
 		if ( !vdisk.sdfile ) {
-			Serial.println("vdisk file open failed!");
+			Serial.println(F("vdisk SD file open failed!"));
 			return;
 		}
 		vdisk.sdfile.seek( ((unsigned long)vdisk.track * vdisk.SECTORS_PER_TRACK + vdisk.sector) << 7 );
@@ -375,25 +415,54 @@ void dma_exec(void) {
 			if ( dbyte == -1 )
 				break;
 			sram_write(vdisk.dstaddr+i,(uint8_t)dbyte);
+			/*
+			if ( ((vdisk.dstaddr+i) & 0x0f) == 0 ) {
+				Serial.println();
+				Serial.print(hexstr(strbuff,vdisk.dstaddr+i, 4));
+				Serial.print(" : ");
+			}
+			Serial.print(hexstr(strbuff,dbyte,2));
+			Serial.print(" ");*/
 		}
-		vdisk.sdfile.close();
-		sram_dump(vdisk.dstaddr, 128);
-		sram_dump(0x2000, 0x80);
+		//Serial.println();
+		//sram_dump(vdisk.dstaddr, 128);
+		//delay(2);
+		//sram_dump(0, 0x160);
+		//delay(2);
 		sram_bus_release();
+		vdisk.sdfile.close();
 		if ( i != 128 ) {
-			Serial.println("vdisk read error!");
-			dma.result = DMA_NG;
-			dma.request = DMA_OK;
-			return;
+			Serial.println(F("vdisk SD file read error!"));
+			diskdma.result = DMA_NG;
 		} else {
-			dma.result = DMA_OK;
-			dma.request = DMA_OK;
+			diskdma.result = DMA_OK;
+		}
+	} else if ( diskdma.request == DMA_WRITE ) {
+		Serial.println("DMA_WRITE");
+		diskdma.request = DMA_NONE;
+		diskdma.result = DMA_NG;
+	} else if ( diskdma.request == DMA_HOME ) {
+		Serial.println("DMA_HOME");
+		diskdma.request = DMA_NONE;
+		/*
+		vdisk.sdfile = SD.open(vdisk.filename);
+		if ( !vdisk.sdfile ) {
+			diskdma.result = DMA_NG;
+			Serial.println(F("vdisk SD file open failed!"));
 			return;
 		}
-	} else if ( dma.request == DMA_WRITE ) {
-		Serial.println("DMA_WRITE");
+		vdisk.sdfile.seek( 0 );
+		vdisk.sdfile.close();
+		*/
+		diskdma.result = DMA_OK;
+		return;
+	} else if ( diskdma.request == DMA_BOOT ) {
+		Serial.println("DMA_BOOT");
+		diskdma.request = DMA_NONE;
+		diskdma.result = DMA_NG;
 	} else {
 		Serial.println("undefined DMA function");
+		diskdma.result = DMA_NG;
 	}
 }
 

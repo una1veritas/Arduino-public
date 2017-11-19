@@ -18,8 +18,8 @@ void z80_bus_setup(void) {
   pinMode(Z80_CLK_PIN, OUTPUT);
   
   // set pin mode to INPUT for reading the outputs of Z80
-  pinMode(Z80_MREQ_PIN, INPUT);
-  pinMode(Z80_IORQ_PIN, INPUT);
+  pinMode(Z80_MREQ_PIN, INPUT); 	// pull-up by hardware digitalWrite(Z80_MREQ_PIN, HIGH);
+  pinMode(Z80_IORQ_PIN, INPUT);		// hardware pull-up digitalWrite(Z80_IORQ_PIN, HIGH);
   pinMode(Z80_RD_PIN, INPUT);
   pinMode(Z80_WR_PIN, INPUT);
   pinMode(Z80_BUSACK_PIN, INPUT);

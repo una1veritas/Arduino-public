@@ -25,10 +25,14 @@ void sram_bus_setup() {
 void sram_bus_release() {
   DDR(SRAM_ADDRL_PORT) = 0; 
   DDR(SRAM_ADDRH_PORT) = 0; 
+  SRAM_ADDRL_PORT = 0;
+  SRAM_ADDRH_PORT = 0;
   DDR(SRAM_DATA_OUT) = 0; 
-  pinMode(SRAM_CS_PIN,INPUT);  	digitalWrite(SRAM_CS_PIN,HIGH);
-  pinMode(SRAM_OE_PIN,INPUT);  	digitalWrite(SRAM_OE_PIN,HIGH);
-  pinMode(SRAM_WE_PIN,INPUT);  	digitalWrite(SRAM_WE_PIN,HIGH);
+  SRAM_DATA_OUT = 0;
+
+  pinMode(SRAM_CS_PIN,INPUT);  	digitalWrite(SRAM_CS_PIN,LOW);
+  pinMode(SRAM_OE_PIN,INPUT);  	digitalWrite(SRAM_OE_PIN,LOW);
+  pinMode(SRAM_WE_PIN,INPUT);  	digitalWrite(SRAM_WE_PIN,LOW);
 
 
 #ifdef USE_XMEM_ALE
