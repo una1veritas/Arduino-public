@@ -15,7 +15,31 @@
 /* Serial SRAM 23LCV1024 */
 #define SPISRAM_CS_PIN 53
 
-/* DMA mode or result ------------------------------ */
+/* disk parameters
+ * CP/M Partition type id 0x52
+diskdef avrcpm
+  seclen 128
+  tracks 77
+  sectrk 26
+  blocksize 1024
+  maxdir 64
+  skew 1
+  boottrk 2
+  os p2dos
+end
+ *
+ */
+/* Disk parameters ------------------------------------------------------------------- */
+/*
+#define SDC_CLST_SIZE		512	// fixed for SDC.
+#define SECT_SIZE		128	// fixed for CP/M.
+#define SECT_CNT		26	// CP/M sector size.
+#define BLOCK_SIZE		1024	// CP/M block size.
+#define CPM_CLST_CNT_PER_BLOCK	(BLOCK_SIZE/SECT_SIZE)
+#define SDC_CLST_CNT_PER_BLOCK	(BLOCK_SIZE/SDC_CLST_SIZE)
+*/
+
+/* nekojava DMA mode or result ------------------------------ */
 /*
 #define DMA_READ	1
 #define DMA_WRITE	2
@@ -50,7 +74,7 @@ enum DMA_RESULT {
 #define DMA_RS		23	//[O] 0:OK, 1:NG.
 */
 enum IOPort {
-	CON_STATUS = 0,
+	CON_STAT = 0,
 	CON_IN = 1,
 	CON_OUT = 2,
 	CON_READ_NOWAIT = 4,
@@ -66,15 +90,6 @@ enum IOPort {
 	RTC_CONT = 0x40,
 };
 
-/* Disk parameters ------------------------------------------------------------------- */
-/*
-#define SDC_CLST_SIZE		512	// fixed for SDC.
-#define SECT_SIZE		128	// fixed for CP/M.
-#define SECT_CNT		26	// CP/M sector size.
-#define BLOCK_SIZE		1024	// CP/M block size.
-#define CPM_CLST_CNT_PER_BLOCK	(BLOCK_SIZE/SECT_SIZE)
-#define SDC_CLST_CNT_PER_BLOCK	(BLOCK_SIZE/SDC_CLST_SIZE)
-*/
 
 
 

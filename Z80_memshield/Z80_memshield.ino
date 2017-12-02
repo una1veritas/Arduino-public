@@ -15,6 +15,10 @@
 #include "OC1AClock.h"
 #include "iodef.h"
 
+#define MONITOR_MEM_RD
+#define MONITOR_MEM_WR
+#define MONITOR_IO_IN
+#define MONITOR_IO_OUT
 
 const uint8_t rom_0000_ipl[0x160] PROGMEM = {
 		/* 0000 */ 0x31, 0x00, 0x01, 0xc3, 0x00, 0x01, 0x00, 0x00,
@@ -179,7 +183,7 @@ void setup() {
   }
   
   Serial.println(F("starting Z80.."));
-  OC1AClock_setup(3, 16);
+  OC1AClock_setup(3, 32);
   z80_bus_setup();
   OC1AClock_start();
   z80_reset();
@@ -192,8 +196,7 @@ void setup() {
     Serial.println(F("sram_check "));
     if ( !memory_check(0, 0x10000 /* 0x80000 */) ) {
       Serial.println(F("sram_check passed."));
-      sram_load_rom(0, rom_0000_ipl, sizeof(rom_0000_ipl));
-      /*
+
 	  Serial.print(F("open BOOTROM.HEX "));
 	  File sdfile = SD.open(F("BOOTROM.HEX"));
 	  if ( sdfile ) {
@@ -204,12 +207,14 @@ void setup() {
 			  Serial.println(errcode, HEX);
 			  while (1);
 		  }
-		  sram_dump(0x0000, 0x80);
+		  sram_dump(0x0000, 0x0100);
 		  sdfile.close();
 	  } else {
 		  Serial.println(F("failed."));
+		  Serial.println(F("loading IPL from program flash."));
+	      sram_load_rom(0, rom_0000_ipl, sizeof(rom_0000_ipl));
 	  }
-	  */
+
     }
     sram_bus_release();
   } else {
@@ -259,10 +264,12 @@ void loop() {
 	  // IORQ LOW implies via 10k wait LOW
     addr = ((uint16_t)PINC<<8) | PINL;
     data = PINA;
+#ifdef MONITOR_IO_OUT
     Serial.print(hexstr(strbuff,addr,4));
     Serial.print(F("  O "));
     Serial.print(hexstr(strbuff,data,2));
     Serial.println();
+#endif
     io_write(addr, data);
     z80_wait_disable(); // force WAIT high
     while ( !z80_iorq_wr() ) ;
@@ -275,10 +282,12 @@ void loop() {
     PORTA = data;
     DDR(PORTA) = 0x00;
     PORTA = 0x00;
+#ifdef MONITOR_IO_IN
     Serial.print(hexstr(strbuff,addr,4));
     Serial.print(F(" I  "));
     Serial.print(hexstr(strbuff,data,2));
     Serial.println();
+#endif
     z80_wait_disable();
     while ( !z80_iorq_rd() ) ;
     z80_wait_enable();
@@ -315,10 +324,10 @@ uint32_t memory_check(uint32_t startaddr, uint32_t maxaddr) {
 
 uint8_t io_read(uint16_t port) {
   switch(port & 0xff) {
-  case CON_STATUS:
+  case CON_STAT:
     if ( Serial1.available() )
       return 0xff;
-      return 0x00;
+    return 0x00;
     break;
   case CON_IN:
     return (uint8_t) Serial1.read();
@@ -352,6 +361,8 @@ void io_write(uint16_t port, uint8_t data) {
  //   Serial1.write(data);
  //   break;
 
+  case DISK_SELECT: // 0x0f 15
+	  break;
   case DISK_TRACK_L: 	// 16
 	  vdisk.track = data; // here TRACK_L clears high 8 bits
 	  break;
@@ -392,7 +403,7 @@ void diskdma_exec(void) {
 		Serial.print(vdisk.track, HEX);
 		Serial.print('/');
 		Serial.print(vdisk.sector, HEX);
-		Serial.print(F(" to addr "));
+		Serial.print(F(" -> "));
 		Serial.println(hexstr(strbuff,vdisk.dstaddr, 4));
 		diskdma.request = DMA_NONE;
 		if ( vdisk.track > vdisk.TRACKS || vdisk.sector > vdisk.SECTORS_PER_TRACK ) {
@@ -437,8 +448,26 @@ void diskdma_exec(void) {
 		} else {
 			diskdma.result = DMA_OK;
 		}
-	} else if ( diskdma.request == DMA_WRITE ) {
-		Serial.println("DMA_WRITE");
+	} else if ( (diskdma.request & ~0x03) == DMA_WRITE ) {
+		//Write the currently set track and sector. C contains a deblocking code:
+		// C=0 - Write can be deferred
+		// C=1 - Write must be immediate
+		// C=2 - Write can be deferred, no pre-read is necessary.
+		Serial.print("DMA_WRITE, ");
+		switch (diskdma.request & 0x03) {
+		case 0:
+			Serial.println("can be deferred.");
+			break;
+		case 1:
+			Serial.println("must be immediate.");
+			break;
+		case 2:
+			Serial.println("can be deferred, no pre-read is necessary.");
+			break;
+		default:
+			Serial.println("error.");
+			break;
+		}
 		diskdma.request = DMA_NONE;
 		diskdma.result = DMA_NG;
 	} else if ( diskdma.request == DMA_HOME ) {
