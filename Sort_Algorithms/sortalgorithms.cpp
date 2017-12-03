@@ -1,3 +1,5 @@
+
+#include <Arduino.h>
 #include "sortalgorithms.h"
 
 #define MIN(a,b) ((a) < (b)? (a) : (b))
@@ -123,9 +125,10 @@ void bubbleSort(DATATYPE a[], INDEXTYPE n){
     for(i = 1; i < n; i++){
       for(j = n - 1; j >= i; j--){
         if(a[j-1] > a[j]) {
-          tmp = a[j];
-          a[j] = a[j-1];
-          a[j-1] = tmp;
+        	SWAP(a[j-1],a[j],tmp);
+//          tmp = a[j];
+//          a[j] = a[j-1];
+//          a[j-1] = tmp;
         }
       }
     }
@@ -213,12 +216,12 @@ void mergeSort_recursive(DATATYPE array[], INDEXTYPE n) {
     
 void mergeSort(DATATYPE array[], INDEXTYPE n) {
     DATATYPE buf[n];
-    INDEXTYPE i, len, start, end; //, cleft, cright, ctemp;
+    INDEXTYPE i, lsize, start, rsize; //, cleft, cright, ctemp;
     
-    for (len = 1; len < n; len = len<<1) {
-      for (start = 0; start < n; start += (len<<1)) {
-        end = MIN(len, n - (start + len) );
-        merge(buf+start, array+start, len, array+(start+len), end);
+    for (lsize = 1; lsize < n; lsize <<= 1) {
+      for (start = 0; start < n; start += (lsize<<1)) {
+        rsize = MIN(lsize, n - (start + lsize) );
+        merge(buf+start, array+start, lsize, array+(start+lsize), rsize);
       }
       //copy back
       for (i = 0; i < n; i++)
