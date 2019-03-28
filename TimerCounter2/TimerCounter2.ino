@@ -1,4 +1,4 @@
-#define F_CPU 8000000UL
+//#define F_CPU 8000000UL
 #include <TimerCounter.h>
 #include <util/delay.h>
 
@@ -66,9 +66,3 @@ void loop() {
   }
   delay(250);
 }
-
-
-
-
-
-
