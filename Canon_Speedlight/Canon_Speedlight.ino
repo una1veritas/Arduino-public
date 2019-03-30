@@ -75,7 +75,7 @@ void loop() {
     } else {
       Serial.print("AID_LOW  ");
     }
-    Serial.println();
+    //Serial.println();
     digitalWrite(PIN_LED, digitalRead(PIN_RDY) == LOW);
   }
 
