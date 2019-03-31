@@ -6,8 +6,12 @@ const int PIN_Y = 3;    // HIGH enables Quench LOW, LOW yields Quench HIGH
 const int PIN_Q = 6;    // Quench monitor
 const int PIN_QBAR = 4; // ~Quench monitor
 const int PIN_LED = 13; // Monitor LED/ imitate flash
+const int PIN_READY = 5; // flash READY
 
-const int ANALOG_DIAL = 0;
+const int PIN_DIAL0 = 14;
+const int PIN_DIAL1 = 15;
+const int PIN_DIAL2 = 16;
+const int PIN_DIAL3 = 17;
 
 /*
 1020 us 約1/980 秒： M 1/1 発光（FULL）
@@ -22,7 +26,7 @@ const int ANALOG_DIAL = 0;
  */
 
 const uint16_t Q_ticks[] = {
-  4800, 3072, 2800, 2600, 2400, 2000, 1000, 1000, 0, 0, 0,
+  10000, 6000, 4000, 3200, 3000, 2800, 2600, 2400, 1600, 1000, 0, 0,
 };
 
 void show_state(int stat) {
@@ -38,14 +42,7 @@ void show_state(int stat) {
 int dial_state;
 
 int dial_value() {
-  static int past_value;
-  int current_value = analogRead(ANALOG_DIAL)>>2;
-  if ( current_value - 1 > past_value ) {
-    past_value = current_value - 1;
-  } else if ( current_value + 1 < past_value ) {
-    past_value = current_value + 1;
-  }
-  return (past_value < 1 ? 1 : (past_value > 159 ? 159 : past_value))-1;    
+  return 0x0f & ~(digitalRead(PIN_DIAL0) | digitalRead(PIN_DIAL1)<<1 | digitalRead(PIN_DIAL2)<<2 | digitalRead(PIN_DIAL3)<<3 );
 }
 
 void blink_state(int val) {
@@ -68,14 +65,23 @@ void setup() {
   pinMode(PIN_XBAR, INPUT);
   pinMode(PIN_Y, OUTPUT); digitalWrite(PIN_Y, LOW);
   pinMode(PIN_Q, INPUT);
+  pinMode(PIN_READY, INPUT_PULLUP);
+
   pinMode(PIN_LED, OUTPUT); digitalWrite(PIN_LED, LOW);
+
+  pinMode(PIN_DIAL0, INPUT_PULLUP);
+  pinMode(PIN_DIAL1, INPUT_PULLUP);
+  pinMode(PIN_DIAL2, INPUT_PULLUP);
+  pinMode(PIN_DIAL3, INPUT_PULLUP);
 
   attachInterrupt(0, X_start, RISING);
 
-  dial_state = dial_value()>>4;
-  blink_state(dial_state+1);
   Timer1.mode_ctc(Q_ticks[dial_state]);
+
+  dial_state = dial_value();
+//  blink_state(dial_state+1);
   Serial.begin(19200);
+  Serial.print("dial = ");
   Serial.println(dial_state);
 }
 
@@ -96,10 +102,39 @@ ISR(TIMER1_COMPA_vect) {
 void loop() {
   int newval;
   // put your main code here, to run repeatedly:
-  if ( (newval= dial_value()>>4) != dial_state) {
+  if ( (newval= dial_value()) != dial_state) {
     dial_state = newval;
-    blink_state(dial_state+1);
-    Timer1.mode_ctc(Q_ticks[dial_state]<<1);
+    //blink_state(dial_state+1);
+    Timer1.mode_ctc(Q_ticks[dial_state]);
+    Serial.print("dial = ");
     Serial.println(dial_state);
   }
 }
+
+/*
+ * dial = 1
+dial = 0
+dial = 2
+dial = 3
+dial = 2
+dial = 0
+dial = 4
+dial = 5
+dial = 7
+dial = 6
+dial = 7
+dial = 5
+dial = 4
+dial = 0
+dial = 8
+dial = 9
+dial = 8
+dial = 0
+dial = 4
+dial = 5
+dial = 7
+dial = 6
+dial = 4
+dial = 0
+dial = 8
+ */
