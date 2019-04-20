@@ -26,10 +26,18 @@ const int PIN_DIAL3 = 17;
  */
 
 const uint16_t Q_ticks[] = {
-//  10000, 6000, 4000, 3200, 3000, 2800, 2600, 2400, 1600, 1000, 0, 0,
-//    0,  -1.5,  -1.88, -1.8, -2.3, -2.85,-3.66 
-  8000, 7200, 5600, 4480, 3600, 2880, 2300, 2000, 1600, 1280, 0, 0, 
-};
+  2520,
+  2680,
+  2880,
+  3200,
+  3700,
+  4600,
+  6400, //5860,
+  9900,
+  0, 0, 0, 0, 
+  };
+
+volatile uint16_t quench_ticks = 0;
 
 void show_state(int stat) {
   Serial.print("XBAR = ");
@@ -41,25 +49,10 @@ void show_state(int stat) {
   Serial.println();
 }
 
-int dial_state;
+int last_dial_value;
 
 int dial_value() {
   return 0x0f & ~(digitalRead(PIN_DIAL0) | digitalRead(PIN_DIAL1)<<1 | digitalRead(PIN_DIAL2)<<2 | digitalRead(PIN_DIAL3)<<3 );
-}
-
-void blink_state(int val) {
-  for(int i = 0; i < val/5; ++i) {
-    digitalWrite(PIN_LED, HIGH);
-    delay(200);
-    digitalWrite(PIN_LED, LOW);
-    delay(200);
-  }
-  for(int i = 0; i < val % 5; ++i) {
-    digitalWrite(PIN_LED, HIGH);
-    delay(100);
-    digitalWrite(PIN_LED, LOW);
-    delay(100);
-  }
 }
 
 void setup() {
@@ -77,18 +70,22 @@ void setup() {
   pinMode(PIN_DIAL3, INPUT_PULLUP);
 
   attachInterrupt(0, X_start, RISING);
+  last_dial_value = min(dial_value(), 7);
+  quench_ticks = Q_ticks[last_dial_value];
+  Timer1.mode_ctc(quench_ticks);
 
-  Timer1.mode_ctc(Q_ticks[dial_state]);
-
-  dial_state = dial_value();
 //  blink_state(dial_state+1);
   Serial.begin(19200);
   Serial.print("dial = ");
-  Serial.println(dial_state);
+  Serial.print(last_dial_value);
+  Serial.print(" ticks = ");
+  Serial.print(quench_ticks);
+  Serial.println();
 }
 
 void X_start() {
   cli();
+  Timer1.mode_ctc(quench_ticks);
   Timer1.start(Timer1.CS_DIV64); // DIV64 = 64 clk (4 usec.)
   digitalWrite(PIN_Y, HIGH);
   sei();
@@ -104,39 +101,18 @@ ISR(TIMER1_COMPA_vect) {
 void loop() {
   int newval;
   // put your main code here, to run repeatedly:
-  if ( (newval= dial_value()) != dial_state) {
-    dial_state = newval;
+  if ( (newval= min(dial_value(),7)) != last_dial_value) {
+    last_dial_value = newval;
+    quench_ticks = Q_ticks[last_dial_value];
     //blink_state(dial_state+1);
-    Timer1.mode_ctc(Q_ticks[dial_state]);
+    //Timer1.mode_ctc(quench_ticks);
+    digitalWrite(PIN_LED, HIGH);
+    delay(((long)last_dial_value + 1)<<3);
+    digitalWrite(PIN_LED, LOW);
     Serial.print("dial = ");
-    Serial.println(dial_state);
+    Serial.print(last_dial_value);
+    Serial.print(" ticks = ");
+    Serial.print(quench_ticks);
+    Serial.println();
   }
 }
-
-/*
- * dial = 1
-dial = 0
-dial = 2
-dial = 3
-dial = 2
-dial = 0
-dial = 4
-dial = 5
-dial = 7
-dial = 6
-dial = 7
-dial = 5
-dial = 4
-dial = 0
-dial = 8
-dial = 9
-dial = 8
-dial = 0
-dial = 4
-dial = 5
-dial = 7
-dial = 6
-dial = 4
-dial = 0
-dial = 8
- */
