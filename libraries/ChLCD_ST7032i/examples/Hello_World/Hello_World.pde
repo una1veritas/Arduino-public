@@ -6,14 +6,14 @@
 #include "CharacterLCD.h"
 #include "ST7032i.h"
 
-LCD_ST7032i lcd;             // Number of lines and i2c address of the display
+ST7032i lcd;             // Number of lines and i2c address of the display
 
 void setup() { 
 
   Wire.begin();
   lcd.begin();                          // Init the display, clears the display 
   lcd.print("Hello World!");       // Classic Hello World!
-  lcd.setContrast(42);
+  lcd.setContrast(42); // 30 for aki module
   /*
   byte bitmap[] = {1,2,3,4,5,6,7,8};
   lcd.createChar(0, bitmap);

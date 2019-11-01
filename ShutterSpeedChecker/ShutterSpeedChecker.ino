@@ -1,24 +1,33 @@
-volatile int state;
-long int swatch;
+long swatch;
+int values[256];
+long sum = 0;
+int index;
 void setup() {
   // put your setup code here, to run once:
-
-  state = 0;
   Serial.begin(19200);
+  swatch = micros();
+  for(int i = 0; i < 256; ++i) {
+    values[i] = analogRead(3);
+    sum += values[i];
+  }
+  index = 0;
 }
+
+// 真っ暗 134
+// 明かりがついたキッチン 360
+// 南向きの部屋昼 390
+// 明るい外 460 - 480
+// ひなたで太陽に向ける 540
 
 void loop() {
   // put your main code here, to run repeatedly:
-
-  if ( state == 0 && analogRead(0) < 333 ) {
-    state = 1;
-  } else if ( state == 1 &&  analogRead(0) > 667 ) {
+  if ( abs(micros() - swatch) > 500 ) {
     swatch = micros();
-    state = 2;
-  } else if ( state == 2 && analogRead(0) < 333 ) {
-    swatch = micros() - swatch;
-    Serial.println(swatch);
-    state = 0;
+    sum -= values[index];
+    values[index] = analogRead(3);
+    sum += values[index];
+    index = (index + 1) % 256;
+    if ( index == 0 )
+      Serial.println(sum>>8);
   }
-
 }
