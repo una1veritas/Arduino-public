@@ -56,22 +56,21 @@ void loop() {
     avr = sum>>8;
     index = (index + 1) & 0xff;
     if ( index == 0 ) {
-      //Serial.println(avr);
-      //softser.write(avr/1000 % 10);
-      //softser.write(avr/100 % 10);
-      //softser.write(avr/10 % 10);
-      //softser.write(avr % 10);
       lcd.setCursor(0,0);
       lcd.print(avr);
-      lcd.print("    ");
-      lcd.setCursor(0,1);
+      lcd.print("  ");
       lcd.print(5*avr/1024.0, 2);
-      lcd.print("    ");
-
-      if (!lcd_light && avr < 657 ) {
+      lcd.print("  ");
+      lcd.setCursor(0,1);
+      int sgnd = analogRead(1);
+      lcd.print(sgnd);
+      lcd.print("  raw:");
+      lcd.print(analogRead(2) - sgnd);
+      lcd.print(" ");
+      if (!lcd_light && avr < 470 ) {
         pinMode(14, OUTPUT);
         lcd_light = 1;
-      } else if (lcd_light && avr > 678 ) {
+      } else if (lcd_light && avr > 500 ) {
         pinMode(14, INPUT);
         lcd_light = 0;
       }
