@@ -51,7 +51,7 @@ void loop() {
   if ( abs(micros() - swatch) > 500 ) {
     swatch = micros();
     sum -= values[index];
-    values[index] = analogRead(3);
+    values[index] = analogRead(2);
     sum += values[index];
     avr = sum>>8;
     index = (index + 1) & 0xff;
@@ -59,14 +59,14 @@ void loop() {
       lcd.setCursor(0,0);
       lcd.print(avr);
       lcd.print("  ");
-      lcd.print(5*avr/1024.0, 2);
+      lcd.print(avr/1024.0, 2);
       lcd.print("  ");
       lcd.setCursor(0,1);
-      int sgnd = analogRead(1);
-      lcd.print(sgnd);
-      lcd.print("  raw:");
-      lcd.print(analogRead(2) - sgnd);
-      lcd.print(" ");
+//      int sgnd = analogRead(1);
+//      lcd.print(sgnd);
+//      lcd.print("  raw:");
+//      lcd.print(analogRead(2) - sgnd);
+//      lcd.print(" ");
       if (!lcd_light && avr < 470 ) {
         pinMode(14, OUTPUT);
         lcd_light = 1;
