@@ -35,10 +35,10 @@ void setup() {
 
 void loop() {
   long stopwatch;
-  long sum;
+  long sum, tmax;
   long rseed;
   INDEXTYPE num = 0;
-  unsigned int tries = 8;
+  unsigned int tries = 16;
 
   if ( Serial.available() > 0 ) {
 	  num = get_length();
@@ -67,40 +67,46 @@ void loop() {
     //
     randomSeed(rseed);
     sum = 0;
+    tmax = 0;
     for(unsigned int t = 0; t < tries; ++t) {
-  	  for(INDEXTYPE i = 0; i < num; ++i) {
-  		  data[i] = random(0, DATA_MAX);
-  	  }
-    	stopwatch = micros();
+      for(INDEXTYPE i = 0; i < num; ++i) {
+        data[i] = random(0, DATA_MAX);
+      }
+      stopwatch = micros();
     	selectionSort(data, num);
     	stopwatch = micros() - stopwatch;
-
-        Serial.print(stopwatch);
-        Serial.print(" usec, ");
-        sum += stopwatch;
+      
+      if (stopwatch > tmax )
+        tmax = stopwatch;
+      sum += stopwatch;
     }
     //
-    Serial.print("\navr. ");
+    Serial.print("max. ");
+    Serial.print(tmax);
+    Serial.print(", avr. ");
     Serial.print(sum/tries);
-    Serial.println(" usec, ");
+    Serial.println(" u sec, ");
     Serial.println();
     //
     Serial.print("bubble sort: ");
     randomSeed(rseed);
     sum = 0;
+    tmax = 0;
     for(unsigned int t = 0; t < tries; ++t) {
-	  for(INDEXTYPE i = 0; i < num; ++i) {
-		  data[i] = random(0, DATA_MAX);
-	  }
-	  stopwatch = micros();
-	  bubbleSort(data, num);
-	  stopwatch = micros() - stopwatch;
-	    Serial.print(stopwatch);
-	    Serial.print(" usec, ");
+  	  for(INDEXTYPE i = 0; i < num; ++i) {
+	  	  data[i] = random(0, DATA_MAX);
+	    }
+  	  stopwatch = micros();
+  	  bubbleSort(data, num);
+  	  stopwatch = micros() - stopwatch;
+      if (tmax < stopwatch)
+        tmax = stopwatch;
 	    sum += stopwatch;
     }
     //
-    Serial.print("\navr. ");
+    Serial.print("max. ");
+    Serial.print(tmax);
+    Serial.print(", avr. ");
     Serial.print(sum/tries);
     Serial.println(" u secs, ");
     Serial.println();
@@ -108,39 +114,45 @@ void loop() {
     Serial.print("merge (r) sort: ");
     randomSeed(rseed);
     sum = 0;
+    tmax = 0;
     for(unsigned int t = 0; t < tries; ++t) {
-	  for(INDEXTYPE i = 0; i < num; ++i) {
-		  data[i] = random(0, DATA_MAX);
-	  }
-	  stopwatch = micros();
-	  mergeSort_recursive(data, num);
-	  stopwatch = micros() - stopwatch;
-	    Serial.print(stopwatch);
-	    Serial.print(" usec, ");
+  	  for(INDEXTYPE i = 0; i < num; ++i) {
+  		  data[i] = random(0, DATA_MAX);
+  	  }
+  	  stopwatch = micros();
+  	  mergeSort_recursive(data, num);
+  	  stopwatch = micros() - stopwatch;
+      if (stopwatch > tmax)
+        tmax = stopwatch;
 	    sum += stopwatch;
     }
     //
-    Serial.print("\navr. ");
+    Serial.print("max. ");
+    Serial.print(tmax);
+    Serial.print(", avr. ");
     Serial.print(sum/tries);
     Serial.println(" u secs, ");
     Serial.println();
     //
-    Serial.println("quick sort");
+    Serial.print("quick sort: ");
     randomSeed(rseed);
     sum = 0;
+    tmax = 0;
     for(unsigned int t = 0; t < tries; ++t) {
-	  for(INDEXTYPE i = 0; i < num; ++i) {
-		  data[i] = random(0, DATA_MAX);
-	  }
-	  stopwatch = micros();
-	  quickSort(data, num);
-	  stopwatch = micros() - stopwatch;
-	    Serial.print(stopwatch);
-	    Serial.print(" usec, ");
-	    sum += stopwatch;
+  	  for(INDEXTYPE i = 0; i < num; ++i) {
+  		  data[i] = random(0, DATA_MAX);
+  	  }
+  	  stopwatch = micros();
+  	  quickSort(data, num);
+  	  stopwatch = micros() - stopwatch;
+      if (tmax < stopwatch)
+        tmax = stopwatch;
+  	    sum += stopwatch;
     }
     //
-    Serial.print("\navr. ");
+    Serial.print("max. ");
+    Serial.print(tmax);
+    Serial.print(", avr. ");
     Serial.print(sum/tries);
     Serial.println(" usec, ");
 
@@ -155,5 +167,3 @@ void loop() {
     //
   }
 }
-
-

@@ -45,7 +45,7 @@ void heapSort(DATATYPE a[], INDEXTYPE n) {
     return;
     }
   
-
+/*
 void selectionSort_range(DATATYPE a[], INDEXTYPE start, INDEXTYPE end){
   INDEXTYPE i, j, max;
   DATATYPE t; // i for the length (end+1) of sorted-array.
@@ -64,7 +64,22 @@ void selectionSort_range(DATATYPE a[], INDEXTYPE start, INDEXTYPE end){
 void selectionSort(DATATYPE a[], INDEXTYPE n) {
   return selectionSort_range(a, 0, n);
 }
+*/
 
+void selectionSort(DATATYPE a[], INDEXTYPE n) {
+	INDEXTYPE i, j, x;
+	DATATYPE t; // i for the length (end+1) of sorted-array.
+	for(i = 0; i < n - 1; ++i) {
+		x = i;
+		for(j = i + 1; j < n; ++j) {
+			if ( a[x] > a[j] )
+				x = j;
+		}
+		SWAP(a[i], a[j], t);
+	}
+	return;
+  return selectionSort_range(a, 0, n);
+}
 
 void quickSort_range(DATATYPE array[], INDEXTYPE start, INDEXTYPE end) {
   INDEXTYPE smaller, larger, mid;
