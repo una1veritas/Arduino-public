@@ -13,6 +13,70 @@ const int LCD_BKLIGHT = 10; // 330 ohm -- 1k (1.4mA)
 // connected to HC153 S0 and S1
 const int HC153_S0 = 6, HC153_S1 = 7; // PD6, PD7 
 
+// define custom char to imitate ammeter needle
+byte needle[8][8] = {
+  {
+    B00000,
+    B00000,
+    B00000,
+    B00000,
+    B00000,
+    B00000,
+    B00000,
+    B00000,
+  },
+  {
+    B10000,
+    B10000,
+    B10000,
+    B10000,
+    B10000,
+    B10000,
+    B10000,
+    B10000,
+  },
+  {
+    B11000,
+    B11000,
+    B11000,
+    B11000,
+    B11000,
+    B11000,
+    B11000,
+    B11000,
+  },
+  {
+    B11100,
+    B11100,
+    B11100,
+    B11100,
+    B11100,
+    B11100,
+    B11100,
+    B11100,
+  },
+  {
+    B11110,
+    B11110,
+    B11110,
+    B11110,
+    B11110,
+    B11110,
+    B11110,
+    B11110,
+  },
+  {
+    B11111,
+    B11111,
+    B11111,
+    B11111,
+    B11111,
+    B11111,
+    B11111,
+    B11111,
+  },
+};
+
 void setup() {
   // put your setup code here, to run once:
 
@@ -20,7 +84,7 @@ void setup() {
   lcd.begin(16, 2);
   // Print a message to the LCD.
   lcd.setCursor(0, 0);
-  lcd.print("Freq.           ");
+  lcd.clear();
   pinMode(LCD_BKLIGHT, OUTPUT);
   digitalWrite(LCD_BKLIGHT, HIGH);
 
@@ -30,7 +94,7 @@ void setup() {
   TCCR1C = 0;
 
   //8-bit Timer/Counter2 in CTC Mode
-  // clk 16MHz prescaler 1/1024 (125 cycle per min.)
+  // clk 16MHz .prescaler 1/1024 (125 cycle per sec.)
   TCCR2A = (1<<WGM21) | (0<<WGM20);
   TCCR2B = (0<<WGM22) | (1<<CS22) | (1<<CS21) | (1<<CS20);
   OCR2A = 124;
@@ -42,30 +106,51 @@ void setup() {
   digitalWrite(HC153_S0, LOW);
   digitalWrite(HC153_S1, LOW);
 
+  for(int i = 0; i < 6; ++i) {
+    lcd.createChar(i,needle[i]);
+  }
 }
 
 //global
 unsigned int counter1value = 0;
 unsigned long freq = 0;
+unsigned int adc5value = 0;
 //overflow function for timer1
 ISR(TIMER2_COMPA_vect) {
   // exponential average
-  counter1value= TCNT1;
+  counter1value = TCNT1;
   TCNT1 = 0;
+  freq += counter1value;
+  freq >>= 1;
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  unsigned long digits;
-  if (counter1value != freq) {
-    freq += counter1value;
-    freq >>= 1;
+  unsigned int aread5 = analogRead(5);
+  if (counter1value != freq || adc5value != aread5) {
+    adc5value = aread5;
     
-    lcd.setCursor(0, 1);
-    lcd.print("             kHz");
+    lcd.setCursor(12, 0);
+    lcd.print(" kHz");
     // print the number of seconds since reset:
-    lcd.setCursor(0, 1);
-    lcd.print(float(freq)/8);
-    delay(200);
+    lcd.setCursor(0, 0);
+    unsigned long digits = lcd.print(float(freq)/8);
+    lcd.setCursor(digits,0);
+    for( ; digits < 12; ++digits) {
+      lcd.write(' ');
+    }
+    lcd.setCursor(0,1);
+    unsigned int idx = adc5value/13;
+    for(int c = 0; c < 16; ++c) {
+      lcd.setCursor(c,1);
+      if ( c > idx/6 ) 
+        lcd.write(' ');
+      if ( c == idx/6 ) {
+        lcd.write(byte(idx % 6));
+      } else {
+        lcd.write(byte(0xff));
+      }
+    }
   }
+  delay(50);
 }
