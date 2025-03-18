@@ -52,7 +52,9 @@
     of the first TLC to the SIN (TLC pin 26) of the next.  The rest of the pins
     are attached normally.
     \note Each TLC needs it's own IREF resistor */
+#ifndef NUM_TLCS
 #define NUM_TLCS    1
+#endif
 
 /** Determines how data should be transfered to the TLCs.  Bit-banging can use
     any two i/o pins, but the hardware SPI is faster.
@@ -158,7 +160,9 @@
 /** Arranges 2 grayscale values (0 - 4095) in the packed array format (3 bytes).
     This is for array initializers only: the output is three comma seperated
     8-bit values. */
-#define GS_DUO(a, b)    ((a) >> 4), ((a) << 4) | ((b) >> 8), (b)
+//#define GS_DUO(a, b)  ((a) >> 4), ((a) << 4) | ((b) >> 8), (b)
+#define GS_DUO(a, b)    (uint8_t)((a) >> 4), (uint8_t)((a) << 4) | (uint8_t)((b) >> 8), (uint8_t)(b)
+
 
 
 #if VPRG_ENABLED
