@@ -127,10 +127,10 @@ public:
 };
 
 enum Z80_Mega {
-  CLK     = 13, // in
+  CLK     = 13, // input on Z80
   _INT    = 8,  // in
   _NMI    = 9,  // in
-  _HALT   = 10, // out
+  _HALT   = 10, // output on Z80
   _MREQ   = 11, // out
   _IOREQ  = 12, // out 
   _RD     = 40, // out
@@ -164,14 +164,33 @@ uint8 mem[16] = {
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
-void setup() {
+void start_OC1C(uint8_t presc, uint16_t top) {
+  const uint8_t WGM_CTC_OCR1A = B0100;
+  const uint8_t COM_TOGGLE = B01;
 
+  cli();
+  
+  TCCR1A = 0;
+  TCCR1B = 0;
+  TCCR1C = 0;
+  TCNT1 = 0;
+  OCR1A = top - 1;
+
+  TCCR1A |= (COM_TOGGLE << COM1C0) | ((WGM_CTC_OCR1A & B0011) << WGM10);
+  TCCR1B |= (((WGM_CTC_OCR1A>>2) & B11)<< WGM12)  | (presc << CS10);
+
+  sei();
+}
+
+void setup() {
   // put your setup code here, to run once:
   Serial.begin(38400);
   while (! Serial) {}
   Serial.println("started.");
   z80.DATA_BUS_mode(OUTPUT);
   z80.set_DATA_BUS(0x00);
+
+  start_OC1C(5, 8000);
   z80.reset();
 }
 
