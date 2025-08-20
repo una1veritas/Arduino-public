@@ -3,6 +3,8 @@
 #include "CPU_Z80.h"
 #include "SRAM1Mbit.h"
 
+//#define BUS_DEBUG
+
 typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
@@ -100,8 +102,10 @@ uint8 mem[MEM_MAX] = {
   0x77, 0x6f, 0x72, 0x6c, 0x64, 0x21, 0x0d, 0x0a, 0x00,
   */
   /* example 1 */
-  0x21, 0x30, 0x00, 0x31, 0x40, 0x00, 0xaf, 0x77, 0x3c, 0xfe, 0x64, 0x28, 0x08, 0xcd, 0x12, 0x00, 
-  0x18, 0xf5, 0xd3, 0xff, 0xc9, 0x76, 
+0x21, 0x38, 0x00, 0x31, 0x7e, 0x00, 0xaf, 0x77, 0x3c, 0xfe, 0x64, 0x28, 0x08, 0xcd, 0x12, 0x00, 
+0x18, 0xf5, 0xd3, 0xff, 0xc9, 0x21, 0x23, 0x00, 0x7e, 0xf6, 0x00, 0x28, 0x05, 0xd3, 0x02, 0x23, 
+0x18, 0xf6, 0x76, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x2c, 0x20, 0x6d, 0x79, 0x20, 0x66, 0x72, 0x69, 
+0x65, 0x6e, 0x64, 0x73, 0x21, 0x0d, 0x0a, 0x00, 0x00,
 };
 uint8 pin_status = 0;
 uint8 clock_pin = LOW;
@@ -144,6 +148,7 @@ void dump_mem() {
     }
     Serial.println();
   }
+  Serial.println();
 }
 
   uint8 control_pin_status(){
@@ -179,7 +184,7 @@ void setup() {
   z80.BUSREQ(HIGH);
 
   // start z80 clock
-  start_OC1C_clock(5, 2000);
+  start_OC1C_clock(5, 400);
   
   int count = 0;
   // perform z80 rest, assert pin during at least 3 clocks passed
@@ -214,45 +219,61 @@ void loop() {
     if ( !z80.MREQ() ) {
       if ( !z80.RD() ) {
         addr = z80.get_ADDR_BUS();
+#ifdef BUS_DEBUG
         if (! z80.M1()) {
           Serial.print("OP FETCH ADDR = ");
         } else {
           Serial.print("RD ADDR = ");
         }
         Serial.print(addr, HEX);
+#endif
         z80.DATA_BUS_mode(OUTPUT);
         data = mem[addr & MEM_ADDR_MASK];
         z80.set_DATA_BUS(data);
+#ifdef BUS_DEBUG
         Serial.print("  DATA = ");
         Serial.println(data, HEX);
+#endif
+        while ( !z80.MREQ() and !z80.RD() ) ;
       } else if ( !z80.WR() ) {
         addr = z80.get_ADDR_BUS();
+#ifdef BUS_DEBUG
         Serial.print("WR ADDR = ");
         Serial.println(addr, HEX);
+#endif
         z80.DATA_BUS_mode(INPUT);
         data = z80.get_DATA_BUS();
         mem[addr & MEM_ADDR_MASK]= data;
         //dump_mem();
+        while ( !z80.MREQ() and !z80.WR() ) ;
       }
     } else if ( !z80.IORQ() ) {
       if ( !z80.RD() ) {
         addr = z80.get_ADDR_BUS();
+#ifdef BUS_DEBUG
         Serial.print("IN ADDR = ");
         Serial.print(addr & 0xff, HEX);
         z80.DATA_BUS_mode(OUTPUT);
         Serial.print("  DATA = ");
         Serial.println(z80.get_DATA_BUS(), HEX);
+#endif
         // port_in
         while ( !z80.IORQ() and !z80.RD() ) ;
       } else if ( !z80.WR() ) {
         addr = z80.get_ADDR_BUS();
-        //Serial.print("OUT ADDR = ");
-        //erial.print(addr & 0xff, HEX);
+#ifdef BUS_DEBUG
+        Serial.print("OUT ADDR = ");
+        Serial.print(addr & 0xff, HEX);
+#endif
         z80.DATA_BUS_mode(INPUT);
         data = z80.get_DATA_BUS();
-        //Serial.print(". DATA = ");
-        //Serial.println(z80.get_DATA_BUS(), HEX);
+#ifdef BUS_DEBUG
+        Serial.print(". DATA = ");
+        Serial.println(z80.get_DATA_BUS(), HEX);
+#endif
+        z80.WAIT_LO();
         port_out(addr, data);
+        z80.WAIT_HI();
         while ( !z80.IORQ() and !z80.WR() ) ;
       }
     }
