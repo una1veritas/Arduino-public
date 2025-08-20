@@ -8,6 +8,7 @@ typedef uint32_t uint32;
 #endif
 
 class CPU_Z80 {
+private:
   static const uint8 IOADDR_BUS_WIDTH = 8;
   static const uint8 ADDR_BUS_WIDTH = 16;
   static const uint8 DATA_BUS_WIDTH = 8;
@@ -74,6 +75,8 @@ public:
   void RESET(uint8 val) {
     digitalWrite(_RESET, val);
   }
+  inline void RESET_LO() { RESET(LOW); }
+  inline void RESET_HI() { RESET(HIGH); }
 
   uint8 CLK() {
     return digitalRead(_CLK);
@@ -87,7 +90,7 @@ public:
     return digitalRead(_MREQ);
   }
 
-  uint8 IOREQ() {
+  uint8 IORQ() {
     return digitalRead(_IORQ);
   }
 
@@ -110,9 +113,21 @@ public:
   void WAIT(uint8 val) {
     digitalWrite(_WAIT, val);
   }
+  inline void WAIT_LO() {
+	  WAIT(LOW);
+  }
+  inline void WAIT_HI() {
+	  WAIT(HIGH);
+  }
 
   void BUSREQ(uint8 val) {
     digitalWrite(_BUSREQ, val);
+  }
+  inline void BUSREQ_LO() {
+	  BUSREQ(LOW);
+  }
+  inline void BUSREQ_HI() {
+	  BUSREQ(HIGH);
   }
 
   uint16 get_ADDR_BUS() {

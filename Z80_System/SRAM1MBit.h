@@ -8,6 +8,7 @@ typedef uint32_t uint32;
 #endif
 
 struct SRAM {
+private:
   // pin connection
   const uint8 EN, _CS, _OE, _WE; // ~chip enable, ~output enable, ~write enable
   const uint8 ABUS_WIDTH = 17;
@@ -15,6 +16,7 @@ struct SRAM {
   const uint8 DBUS_WIDTH = 8;
   const uint8 * DBUS;
 
+public:
   SRAM(uint8 en, uint8 _cs, uint8 _oe, uint8 _we, 
     uint8 addr_bus_width, uint8 addr_bus[], 
     uint8 data_bus_width, uint8 data_bus[]) 

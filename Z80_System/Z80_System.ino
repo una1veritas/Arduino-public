@@ -85,37 +85,54 @@ uint8 data;
 const uint16 MEM_MAX = 0x0080;
 const uint16 MEM_ADDR_MASK = MEM_MAX - 1;
 uint8 mem[MEM_MAX] = {
-  0x21, 0x30, 0x00, 
-  0xdd, 0x21, 0x28, 0x00,
-  0xdd, 0x36, 0x00, 0x65, 
-  0x3e, 0x01,
-  0xbe, 
-  0x28, 0x09,
-  0x36, 0x01,
-  0xdd, 0x35, 0x00,
-  0x28, 0x10,
-  0x18, 0x03,
+  /* example 2
+  0x31, 0x30, 0x00, 0x21, 0x13, 0x00,
+  0xcd, 0x0a, 0x00, 
+  0x76, 
+  0x7e, 
+  0xb7, 
+  0xc8, 
+  0xd3, 0x02, 
   0x23, 
-  0x18, 0xf1, 
-  0x2b, 0xbe,
-  0x20, 0x04,
-  0x36, 0x00,
-  0x18, 0xf8,
-  0x23, 
-  0x18, 0xe6, 
-  0x76,
+  0xc3, 0x0a, 0x00,
+  0x0d, 0x0a, 
+  0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x2c, 0x20, 
+  0x77, 0x6f, 0x72, 0x6c, 0x64, 0x21, 0x0d, 0x0a, 0x00,
+  */
+  /* example 1 */
+  0x21, 0x30, 0x00, 0x31, 0x40, 0x00, 0xaf, 0x77, 0x3c, 0xfe, 0x64, 0x28, 0x08, 0xcd, 0x12, 0x00, 
+  0x18, 0xf5, 0xd3, 0xff, 0xc9, 0x76, 
 };
 uint8 pin_status = 0;
 uint8 clock_pin = LOW;
  
-void port_out(uint8 port, uint8 val) {
-  Serial.print("out @ ");
-  Serial.print(port, HEX);
-  Serial.print(" data ");
-  Serial.println(val, HEX);
-  if (port = 0x01) {
+void port_out(const uint8 & port, const uint8 & val) {
+	switch(port) {
+	case 2:  // putchar
+		Serial.print((char) val);
+		break;
+	case 16:
+		break;
+	case 17:
+		break;
+	case 18: // sector
+		break;
+	case 20: // dma L
+		break;
+	case 21: // dma H
+		break;
+	case 22:
+		break;
+  case 0xff:
     dump_mem();
-  }
+    break;
+	default:
+		Serial.print("out @ ");
+		Serial.print(port, HEX);
+		Serial.print(" data ");
+		Serial.print(val, HEX);
+		break;
+	}
 }
 
 void dump_mem() {
@@ -162,7 +179,7 @@ void setup() {
   z80.BUSREQ(HIGH);
 
   // start z80 clock
-  start_OC1C_clock(5, 400);
+  start_OC1C_clock(5, 2000);
   
   int count = 0;
   // perform z80 rest, assert pin during at least 3 clocks passed
@@ -215,9 +232,9 @@ void loop() {
         z80.DATA_BUS_mode(INPUT);
         data = z80.get_DATA_BUS();
         mem[addr & MEM_ADDR_MASK]= data;
-        dump_mem();
+        //dump_mem();
       }
-    } else if ( !z80.IOREQ() ) {
+    } else if ( !z80.IORQ() ) {
       if ( !z80.RD() ) {
         addr = z80.get_ADDR_BUS();
         Serial.print("IN ADDR = ");
@@ -226,17 +243,17 @@ void loop() {
         Serial.print("  DATA = ");
         Serial.println(z80.get_DATA_BUS(), HEX);
         // port_in
+        while ( !z80.IORQ() and !z80.RD() ) ;
       } else if ( !z80.WR() ) {
         addr = z80.get_ADDR_BUS();
-        Serial.print("OUT ADDR = ");
-        Serial.print(addr & 0xff, HEX);
+        //Serial.print("OUT ADDR = ");
+        //erial.print(addr & 0xff, HEX);
         z80.DATA_BUS_mode(INPUT);
         data = z80.get_DATA_BUS();
-        //z80.WAIT(LOW);
+        //Serial.print(". DATA = ");
+        //Serial.println(z80.get_DATA_BUS(), HEX);
         port_out(addr, data);
-        //z80.WAIT(HIGH);
-        Serial.print(". DATA = ");
-        Serial.println(z80.get_DATA_BUS(), HEX);
+        while ( !z80.IORQ() and !z80.WR() ) ;
       }
     }
   } else if ( clock_pin == HIGH and z80.CLK() == LOW) {
