@@ -21,7 +21,7 @@ void start_OC1C(uint8_t presc, uint16_t top) {
 void setup() {
   // put your setup code here, to run once:
   pinMode(13, OUTPUT);
-  start_OC1C(5, 4000);
+  start_OC1C(5, 8000);
   while (1) {}
 }
 

@@ -93,7 +93,7 @@ struct SRAM {
       data >>= 1;
     }
     write_enable();   // _WE = Low
-    __asm__ __volatile("nop"); // might be omitted (1/16MHz = 62.5 ns)
+    __asm__ __volatile("nop"); // can be possibly omitted in write (1/16MHz = 62.5 ns)
     //delayMicroseconds(1); // Wait 1 u sec
     write_disable();  // _WE = High
   }
