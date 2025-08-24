@@ -20,8 +20,8 @@
  ****************************************************/
 
 #include <Wire.h>
+#include <Adafruit_GFX.h>
 #include "Adafruit_LEDBackpack.h"
-#include "Adafruit_GFX.h"
 
 Adafruit_8x8matrix matrix = Adafruit_8x8matrix();
 
@@ -32,10 +32,34 @@ void setup() {
   matrix.begin(0x70);  // pass in the address
 }
 
-static uint8_t __attribute__ ((progmem)) smile_bmp[]={0x3C, 0x42, 0x95, 0xA1, 0xA1, 0x95, 0x42, 0x3C};
-static uint8_t __attribute__ ((progmem)) frown_bmp[]={0x3C, 0x42, 0xA5, 0x91, 0x91, 0xA5, 0x42, 0x3C};
-static uint8_t __attribute__ ((progmem)) neutral_bmp[]={0x3C, 0x42, 0x95, 0x91, 0x91, 0x95, 0x42, 0x3C};
-
+static const uint8_t PROGMEM
+  smile_bmp[] =
+  { B00111100,
+    B01000010,
+    B10100101,
+    B10000001,
+    B10100101,
+    B10011001,
+    B01000010,
+    B00111100 },
+  neutral_bmp[] =
+  { B00111100,
+    B01000010,
+    B10100101,
+    B10000001,
+    B10111101,
+    B10000001,
+    B01000010,
+    B00111100 },
+  frown_bmp[] =
+  { B00111100,
+    B01000010,
+    B10100101,
+    B10000001,
+    B10011001,
+    B10100101,
+    B01000010,
+    B00111100 };
 
 void loop() {
   matrix.clear();
@@ -77,11 +101,20 @@ void loop() {
   matrix.setTextSize(1);
   matrix.setTextWrap(false);  // we dont want text to wrap so it scrolls nicely
   matrix.setTextColor(LED_ON);
-  for (int8_t x=0; x>=-66; x--) {
+  for (int8_t x=0; x>=-36; x--) {
     matrix.clear();
     matrix.setCursor(x,0);
-    matrix.print("Hello world");
+    matrix.print("Hello");
     matrix.writeDisplay();
     delay(100);
   }
+  matrix.setRotation(3);
+  for (int8_t x=7; x>=-36; x--) {
+    matrix.clear();
+    matrix.setCursor(x,0);
+    matrix.print("World");
+    matrix.writeDisplay();
+    delay(100);
+  }
+  matrix.setRotation(0);
 }
