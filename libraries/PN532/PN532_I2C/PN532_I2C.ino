@@ -1,0 +1,85 @@
+#include <Wire.h>
+#include "ISO14443.h"
+#include "PN532_I2C.h"
+#include "StringBuffer.h"
+
+using namespace NFC;
+
+#define IRQ   (2)	// On the Adafruit shield this output port is connected to d2.
+#define RST (0xff)  // Adafruit board & shield has no default assignment.
+		// Set the digital pin number to reset PN532 manually in program. 
+		// Usually connecting to CPU reset pin may be sufficient. 
+
+// rx buffer size in twi library must be enlarged at least 48 bytes
+// to receive three sectors of FeliCa.
+
+PN532 nfc(PN532::I2C_ADDRESS, IRQ, RST);
+byte respbuff[80];
+
+void setup() {
+  byte cnt;
+
+  Wire.begin();
+  nfc.begin();
+
+  Serial.begin(9600);
+  Serial.println("PN532 via I2C Firmware inspection/FeliCa read test.");
+
+  if ( nfc.GetFirmwareVersion() 
+    && nfc.getCommandResponse(respbuff) ) {
+    Serial.print("PN53x IC version '"); 
+    Serial.print((char) respbuff[0]); 
+    Serial.print("', firmware ver. "); 
+    Serial.print(respbuff[1]); 
+    Serial.print(", rev. "); 
+    Serial.println(respbuff[2]);
+    Serial.print("Support "); 
+    Serial.print((respbuff[3] & 0b001 ? "ISO/IEC 14443 Type A, " :""));
+    Serial.print((respbuff[3] & 0b010 ? "ISO/IEC 14443 Type B, " :""));
+    Serial.print((respbuff[3] & 0b001 ? "ISO 18092, " :""));
+    Serial.println();
+  } 
+  else {
+    Serial.println("Not found PN532.");
+    while (1);
+  }
+  nfc.SAMConfiguration();
+  if ((nfc.getCommandResponse((byte*) respbuff) == 0) and (nfc.status() == nfc.RESP_RECEIVED))
+    Serial.println("  SAMConfiguration: in normal mode, will use P70_IRQ. >>");
+  if ( nfc.GetGeneralStatus() && (cnt = nfc.getCommandResponse(respbuff)) ) {
+    for(int i = 0; i < cnt; i++) {
+      Serial.print(respbuff[i]>>4, HEX);
+      Serial.print(respbuff[i]&0x0f, HEX);
+      Serial.print(' ');
+    }
+    Serial.println();
+    Serial.println("  GetGeneralState >>");
+  }
+  nfc.PowerDown(0xff);
+  Serial.print(nfc.getCommandResponse(respbuff));
+  Serial.println("  PowerDown >>");
+}
+void loop() {
+  byte cnt;
+  byte payload[] = {
+    0x00, 0xff, 0xff, 0x01, 0x00    };
+  *((word*) &payload[1]) = (word) 0x00fe;
+  if ( nfc.InListPassiveTarget(1, CARDTYPE_GENERICPASSIVE_212K_F, payload, 5) ) {
+    cnt = nfc.getCommandResponse(respbuff);
+    if ( cnt)
+      nfc.targetSet(PN532::Type_FeliCa212kb, respbuff+4, 8);
+    word ver = nfc.felica_RequestService(0x1a8b);
+    if ( ver != 0xffff ) {
+      word blklist[] = {
+        0x00      };
+      cnt = nfc.felica_ReadWithoutEncryption(respbuff, (word)0x1a8b, 1, blklist );
+      if ( cnt != 0 ) {
+        nfc.printHexString(respbuff, cnt*16);
+        Serial.println("  >> R w/o Enc");
+      }
+    }
+  }
+  delay(1000);
+  Serial.println('.');
+}
+
