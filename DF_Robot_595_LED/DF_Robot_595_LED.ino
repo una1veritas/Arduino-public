@@ -1,0 +1,58 @@
+//Pin connected to latch pin (ST_CP) of 74HC595
+const int LAT = 8;
+//Pin connected to clock pin (SH_CP) of 74HC595
+const int CLK = 3;
+////Pin connected to Data in (DS) of 74HC595
+const int DO = 9;
+
+byte Tab[]={0xc0,0xf9,0xa4,0xb0,0x99,0x92,0x82,0xf8,0x80,0x90,0xff}; //0,1,2,3,4,5,6,7,8,9, ALL OFF
+byte Taf[]={0xA0,0x83,0xa7,0xa1,0x86,0x8e,0xc2,
+0x8b,0xe6,0xe1,0x89,0xc7,0xaa,0xc8,
+0xa3,0x8c,0x98,0xce,0x9b
+,0x87,0xc1,0xe3,0xd5,0xb6,0x91,0xb8};//a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
+byte Tap[]={0xff,0x7f}; //"space", "."
+
+byte ascii7seg(byte ch) {
+  const static byte numeric7[]={0xc0,0xf9,0xa4,0xb0,0x99,0x92,0x82,0xf8,0x80,0x90,0xff};
+  const static byte alpha7[]={0x88,0x83,0xa7,0xa1,0x86,0x8e,0xc2,
+  0x89, 0x79,0xe1, 0x09 /* 0x89*/ ,0xc7, 0xbb/* 0xaa*/ , 0xab/* 0xc8*/ ,
+  0xa3,0x8c,0x98,0xaf/* 0xce */,0x92 /*0x9b*/,0x87, 0xc1,
+  0xc1 /* 0xe3*/,0x86 /* 0xd5 */,0xb6,0x91, 0x24 /* 0xb8*/, };//a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
+  ch = toupper(ch);
+  if ('0' <= ch and ch <= '9') {
+    return numeric7[ch - '0'];
+  } else if ('A' <= ch and ch <= 'Z') {
+    return alpha7[ch - 'A'];
+  } else if (ch == '.' or ch == ',') {
+    return 0x7f;
+  } else {
+    return 0xff;
+  }
+}
+
+byte ix = 0x20;
+byte n = 127;
+
+void setup() {
+  //set pins to output because they are addressed in the main loop
+  pinMode(LAT, OUTPUT);
+  pinMode(DO, OUTPUT);
+  pinMode(CLK, OUTPUT);
+  Serial.begin(9600);
+  Serial.println("reset");
+}
+void loop() {
+  Serial.print(ix, HEX);
+  Serial.print(" -- ");
+  Serial.println(ix+7, HEX);
+  for(int i = 0; i < 8; ++i) {
+    digitalWrite(LAT, LOW);
+    shiftOut(DO, CLK, MSBFIRST, ascii7seg(ix+7-i) );
+    digitalWrite(LAT, HIGH);
+  }
+  ix += 8;
+  if (ix > 126) 
+    ix = 0x20;
+  delay(2000);
+
+}

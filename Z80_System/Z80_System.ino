@@ -1,42 +1,13 @@
 /* by sin, Aug, 2025 */
 
-#include "CPU_Z80.h"
 #include "SRAM1Mbit.h"
+#include "Z80_Controller.h"
 
 //#define BUS_DEBUG
 
 typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
-
-void start_OC1C_clock(uint8_t presc, uint16_t top) {
-  const uint8_t WGM_CTC_OCR1A = B0100;
-  const uint8_t COM_TOGGLE = B01;
-
-  cli();
-  
-  TCCR1A = 0;
-  TCCR1B = 0;
-  TCCR1C = 0;
-  TCNT1 = 0;
-  OCR1A = top - 1;
-
-  TCCR1A |= (COM_TOGGLE << COM1C0) | ((WGM_CTC_OCR1A & B0011) << WGM10);
-  TCCR1B |= (((WGM_CTC_OCR1A>>2) & B11)<< WGM12)  | (presc << CS10);
-
-  sei();
-}
-
-void stop_OC1C_clock(uint8_t presc, uint16_t top) {
-  const uint8_t WGM_CTC_OCR1A = B0100;
-  const uint8_t COM_DISCONNECT = B00;
-
-  cli();
-  
-  TCCR1A |= (COM_DISCONNECT << COM1C0) | ((WGM_CTC_OCR1A & B0011) << WGM10);
-
-  sei();
-}
 
 enum Z80_Mega_pin {
   CLK     = 13, // input on Z80
@@ -78,7 +49,7 @@ const uint8 SRAM_ADDR_BUS_WIDTH = 17;
 
 SRAM sram(SRAM_E2, SRAM_E2, SRAM_OE, SRAM_WE, SRAM_ADDR_BUS_WIDTH, MEGA_ADDR_BUS, DATA_BUS_WIDTH, MEGA_DATA_BUS);
 
-CPU_Z80 z80(CLK, _INT, _NMI, _HALT, _MREQ, _IORQ, 
+Z80_Controller z80(_INT, _NMI, _HALT, _MREQ, _IORQ,
   _RD, _WR, _BUSACK, _WAIT, _BUSREQ, _RESET, _M1, _RFSH, 
   MEGA_ADDR_BUS, MEGA_DATA_BUS);
 
@@ -151,22 +122,10 @@ void dump_mem() {
   Serial.println();
 }
 
-  uint8 control_pin_status(){
-    uint8 s = 0;
-    s |= (digitalRead(_HALT) == HIGH ? 1 : 0) << 0;
-    s |= (digitalRead(_MREQ) == HIGH ? 1 : 0) << 6;
-    s |= (digitalRead(_IORQ) == HIGH ? 1 : 0) << 3;
-    s |= (digitalRead(_RD) == HIGH ? 1 : 0) << 4;
-    s |= (digitalRead(_WR) == HIGH ? 1 : 0) << 5;
-    s |= (digitalRead(_BUSACK) == HIGH ? 1 : 0) << 7;
-    s |= (digitalRead(_M1) == HIGH ? 1 : 0) << 2;
-    s |= (digitalRead(_RFSH) == HIGH ? 1 : 0) << 1;
-    return s;
-  }
 void dump_control_pins(uint8 s) {
-  char buf[32];
-  snprintf(buf, sizeof(buf), "M1 %1x MREQ %1x IORQ %1x RD %x WR %1x", s>>2 & 1, s>>6 & 1, s>>3 & 1, s>>4 & 1, s>>5&1);
-  Serial.print(buf);
+char buf[32];
+snprintf(buf, sizeof(buf), "M1 %1x MREQ %1x IORQ %1x RD %x WR %1x", s>>2 & 1, s>>6 & 1, s>>3 & 1, s>>4 & 1, s>>5&1);
+Serial.print(buf);
 }
 
 void setup() {
@@ -178,24 +137,13 @@ void setup() {
   sram.disable();
   z80.DATA_BUS_mode(OUTPUT);
   z80.set_DATA_BUS(0x00);
-  z80.BUSREQ(LOW);
-  Serial.println("BUREQ LOW.");
-  delay(5000);
-  z80.BUSREQ(HIGH);
-
   // start z80 clock
-  start_OC1C_clock(5, 400);
+  z80.clock_start(5, 1600);
   
   int count = 0;
   // perform z80 rest, assert pin during at least 3 clocks passed
-  z80.RESET(LOW);
+  z80.do_reset();
   Serial.println("Resetting Z80.");
-  while (count < 5) {
-    while (z80.CLK() == HIGH) ;
-    while (z80.CLK() == LOW) ;
-    ++count;
-  }
-  z80.RESET(HIGH);
 }
 
 void loop() {
