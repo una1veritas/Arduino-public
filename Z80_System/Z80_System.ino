@@ -1,7 +1,7 @@
 /* by sin, Aug, 2025 */
 
 #include "SRAM1Mbit.h"
-#include "Z80_Controller.h"
+#include "Z80_Bus_Controller.h"
 
 //#define BUS_DEBUG
 
@@ -9,6 +9,7 @@ typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 
+/*
 enum Z80_Mega_pin {
   CLK     = 13, // input on Z80
   _INT    = 8,  // in
@@ -25,7 +26,8 @@ enum Z80_Mega_pin {
   _M1     = 6,  // out
   _RFSH   = 7,  // out
 };
-
+*/
+/*
 const uint8 Z80_ADDR_BUS_WIDTH = 16;
 const uint8 MEGA_ADDR_BUS[Z80_ADDR_BUS_WIDTH+1] = {
   // PORTA (A0 -- A7)
@@ -40,21 +42,16 @@ const uint8 MEGA_DATA_BUS[DATA_BUS_WIDTH] = {
   // PORTK
   62, 63, 64, 65, 66, 67, 68, 69,
 };
+*/
 
-const uint8 SRAM_WE = _WR; // PG0/WR. (_W)
-const uint8 SRAM_OE = _RD; // PG1/RD. (_G)
-const uint8 SRAM_E1 = _MREQ; // PG2/ALE (_E1)
-const uint8 SRAM_E2 = 14; // PG2/ALE (_E1)
-const uint8 SRAM_ADDR_BUS_WIDTH = 17;
-
-SRAM sram(SRAM_E2, SRAM_E2, SRAM_OE, SRAM_WE, SRAM_ADDR_BUS_WIDTH, MEGA_ADDR_BUS, DATA_BUS_WIDTH, MEGA_DATA_BUS);
-
-Z80_Controller z80(_INT, _NMI, _HALT, _MREQ, _IORQ,
-  _RD, _WR, _BUSACK, _WAIT, _BUSREQ, _RESET, _M1, _RFSH, 
-  MEGA_ADDR_BUS, MEGA_DATA_BUS);
+Z80_Bus_Controller z80bus;
+SRAM1MBit sram(z80bus.MEM_EN, z80bus._MREQ, z80bus._RD, z80bus._WR);
 
 uint16 addr;
 uint8 data;
+uint8 flag;
+char strbuf[32];
+
 const uint16 MEM_MAX = 0x0080;
 const uint16 MEM_ADDR_MASK = MEM_MAX - 1;
 uint8 mem[MEM_MAX] = {
@@ -133,8 +130,28 @@ void setup() {
   Serial.begin(38400);
   while (! Serial) {}
   Serial.println("***********************");
-  Serial.println("    system started.    ");
-  sram.disable();
+  Serial.println("    system starting.    ");
+
+  z80bus.memory_enable();
+  z80bus.listen_address_bus16();
+  z80bus.listen_data_bus();
+  z80bus.clock_start(5, 8000);
+  z80bus.Z80_RESET(LOW);
+  z80bus.clock_wait_rising_edge(5);
+  z80bus.Z80_RESET(HIGH);
+
+  delay(6000);
+  Serial.println("Issue BUSREQ");
+  z80bus.BUSREQ(LOW);
+  while (z80bus.BUSACK());
+  Serial.println("BUSACK Lowered.");
+  delay(6000);
+  Serial.println("Release BUSACK.");
+  z80bus.BUSREQ(HIGH);
+  while (!z80bus.BUSACK()) ;
+  Serial.println("BUSACK got HIGH");
+
+  /*
   z80.DATA_BUS_mode(OUTPUT);
   z80.set_DATA_BUS(0x00);
   // start z80 clock
@@ -144,21 +161,38 @@ void setup() {
   // perform z80 rest, assert pin during at least 3 clocks passed
   z80.do_reset();
   Serial.println("Resetting Z80.");
+  */
 }
 
 void loop() {
+  z80bus.clock_wait_rising_edge();
+  if ( !z80bus.MREQ() && !z80bus.RD() ) {
+    addr = z80bus.get_address_bus16();
+    flag = z80bus.M1();
+    z80bus.clock_wait_rising_edge();
+    data = z80bus.get_data_bus();
+    snprintf(strbuf, sizeof(strbuf), " READ %04X %01X %02X", addr, flag, data);
+    Serial.println(strbuf);
+  } else if ( !z80bus.MREQ() && !z80bus.WR() ) {
+    addr = z80bus.get_address_bus16();
+    z80bus.clock_wait_rising_edge();
+    data = z80bus.get_data_bus();
+    snprintf(strbuf, sizeof(strbuf), "WRITE %04X   %02X", addr, data);
+    Serial.println(strbuf);
+  } 
+  /*
   // put your main code here, to run repeatedly:
 
   if (clock_pin == LOW and z80.CLK() == HIGH) {
     // rising edge
     clock_pin = HIGH;
-    /*
-    pin_status = z80.control_pin_status() | (1<<1);
-    if (pin_status != 0xff) {
-      dump_control_pins(pin_status);
-      Serial.println();
-    }
-    */
+    
+    //pin_status = z80.control_pin_status() | (1<<1);
+    //if (pin_status != 0xff) {
+    //  dump_control_pins(pin_status);
+    //  Serial.println();
+    //}
+
     if ( (z80.HALT() == LOW) ) {
       Serial.println("Z80 halted.");
       while (z80.HALT() == LOW) ;
@@ -229,4 +263,5 @@ void loop() {
     // falling edge
     clock_pin = LOW;
   }
+  */
 }

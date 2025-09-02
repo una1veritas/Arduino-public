@@ -7,21 +7,21 @@ typedef uint16_t uint16;
 typedef uint32_t uint32;
 #endif
 
-struct SRAM {
+struct SRAM1MBit {
 private:
   // pin connection
   const uint8 EN, _CS, _OE, _WE; // ~chip enable, ~output enable, ~write enable
-  const uint8 ABUS_WIDTH = 17;
-  const uint8 * ABUS;
+  const uint8 ABUS_WIDTH = 16;
+  volatile uint8 const * ADDR_L = PORTA;
+  volatile uint8 const * ADDR_H = PORTC;
+
   const uint8 DBUS_WIDTH = 8;
+  volatile uint8 * const DATA   = PORTL;
   const uint8 * DBUS;
 
 public:
-  SRAM(uint8 en, uint8 _cs, uint8 _oe, uint8 _we, 
-    uint8 addr_bus_width, uint8 addr_bus[], 
-    uint8 data_bus_width, uint8 data_bus[]) 
-    : EN(en), _CS(_cs), _OE(_oe), _WE(_we), 
-    ABUS_WIDTH(addr_bus_width), ABUS(addr_bus), DBUS_WIDTH(data_bus_width), DBUS(data_bus) { 
+  SRAM1MBit(uint8 en, uint8 _cs, uint8 _oe, uint8 _we) 
+    : EN(en), _CS(_cs), _OE(_oe), _WE(_we) { 
       init();
     }
 
@@ -34,21 +34,14 @@ public:
     output_disable();
     pinMode(_WE, INPUT);
     write_disable();
-    for (uint8 bit = 0; bit < ABUS_WIDTH; ++bit) {
-      pinMode(ABUS[bit], OUTPUT); // address bus
-    }
-    DATA_BUS_mode(INPUT);
+    DDRA = 0x00;
+    DDRC = 0x00;
+    DDRL= 0x00;
   }
 
   void set_ADDR_BUS(uint32 addr) {
-    for(uint8 bit = 0; bit < ABUS_WIDTH; ++bit) {
-      if (addr & 0x0001) {
-        digitalWrite(ABUS[bit], HIGH);
-      } else {
-        digitalWrite(ABUS[bit], LOW);
-      }
-      addr >>= 1;
-    }
+    ADDR_L = (uint8) addr & 0xff;
+    ADDR_H = (uint8) (addr >> 8) & 0xff;
   }
 
   void select(void) {
