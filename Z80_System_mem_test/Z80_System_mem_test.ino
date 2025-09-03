@@ -39,7 +39,88 @@ Mega100Bus m100bus(
 const int LCD_RS = 14, LCD_EN = 15, LCD_D4 = 16, LCD_D5 = 17, LCD_D6 = 18, LCD_D7 = 19;
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
-void LCD_show_bus(uint16 addr, uint8 data) {
+struct CharacterTerminal {
+  const LiquidCrystal & lcd;
+  const uint8 rows, cols;
+  const uint16 buf_size;
+
+//  uint8 cursor_row;
+  uint8 cursor_col;
+
+  CharacterTerminal(const LiquidCrystal & _lcd, const uint8 & _rows, const uint8 & _cols) :
+  lcd(_lcd), rows(_rows), cols(_cols), buf_size(_rows * _cols) {
+    lcd.begin(cols, rows);
+    lcd.noCursor();
+    lcd.autoscroll();
+    clear();
+  }
+
+  void clear() {
+    //cursor_row = 0;
+    cursor_col = 0;
+    lcd.clear();
+  }
+
+  void print(const char * fmt) {
+    for(char * ptr = fmt; *ptr; ++ptr) {
+      if ( *ptr == '\r' or *ptr == '\n' ) {
+        for(uint8 c = 0; c < cols - cursor_col; ++c) {
+          lcd.print(" ");
+        }
+        cursor_col = 0;
+      } else{
+        lcd.print((char) *ptr);
+        ++cursor_col;
+      }
+      /*
+      if (cursor_row >= rows ) {
+        scroll_line();
+        cursor_row -= 1;
+      }
+      */
+      //lcd.setCursor(cursor_col, cursor_row);
+    }
+  }
+  /*
+  void scroll_line() {
+    for(uint8 i = 0; i < buf_size - cols; ++i) {
+      scrnbuf[i] = scrnbuf[i+cols];
+      lcd.
+    }
+    for(uint8 c = 0; c < cols; ++c) {
+      scrnbuf[cols*(rows - 1) + c] = ' ';
+    }
+  }
+*/
+
+  void print(const uint8 & val, const uint8 & base = DEC) {
+    char buf[4];
+    if ( base == DEC ) {
+      snprintf(buf, 4, "%d", val);
+    } else if ( base == HEX ) {
+      snprintf(buf, 4, "%02X", val);
+    }
+    print(buf);
+  }
+
+  void print(const uint16 & val, const uint8 & base = DEC) {
+    char buf[6];
+    if ( base == DEC ) {
+      snprintf(buf, 6, "%d", val);
+    } else if ( base == HEX ) {
+      snprintf(buf, 6, "%04X", val);
+    }
+    print(buf);
+  }
+
+  void cursor(const uint8 & _row, const uint8 & _col) {
+    //cursor_row = _row % rows;
+    cursor_col = _col % cols;
+    lcd.setCursor(cursor_col, _row % rows);
+  }
+} terminal(lcd, 4, 20);
+
+void show_addr_data(uint16 addr, uint8 data) {
   char buff[24];
   snprintf(buff, sizeof(buff), "%04X %02x", addr, data);
   lcd.print(buff);
@@ -76,9 +157,7 @@ uint8 mem[MEM_MAX] = {
 
 void setup() {
   // put your setup code here, to run once:
-  lcd.begin(20, 4);
-  lcd.clear();
-  lcd.print("system starting...");
+  terminal.print("system starting.\n");
 
   Serial.begin(38400);
   while (! Serial) {}
@@ -86,29 +165,38 @@ void setup() {
   Serial.println("    system starting.    ");
 
   // nop test
+  //m100bus.mem_disable();
   m100bus.clock_start(5, 8000);
+  m100bus.address_bus16_mode(INPUT);
+  m100bus.data_bus_mode(INPUT);
 
+  terminal.print("Issuing BUSREQ\n");
+  m100bus.BUSREQ(LOW);
+  for(uint8 t = 0; t < 8; ++t) {
+    m100bus.clock_wait_rising_edge();
+    if ( !m100bus.BUSACK() ) break;
+  }
+  
   if (!m100bus.DMA_mode() ) {
-    lcd.clear();
-    lcd.write("set dma mode failed.");
+    terminal.print("DMA mode failure.\n");
     while (true) ;
   }
   randomSeed(analogRead(0));
   
-  for(uint16 i = 0; i < 100; ++i) {
+  for(uint16 i = 0; i < 10; ++i) {
     uint16 base_addr = random(256)<<8;
-    lcd.clear();
-    lcd.setCursor(0,0);
-    LCD_show_bus(base_addr, i);
-    lcd.setCursor(0,1);
-    lcd.print("writing");
+    //terminal.clear();
+    terminal.print("writing ");
+    terminal.print(base_addr, HEX);
+    terminal.print(" ");
+    terminal.print((uint8) i);
+    terminal.print("\n");
     for(uint16 addr = 0; addr < 0x40; ++addr) {
       mem[addr] = random(256);
       m100bus.mem_write(base_addr+addr, mem[addr]);
     }
     delay(500);
-    lcd.setCursor(0,1);
-    lcd.print("reading & verifying");
+    terminal.print("reading & verifying\n");
     uint16 errcount = 0;
     for(uint16 addr = 0; addr < 0x40; ++addr) {
       uint8 data = m100bus.mem_read(base_addr+addr);
@@ -116,23 +204,43 @@ void setup() {
         errcount += 1;
       }
     }
-    lcd.setCursor(0,2);
-    lcd.print("    ");
-    lcd.setCursor(0,2);
-    if (errcount > 0) {
-      lcd.print("OK. ");
+    if (errcount == 0) {
+      terminal.print("OK. \n");
     } else {
-      lcd.print("Error occurred: ");
-      lcd.setCursor(0,3);
-      lcd.print(errcount);
+      terminal.print("Error occurred: ");
+      terminal.print(errcount);
+      terminal.print("\n");
       while (true);
     }
     delay(1000);
   }
   m100bus.Z80_mode();
   Serial.println("done.");
+  m100bus.Z80_RESET(LOW);
+  m100bus.clock_wait_rising_edge(5);
+  m100bus.Z80_RESET(HIGH);
+
 }
 
 void loop() {
+  m100bus.clock_wait_rising_edge();
+  if ( !m100bus.MREQ() && !m100bus.RD() ) {
+    addr = m100bus.address_bus16_get();
+    flag = m100bus.M1();
+    m100bus.clock_wait_rising_edge();
+    data = m100bus.data_bus_get();
+    terminal.print(addr, HEX);
+    terminal.print(" ");
+    terminal.print(data, HEX);
+    terminal.print("\n");
+  } else if ( !m100bus.MREQ() && !m100bus.WR() ) {
+    addr = m100bus.address_bus16_get();
+    m100bus.clock_wait_rising_edge();
+    data = m100bus.data_bus_get();
+    terminal.print(addr, HEX);
+    terminal.print(" ");
+    terminal.print(data, HEX);
+    terminal.print("\n");
+  } 
 
 }
