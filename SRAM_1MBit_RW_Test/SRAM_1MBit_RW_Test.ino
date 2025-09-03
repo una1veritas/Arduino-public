@@ -5,24 +5,26 @@ typedef uint32_t uint32;
 
 struct SRAM {
   // pin connection
-  const uint8 _CS, _OE, _WE; // ~chip enable, ~output enable, ~write enable
+  const uint8 EN, _CS, _OE, _WE; // ~chip enable, ~output enable, ~write enable
   const uint8 ABUS_WIDTH = 17;
   const uint8 * ABUS;
   const uint8 DBUS_WIDTH = 8;
   const uint8 * DBUS;
 
-  SRAM(uint8 _cs, uint8 _oe, uint8 _we, 
+  SRAM(uint8 en, uint8 _cs, uint8 _oe, uint8 _we, 
     uint8 addr_bus_width, uint8 addr_bus[], 
     uint8 data_bus_width, uint8 data_bus[]) 
-    : _CS(_cs), _OE(_oe), _WE(_we), 
+    : EN(en), _CS(_cs), _OE(_oe), _WE(_we), 
     ABUS_WIDTH(addr_bus_width), ABUS(addr_bus), DBUS_WIDTH(data_bus_width), DBUS(data_bus) { 
       init();
     }
 
   void init() {
     // set pin mode
+    pinMode(EN, OUTPUT);
+    enable();
     pinMode(_CS, OUTPUT);
-    disable();
+    deselect();
     pinMode(_OE, OUTPUT);
     output_disable();
     pinMode(_WE, OUTPUT);
@@ -45,10 +47,18 @@ struct SRAM {
   }
 
   void enable(void) {
+    digitalWrite(EN, HIGH);
+  }
+
+/*  void disable(void) {
+    digitalWrite(EN, LOW);
+  }
+*/
+  void select(void) {
     digitalWrite(_CS, LOW);
   }
 
-  void disable(void) {
+  void deselect(void) {
     digitalWrite(_CS, HIGH);
   }
 
@@ -117,17 +127,18 @@ struct SRAM {
   }
 };
 
-const uint8 MEGA_WE = 41; // PG0/WR. (_W)
-const uint8 MEGA_OE = 40; // PG1/RD. (_G)
+const uint8 MEGA_EN = 38; 
 const uint8 MEGA_CS = 39; // PG2/ALE (_E1)
+const uint8 MEGA_OE = 40; // PG1/RD. (_G)
+const uint8 MEGA_WE = 41; // PG0/WR. (_W)
 const uint8 ADDR_BUS_WIDTH = 17;
 const uint8 MEGA_ADDR_BUS[ADDR_BUS_WIDTH] = {
   // PORTA
   22, 23, 24, 25, 26, 27, 28, 29,
   // PORTC
   37, 36, 35, 34, 33, 32, 31, 30,
-  // PORTD
-  38 
+  
+  2 
 };
 const uint8 DATA_BUS_WIDTH = 8;
 const uint8 MEGA_DATA_BUS[DATA_BUS_WIDTH] = {
@@ -135,7 +146,7 @@ const uint8 MEGA_DATA_BUS[DATA_BUS_WIDTH] = {
   49, 48, 47, 46, 45, 44, 43, 42,
 };
 
-SRAM sram(MEGA_CS,MEGA_OE, MEGA_WE, ADDR_BUS_WIDTH, MEGA_ADDR_BUS, DATA_BUS_WIDTH, MEGA_DATA_BUS);
+SRAM sram(MEGA_EN, MEGA_CS,MEGA_OE, MEGA_WE, ADDR_BUS_WIDTH, MEGA_ADDR_BUS, DATA_BUS_WIDTH, MEGA_DATA_BUS);
 bool toggle_on = true;
 uint32 test_addr = 0;
 const uint32 MAX_ADDR = 0x1ffff;
@@ -148,6 +159,8 @@ void setup() {
   // put your setup code here, to run once:
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
+  pinMode(MEGA_EN, OUTPUT);
+  digitalWrite(MEGA_EN, HIGH);
   Serial.begin(38400);
   while (! Serial) {}
   randomSeed(1);
@@ -174,7 +187,7 @@ void loop() {
   Serial.println(" read out: ");
 
   // display memory
-  sram.enable();
+  sram.select();
   for(uint32 offset = 0; offset < 32; ++offset) {
     readbuff[offset] = sram.read(test_addr + offset);
   }
@@ -203,7 +216,7 @@ void loop() {
     readbuff[offset] = sram.read(test_addr + offset);
   }
   Serial_out(readbuff, 32);
-  sram.disable();
+  sram.deselect();
 
   // match?
   uint32 failure_count = 0;
@@ -222,5 +235,5 @@ void loop() {
   }
 
   digitalWrite(LED_BUILTIN, LOW);
-  delay(500);
+  delay(5000);
 }

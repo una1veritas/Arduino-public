@@ -1,7 +1,7 @@
 /* by sin, Aug, 2025 */
+#include <LiquidCrystal.h>
 
-#include "SRAM1Mbit.h"
-#include "Z80_Bus_Controller.h"
+#include "Mega100Bus.h"
 
 //#define BUS_DEBUG
 
@@ -9,43 +9,35 @@ typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 
-/*
-enum Z80_Mega_pin {
+enum Mega_pin_assign {
+  // z80
   CLK     = 13, // input on Z80
-  _INT    = 8,  // in
-  _NMI    = 9,  // in
-  _HALT   = 10, // output on Z80
-  _MREQ   = 11, // out
-  _IORQ  = 12, // out 
+  _INT    = 3,  // in
+  _NMI    = 4,  // in
+  _HALT   = 5, // output on Z80
+  _MREQ   = 39, // out
+  _IORQ   = 6, // out 
   _RD     = 40, // out
   _WR     = 41, // out
-  _BUSACK = 2,  // out
-  _WAIT   = 3,  // in
-  _BUSREQ = 4,  // in 
-  _RESET  = 5,  // in
-  _M1     = 6,  // out
-  _RFSH   = 7,  // out
-};
-*/
-/*
-const uint8 Z80_ADDR_BUS_WIDTH = 16;
-const uint8 MEGA_ADDR_BUS[Z80_ADDR_BUS_WIDTH+1] = {
-  // PORTA (A0 -- A7)
-  22, 23, 24, 25, 26, 27, 28, 29, 
-  // PORTC (A8 -- A15)
-  37, 36, 35, 34, 33, 32, 31, 30,
-  //
-  15,
-};
-const uint8 DATA_BUS_WIDTH = 8;
-const uint8 MEGA_DATA_BUS[DATA_BUS_WIDTH] = {
-  // PORTK
-  62, 63, 64, 65, 66, 67, 68, 69,
-};
-*/
+  _BUSACK =  7,  // out
+  _WAIT   =  8,  // in
+  _BUSREQ =  9,  // in 
+  _RESET  = 10,  // in
+  _M1     = 11,  // out
+  _RFSH   = 12,  // out
 
-Z80_Bus_Controller z80bus;
-SRAM1MBit sram(z80bus.MEM_EN, z80bus._MREQ, z80bus._RD, z80bus._WR);
+  // sram
+  MEMEN   = 38, // E2 (positive neable)
+};
+
+Mega100Bus m100bus(
+  //CLK, fixed
+  _INT, _NMI, _HALT, _MREQ, _IORQ, 
+  _RD, _WR, _BUSACK, _WAIT, _BUSREQ, _RESET, _M1, _RFSH,
+  MEMEN);
+
+//const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
+LiquidCrystal lcd(14, 15, 16, 17, 18, 19);
 
 uint16 addr;
 uint8 data;
@@ -127,29 +119,55 @@ Serial.print(buf);
 
 void setup() {
   // put your setup code here, to run once:
+  lcd.begin(20, 4);
+  lcd.print("Hi, there!");
   Serial.begin(38400);
   while (! Serial) {}
   Serial.println("***********************");
   Serial.println("    system starting.    ");
 
-  z80bus.memory_enable();
-  z80bus.listen_address_bus16();
-  z80bus.listen_data_bus();
-  z80bus.clock_start(5, 8000);
+  // nop test
+  m100bus.mem_disable();
+  m100bus.clock_start(5, 8000);
+  m100bus.address_bus16_mode_input();
+  m100bus.data_bus_mode_input();
+
+  Serial.println("Issue BUSREQ");
+  z80bus.BUSREQ(LOW);
+  for(uint8 t = 0; t < 8; ++t) {
+    z80bus.clock_wait_rising_edge();
+    if ( !z80bus.BUSACK() ) break;
+  }
+  if ( !z80bus.BUSACK() ) {
+    Serial.println("Start initial DMA.");
+    z80bus.mem_disable();
+    for(uint16 addr = 0; addr < MEM_MAX; ++addr) {
+      z80bus.mem_write(addr, mem[addr]);
+      Serial.print(mem[addr], HEX);
+      if ((addr & 0xf) == 0xf) {
+        Serial.println();
+      } else {
+        Serial.print(" ");
+      }
+    }
+    Serial.println("Write into SRAM done.\n");
+    for(uint16 addr = 0; addr < MEM_MAX; ++addr) {
+      uint8 val;
+      val = z80bus.mem_read(addr);
+      Serial.print(val, HEX);
+      if ((addr & 0xf) == 0xf) {
+        Serial.println();
+      } else {
+        Serial.print(" ");
+      }
+    }
+    z80bus.address_bus16_mode_input();
+    z80bus.data_bus_mode_input();
+    z80bus.BUSREQ(HIGH);
+  }
   z80bus.Z80_RESET(LOW);
   z80bus.clock_wait_rising_edge(5);
   z80bus.Z80_RESET(HIGH);
-
-  delay(6000);
-  Serial.println("Issue BUSREQ");
-  z80bus.BUSREQ(LOW);
-  while (z80bus.BUSACK());
-  Serial.println("BUSACK Lowered.");
-  delay(6000);
-  Serial.println("Release BUSACK.");
-  z80bus.BUSREQ(HIGH);
-  while (!z80bus.BUSACK()) ;
-  Serial.println("BUSACK got HIGH");
 
   /*
   z80.DATA_BUS_mode(OUTPUT);
@@ -167,16 +185,16 @@ void setup() {
 void loop() {
   z80bus.clock_wait_rising_edge();
   if ( !z80bus.MREQ() && !z80bus.RD() ) {
-    addr = z80bus.get_address_bus16();
+    addr = z80bus.address_bus16_get();
     flag = z80bus.M1();
     z80bus.clock_wait_rising_edge();
-    data = z80bus.get_data_bus();
+    data = z80bus.data_bus_get();
     snprintf(strbuf, sizeof(strbuf), " READ %04X %01X %02X", addr, flag, data);
     Serial.println(strbuf);
   } else if ( !z80bus.MREQ() && !z80bus.WR() ) {
-    addr = z80bus.get_address_bus16();
+    addr = z80bus.address_bus16_get();
     z80bus.clock_wait_rising_edge();
-    data = z80bus.get_data_bus();
+    data = z80bus.data_bus_get();
     snprintf(strbuf, sizeof(strbuf), "WRITE %04X   %02X", addr, data);
     Serial.println(strbuf);
   } 
