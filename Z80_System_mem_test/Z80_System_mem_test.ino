@@ -39,96 +39,28 @@ Mega100Bus m100bus(
 const int LCD_RS = 14, LCD_EN = 15, LCD_D4 = 16, LCD_D5 = 17, LCD_D6 = 18, LCD_D7 = 19;
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
-struct CharacterTerminal {
+struct LCDTerminal {
   const LiquidCrystal & lcd;
-  const uint8 rows, cols;
-  const uint16 buf_size;
+  char line_buf[32];
+  int col;
 
-//  uint8 cursor_row;
-  uint8 cursor_col;
-
-  CharacterTerminal(const LiquidCrystal & _lcd, const uint8 & _rows, const uint8 & _cols) :
-  lcd(_lcd), rows(_rows), cols(_cols), buf_size(_rows * _cols) {
-    lcd.begin(cols, rows);
-    lcd.noCursor();
-    lcd.autoscroll();
-    clear();
-  }
-
-  void clear() {
-    //cursor_row = 0;
-    cursor_col = 0;
+  LCDTerminal(const LiquidCrystal & _lcd) : lcd(_lcd) {
+    lcd.begin(20,4);
     lcd.clear();
+    col = 0;
   }
 
-  void print(const char * fmt) {
-    for(char * ptr = fmt; *ptr; ++ptr) {
-      if ( *ptr == '\r' or *ptr == '\n' ) {
-        for(uint8 c = 0; c < cols - cursor_col; ++c) {
-          lcd.print(" ");
-        }
-        cursor_col = 0;
-      } else{
-        lcd.print((char) *ptr);
-        ++cursor_col;
-      }
-      /*
-      if (cursor_row >= rows ) {
-        scroll_line();
-        cursor_row -= 1;
-      }
-      */
-      //lcd.setCursor(cursor_col, cursor_row);
-    }
+  void print(uint8 r, uint8 c, const char * str) {
+    lcd.setCursor(c,r);
+    snprintf(line_buf, 21, "% -20s", str);
+    lcd.print(line_buf);
   }
-  /*
-  void scroll_line() {
-    for(uint8 i = 0; i < buf_size - cols; ++i) {
-      scrnbuf[i] = scrnbuf[i+cols];
-      lcd.
-    }
-    for(uint8 c = 0; c < cols; ++c) {
-      scrnbuf[cols*(rows - 1) + c] = ' ';
-    }
-  }
-*/
+} lcdt(lcd);
 
-  void print(const uint8 & val, const uint8 & base = DEC) {
-    char buf[4];
-    if ( base == DEC ) {
-      snprintf(buf, 4, "%d", val);
-    } else if ( base == HEX ) {
-      snprintf(buf, 4, "%02X", val);
-    }
-    print(buf);
-  }
-
-  void print(const uint16 & val, const uint8 & base = DEC) {
-    char buf[6];
-    if ( base == DEC ) {
-      snprintf(buf, 6, "%d", val);
-    } else if ( base == HEX ) {
-      snprintf(buf, 6, "%04X", val);
-    }
-    print(buf);
-  }
-
-  void cursor(const uint8 & _row, const uint8 & _col) {
-    //cursor_row = _row % rows;
-    cursor_col = _col % cols;
-    lcd.setCursor(cursor_col, _row % rows);
-  }
-} terminal(lcd, 4, 20);
-
-void show_addr_data(uint16 addr, uint8 data) {
-  char buff[24];
-  snprintf(buff, sizeof(buff), "%04X %02x", addr, data);
-  lcd.print(buff);
-}
 uint16 addr;
 uint8 data;
 uint8 flag;
-char strbuf[32];
+char buf[32];
 
 const uint16 MEM_MAX = 0x0080;
 const uint16 MEM_ADDR_MASK = MEM_MAX - 1;
@@ -157,7 +89,7 @@ uint8 mem[MEM_MAX] = {
 
 void setup() {
   // put your setup code here, to run once:
-  terminal.print("system starting.\n");
+  lcdt.print(0,0, "System Starting.");
 
   Serial.begin(38400);
   while (! Serial) {}
@@ -170,15 +102,16 @@ void setup() {
   m100bus.address_bus16_mode(INPUT);
   m100bus.data_bus_mode(INPUT);
 
-  terminal.print("Issuing BUSREQ\n");
+  lcdt.print(0,0, "lowering BUSREQ");
   m100bus.BUSREQ(LOW);
   for(uint8 t = 0; t < 8; ++t) {
     m100bus.clock_wait_rising_edge();
     if ( !m100bus.BUSACK() ) break;
   }
+  lcdt.print(0,0, "BUSACK lowered");
   
   if (!m100bus.DMA_mode() ) {
-    terminal.print("DMA mode failure.\n");
+    lcdt.print(0,0,"DMA mode failed.");
     while (true) ;
   }
   randomSeed(analogRead(0));
@@ -186,17 +119,15 @@ void setup() {
   for(uint16 i = 0; i < 10; ++i) {
     uint16 base_addr = random(256)<<8;
     //terminal.clear();
-    terminal.print("writing ");
-    terminal.print(base_addr, HEX);
-    terminal.print(" ");
-    terminal.print((uint8) i);
-    terminal.print("\n");
+    snprintf(buf, 32, "Writing (%3d) %04X", i, base_addr);
+    lcdt.print(0,0,buf);
     for(uint16 addr = 0; addr < 0x40; ++addr) {
       mem[addr] = random(256);
       m100bus.mem_write(base_addr+addr, mem[addr]);
     }
     delay(500);
-    terminal.print("reading & verifying\n");
+    snprintf(buf, 32, "reading & verifying.");
+    lcdt.print(0,0,buf);
     uint16 errcount = 0;
     for(uint16 addr = 0; addr < 0x40; ++addr) {
       uint8 data = m100bus.mem_read(base_addr+addr);
@@ -205,11 +136,10 @@ void setup() {
       }
     }
     if (errcount == 0) {
-      terminal.print("OK. \n");
+      lcdt.print(0,0,"Ok.");
     } else {
-      terminal.print("Error occurred: ");
-      terminal.print(errcount);
-      terminal.print("\n");
+      snprintf(buf, 32, "Error: %d");
+      lcdt.print(0,0,buf);
       while (true);
     }
     delay(1000);
@@ -229,18 +159,18 @@ void loop() {
     flag = m100bus.M1();
     m100bus.clock_wait_rising_edge();
     data = m100bus.data_bus_get();
-    terminal.print(addr, HEX);
-    terminal.print(" ");
-    terminal.print(data, HEX);
-    terminal.print("\n");
+    if (flag) {
+      snprintf(buf, 32, "RD %.2s %04X  %02X", "M1", addr, data);
+    } else {
+      snprintf(buf, 32, "RD %.2s %04X  %02X", "  ", addr, data);
+    }
+    lcdt.print(0,0,buf);
   } else if ( !m100bus.MREQ() && !m100bus.WR() ) {
     addr = m100bus.address_bus16_get();
     m100bus.clock_wait_rising_edge();
     data = m100bus.data_bus_get();
-    terminal.print(addr, HEX);
-    terminal.print(" ");
-    terminal.print(data, HEX);
-    terminal.print("\n");
+    snprintf(buf, 32, "WR    %04X  %02X", addr, data);
+    lcdt.print(0,0,buf);
   } 
 
 }
