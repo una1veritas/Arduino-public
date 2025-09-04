@@ -39,21 +39,35 @@ Mega100Bus m100bus(
 const int LCD_RS = 14, LCD_EN = 15, LCD_D4 = 16, LCD_D5 = 17, LCD_D6 = 18, LCD_D7 = 19;
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
-struct LCDTerminal {
+struct Terminal {
   const LiquidCrystal & lcd;
-  char line_buf[32];
-  int col;
+  char line_buf[4][24];
+  int row, col;
 
-  LCDTerminal(const LiquidCrystal & _lcd) : lcd(_lcd) {
+  Terminal(const LiquidCrystal & _lcd) : lcd(_lcd) {
     lcd.begin(20,4);
     lcd.clear();
     col = 0;
+    row = 0;
   }
 
   void print(uint8 r, uint8 c, const char * str) {
-    lcd.setCursor(c,r);
-    snprintf(line_buf, 21, "% -20s", str);
-    lcd.print(line_buf);
+    /*
+    for(int i = 0; (c%20)+i < 20; ++i) {
+      line_buf[r%4][(c%20)+i] = str[i];
+    }
+    */
+    row = r % 4;
+    snprintf(line_buf[row], 21, "%-20s", str);
+    //line_buf[row][20] = '\0';
+    lcd.setCursor(0,row);
+    lcd.print(line_buf[row]);
+  }
+
+  void clear() {
+    lcd.clear();
+    row = 0;
+    col = 0;
   }
 } lcdt(lcd);
 
@@ -63,6 +77,7 @@ uint8 flag;
 char buf[32];
 
 const uint16 MEM_MAX = 0x0080;
+const uint16 MEM_START = 0x0000;
 const uint16 MEM_ADDR_MASK = MEM_MAX - 1;
 uint8 mem[MEM_MAX] = {
   /* example 2
@@ -98,58 +113,63 @@ void setup() {
 
   // nop test
   //m100bus.mem_disable();
-  m100bus.clock_start(5, 8000);
+  m100bus.clock_start(5, 4000);
   m100bus.address_bus16_mode(INPUT);
   m100bus.data_bus_mode(INPUT);
 
-  lcdt.print(0,0, "lowering BUSREQ");
+  lcdt.print(0,0, "Lowering BUSREQ");
   m100bus.BUSREQ(LOW);
   for(uint8 t = 0; t < 8; ++t) {
     m100bus.clock_wait_rising_edge();
     if ( !m100bus.BUSACK() ) break;
   }
-  lcdt.print(0,0, "BUSACK lowered");
-  
+  lcdt.print(1,0, "BUSACK.");  
   if (!m100bus.DMA_mode() ) {
     lcdt.print(0,0,"DMA mode failed.");
     while (true) ;
-  }
-  randomSeed(analogRead(0));
+  } else {
+    lcdt.print(0,0,"DMA mode.");
   
-  for(uint16 i = 0; i < 10; ++i) {
-    uint16 base_addr = random(256)<<8;
-    //terminal.clear();
-    snprintf(buf, 32, "Writing (%3d) %04X", i, base_addr);
-    lcdt.print(0,0,buf);
-    for(uint16 addr = 0; addr < 0x40; ++addr) {
-      mem[addr] = random(256);
-      m100bus.mem_write(base_addr+addr, mem[addr]);
+    for(uint16 ix = 0; ix < MEM_MAX - MEM_START; ++ix) {
+      addr = MEM_START + ix;
+      data = mem[ix];
+      snprintf(buf, 32, "Write %02X to %04X", data, addr);
+      lcdt.print(1,0,buf);
+      m100bus.mem_write(addr, data);
+      //delay(500);
     }
-    delay(500);
-    snprintf(buf, 32, "reading & verifying.");
-    lcdt.print(0,0,buf);
+
+    lcdt.print(1,0,"Verifying.");
     uint16 errcount = 0;
-    for(uint16 addr = 0; addr < 0x40; ++addr) {
-      uint8 data = m100bus.mem_read(base_addr+addr);
-      if (data != mem[addr]) {
-        errcount += 1;
+    for(uint16 ix = 0; ix < MEM_MAX - MEM_START; ++ix) {
+      addr = MEM_START + ix;
+      data = m100bus.mem_read(addr);
+      snprintf(buf, 32, "Read %02X from %04X", data, addr);
+      lcdt.print(1,0,buf);
+      if (data != mem[ix]) {
+        errcount++;
+        lcdt.print(2,0,"error!!");
+        delay(1000);
+      } else {
+        lcdt.print(2,0,"Ok!!");
       }
     }
     if (errcount == 0) {
-      lcdt.print(0,0,"Ok.");
+      lcdt.print(0,0,"Check passed.");
+      delay(500);
     } else {
-      snprintf(buf, 32, "Error: %d");
+      snprintf(buf, 32, "Error: %d", errcount);
       lcdt.print(0,0,buf);
-      while (true);
+      delay(1000);//while (true);
     }
-    delay(1000);
+    m100bus.Z80_mode();
   }
-  m100bus.Z80_mode();
-  Serial.println("done.");
+  
+  lcdt.print(0,0,"CPU Reset.");
   m100bus.Z80_RESET(LOW);
   m100bus.clock_wait_rising_edge(5);
   m100bus.Z80_RESET(HIGH);
-
+  lcdt.clear();
 }
 
 void loop() {

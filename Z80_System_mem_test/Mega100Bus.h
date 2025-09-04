@@ -133,7 +133,7 @@ public:
       pinMode(_MREQ, OUTPUT);
       pinMode(_RD, OUTPUT);
       pinMode(_WR, OUTPUT);
-      mem_deselect();
+      MREQ(HIGH);
       mem_enable();
       return true;
     } else
@@ -146,7 +146,6 @@ public:
     pinMode(_MREQ, INPUT);
     pinMode(_RD, INPUT);
     pinMode(_WR, INPUT);
-    mem_deselect();
     mem_enable();
     BUSREQ(HIGH);
     while ( BUSACK() == LOW ) ;
@@ -197,62 +196,38 @@ public:
     digitalWrite(MEMEN, LOW);
   }
 
-  void mem_select() {
-    digitalWrite(_MREQ, LOW);
-  }
-
-  void mem_deselect() {
-    digitalWrite(_MREQ, HIGH);
-  }
-
-  void mem_mode_non_read() {
-    digitalWrite(_RD, HIGH);
-  }
-
-  void mem_mode_non_write() {
-    digitalWrite(_WR, HIGH);
-  }
-
-  void mem_mode_none() {
-    digitalWrite(_RD, HIGH);
-    digitalWrite(_WR, HIGH);
-  }
-
-  void mem_mode_read() {
-    digitalWrite(_RD, LOW);
-  }
-  void mem_mode_write() {
-    digitalWrite(_WR, LOW);
-  }
-
   void mem_write(uint16 addr, uint8 data) {
-    // ensure the state
-    mem_mode_none();
-    address_bus16_mode(OUTPUT);
-    mem_select();
-    address_bus16_set(addr);
-    //
+    // ensure the state 
+    RD(HIGH); // _OE
+    WR(HIGH); // _WR
+    //address_bus16_mode(OUTPUT);
     data_bus_mode(OUTPUT);
+    address_bus16_set(addr);
+    MREQ(LOW);
+    //
     data_bus_set(data);
-    mem_mode_write(); // _WE = Low
+    WR(LOW); // _WE = Low
     __asm__ __volatile("nop"); // can be possibly omitted in write (1/16MHz = 62.5 ns)
     //delayMicroseconds(1); // Wait 1 u sec
-    mem_mode_non_write();
+    WR(HIGH);
+    MREQ(HIGH);
   }
 
   uint8 mem_read(uint16 addr) {
     uint8 val = 0;
-    mem_mode_none();
-    address_bus16_mode(OUTPUT);
-    mem_select();
-    address_bus16_set(addr);
-    //
+    RD(HIGH); // _OE
+    WR(HIGH); // _WR
+    //address_bus16_mode(OUTPUT);
     data_bus_mode(INPUT);
-    mem_mode_read();    // _OE = Low, falling edge
+    address_bus16_set(addr);
+    MREQ(LOW);
+    //
+    RD(LOW);    // _OE = Low, falling edge
     //delayMicroseconds(1); // Wait 1 u sec
     __asm__ __volatile("nop"); //(1/16MHz = 62.5 ns, seems works fine with 55ns chip)
     val = data_bus_get();
-    mem_mode_non_read();
+    RD(HIGH);
+    MREQ(HIGH);
     return val;
   }
 
@@ -268,8 +243,11 @@ public:
   }
 
   uint8 MREQ() {
-    pinMode(_MREQ, INPUT);
     return digitalRead(_MREQ);
+  }
+
+  uint8 MREQ(uint8 hilo) {
+    digitalWrite(_MREQ, hilo);
   }
 
   uint8 IORQ() {
@@ -280,8 +258,16 @@ public:
     return digitalRead(_RD);
   }
 
+  uint8 RD(uint8 hilo) {
+    digitalWrite(_RD, hilo);
+  }
+
   uint8 WR() {
     return digitalRead(_WR);
+  }
+
+  uint8 WR(uint8 hilo) {
+    digitalWrite(_WR, hilo);
   }
 
   uint8 M1() {
@@ -292,13 +278,14 @@ public:
     return digitalRead(_BUSACK);
   }
   
-  void WAIT(uint8 val) {
-    digitalWrite(_WAIT, val);
+  void WAIT(uint8 hilo) {
+    pinMode(_WAIT, OUTPUT);
+    digitalWrite(_WAIT, hilo);
   }
 
-  void BUSREQ(uint8 val) {
+  void BUSREQ(uint8 hilo) {
     pinMode(_BUSREQ, OUTPUT);
-    digitalWrite(_BUSREQ, val);
+    digitalWrite(_BUSREQ, hilo);
   }
 
 
