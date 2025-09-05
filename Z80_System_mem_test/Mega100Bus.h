@@ -127,7 +127,7 @@ public:
   }
 
   bool DMA_mode() {
-    if ( BUSACK() == LOW ) {
+    if ( BUSACK() == LOW or RESET() == LOW) {
       mem_disable();
       address_bus16_mode(OUTPUT);
       pinMode(_MREQ, OUTPUT);
@@ -137,7 +137,7 @@ public:
       mem_enable();
       return true;
     } else
-    return false;
+      return false;
   }
 
   bool Z80_mode() {
@@ -231,13 +231,22 @@ public:
     return val;
   }
 
-
-  void Z80_RESET(uint8 val) {
+  void RESET(uint8 val) {
     pinMode(_RESET, OUTPUT); 
     digitalWrite(_RESET, val);
   }
 
-  void Z80_NMI(uint8 val) {
+  uint8 RESET() {
+    //pinMode(_RESET, OUTPUT); 
+    digitalRead(_RESET);
+  }
+
+  void cpu_reset() {
+    RESET(LOW);
+    clock_wait_rising_edge(5);
+  }
+
+  void NMI(uint8 val) {
     pinMode(_NMI, OUTPUT); 
     digitalWrite(_NMI, val);
   }
@@ -288,6 +297,40 @@ public:
     digitalWrite(_BUSREQ, hilo);
   }
 
+  bool bus_request() {
+    for(uint8 t = 0; t < 8; ++t) {
+      clock_wait_rising_edge();
+      if ( ! BUSACK() ) return true;
+    }
+    return false;
+  }
+
+  void port_out(const uint8 & port, const uint8 & val) {
+    switch(port) {
+    case 2:  // putchar
+      Serial.print((char) val);
+      break;
+    case 16:
+      break;
+    case 17:
+      break;
+    case 18: // sector
+      break;
+    case 20: // dma L
+      break;
+    case 21: // dma H
+      break;
+    case 22:
+      break;
+    default:
+      Serial.print("out @ ");
+      Serial.print(port, HEX);
+      Serial.print(" data ");
+      Serial.print(val, HEX);
+      Serial.println();
+      break;
+    }
+  }
 
 };
 

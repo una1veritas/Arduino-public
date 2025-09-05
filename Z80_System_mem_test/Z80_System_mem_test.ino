@@ -114,6 +114,10 @@ void setup() {
   // nop test
   //m100bus.mem_disable();
   m100bus.clock_start(5, 4000);
+
+  lcdt.print(0,0,"CPU Reset.");
+  m100bus.cpu_reset();
+  /*
   m100bus.address_bus16_mode(INPUT);
   m100bus.data_bus_mode(INPUT);
 
@@ -124,6 +128,7 @@ void setup() {
     if ( !m100bus.BUSACK() ) break;
   }
   lcdt.print(1,0, "BUSACK.");  
+  */
   if (!m100bus.DMA_mode() ) {
     lcdt.print(0,0,"DMA mode failed.");
     while (true) ;
@@ -164,33 +169,56 @@ void setup() {
     }
     m100bus.Z80_mode();
   }
-  
+/*  
   lcdt.print(0,0,"CPU Reset.");
-  m100bus.Z80_RESET(LOW);
+  m100bus.RESET(LOW);
   m100bus.clock_wait_rising_edge(5);
-  m100bus.Z80_RESET(HIGH);
+  */
+  m100bus.RESET(HIGH);
   lcdt.clear();
 }
 
 void loop() {
   m100bus.clock_wait_rising_edge();
-  if ( !m100bus.MREQ() && !m100bus.RD() ) {
-    addr = m100bus.address_bus16_get();
-    flag = m100bus.M1();
-    m100bus.clock_wait_rising_edge();
-    data = m100bus.data_bus_get();
-    if (flag) {
-      snprintf(buf, 32, "RD %.2s %04X  %02X", "M1", addr, data);
-    } else {
-      snprintf(buf, 32, "RD %.2s %04X  %02X", "  ", addr, data);
-    }
-    lcdt.print(0,0,buf);
-  } else if ( !m100bus.MREQ() && !m100bus.WR() ) {
-    addr = m100bus.address_bus16_get();
-    m100bus.clock_wait_rising_edge();
-    data = m100bus.data_bus_get();
-    snprintf(buf, 32, "WR    %04X  %02X", addr, data);
-    lcdt.print(0,0,buf);
-  } 
-
+  if ( !m100bus.MREQ() ) {
+    if ( ! m100bus.RD() ) {
+      addr = m100bus.address_bus16_get();
+      flag = m100bus.M1();
+      m100bus.clock_wait_rising_edge();
+      data = m100bus.data_bus_get();
+      if (flag) {
+        snprintf(buf, 32, "RD %.2s %04X  %02X", "M1", addr, data);
+      } else {
+        snprintf(buf, 32, "RD %.2s %04X  %02X", "  ", addr, data);
+      }
+      lcdt.print(0,0,buf);
+    } else if ( ! m100bus.WR() ) {
+      addr = m100bus.address_bus16_get();
+      m100bus.clock_wait_rising_edge();
+      data = m100bus.data_bus_get();
+      snprintf(buf, 32, "WR    %04X  %02X", addr, data);
+      lcdt.print(0,0,buf);
+    } 
+  } else if ( !m100bus.IORQ() and m100bus.MREQ() ) {
+    if ( ! m100bus.RD() ) {
+      // in operation
+      addr = m100bus.address_bus16_get();
+      data = '@'; //m100bus.data_bus_get();
+      m100bus.data_bus_mode(OUTPUT);
+      m100bus.data_bus_set(data);
+      m100bus.clock_wait_rising_edge();
+      snprintf(buf, 32, "IN    %04X  %02X", addr, data);
+      m100bus.data_bus_mode(INPUT);
+      lcdt.print(0,0,buf);
+    } else if ( ! m100bus.WR() ) {
+      // out operation
+      m100bus.data_bus_mode(INPUT);
+      addr = m100bus.address_bus16_get();
+      m100bus.clock_wait_rising_edge();
+      data = m100bus.data_bus_get();
+      snprintf(buf, 32, "OUT   %04X  %02X", addr, data);
+      m100bus.port_out(addr, data);
+      lcdt.print(0,0,buf);
+    } 
+  }
 }
