@@ -147,8 +147,19 @@ public:
     pinMode(_RD, INPUT);
     pinMode(_WR, INPUT);
     mem_enable();
-    BUSREQ(HIGH);
+    if (BUSREQ() == LOW)
+      BUSREQ(HIGH);
+    if (RESET() == LOW)
+      RESET(HIGH);
     while ( BUSACK() == LOW ) ;
+  }
+
+  bool memory_mode() {
+    mem_disable();
+    address_bus16_mode(INPUT);
+    pinMode(_MREQ, INPUT);
+    pinMode(_RD, INPUT);
+    pinMode(_WR, INPUT);
   }
 
   void address_bus16_mode(uint8 in_out) {
@@ -238,7 +249,6 @@ public:
   }
 
   uint8 RESET() {
-    //pinMode(_RESET, OUTPUT); 
     digitalRead(_RESET);
   }
 
@@ -304,6 +314,10 @@ public:
   void BUSREQ(uint8 hilo) {
     pinMode(_BUSREQ, OUTPUT);
     digitalWrite(_BUSREQ, hilo);
+  }
+
+  uint8 BUSREQ() {
+    digitalRead(_BUSREQ);
   }
 
   bool bus_request() {
