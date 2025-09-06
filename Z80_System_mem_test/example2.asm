@@ -1,20 +1,23 @@
 
-	ld	sp, 0030h
-	ld	hl, msgipl
-	call	prmsg
+	ld		sp, 0100h
+	ld		hl, msg
+	call	printmsg
 
 	halt
-prmsg:
+
+printmsg:
 	ld	a,(hl)
 	or	a
 	ret	z
 	out	(2),a
 	inc	hl
-	jp	prmsg
+	jp	printmsg
 
-msgipl:
+msg:
 	db	13,10
-	db	"hello, world!"
+	db	"Good morning, ladies and gentlemen!"
+	db  13, 10
+	db	"This is Z80 cpu, 8-bit computer!"
 	db  13, 10
 	db	0
 

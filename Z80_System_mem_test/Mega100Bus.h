@@ -200,7 +200,7 @@ public:
     // ensure the state 
     RD(HIGH); // _OE
     WR(HIGH); // _WR
-    //address_bus16_mode(OUTPUT);
+    //address_bus16_mode(OUTPUT); // always output in dma mode
     data_bus_mode(OUTPUT);
     address_bus16_set(addr);
     MREQ(LOW);
@@ -215,10 +215,11 @@ public:
 
   uint8 mem_read(uint16 addr) {
     uint8 val = 0;
+    // ensure
     RD(HIGH); // _OE
     WR(HIGH); // _WR
-    //address_bus16_mode(OUTPUT);
     data_bus_mode(INPUT);
+    //address_bus16_mode(OUTPUT); // always output in dma mode
     address_bus16_set(addr);
     MREQ(LOW);
     //
@@ -292,6 +293,14 @@ public:
     digitalWrite(_WAIT, hilo);
   }
 
+  uint8 WAIT() {
+    return digitalRead(_WAIT);
+  }
+
+  uint8 HALT() {
+    return digitalRead(_HALT);
+  }
+
   void BUSREQ(uint8 hilo) {
     pinMode(_BUSREQ, OUTPUT);
     digitalWrite(_BUSREQ, hilo);
@@ -305,33 +314,47 @@ public:
     return false;
   }
 
-  void port_out(const uint8 & port, const uint8 & val) {
+  uint8 RFSH() {
+    return digitalRead(_RFSH);
+  }
+  
+  uint8 ioport(const uint8 & port, const uint8 & val, const uint8 & inout) {
     switch(port) {
-    case 2:  // putchar
-      Serial.print((char) val);
+      case 0:  //CON_STS
+        if ( inout == INPUT ) {
+          return (Serial.available() ? 0xff : 0x00);
+        }
+        break;
+    case 1:  // CON_IN
+      if ( inout == INPUT ) {
+        if (Serial.available() )
+          return Serial.read();
+        else
+          return 0xff;
+      }
       break;
-    case 16:
+    case 2:  // CON_OUT
+      if ( inout == OUTPUT )
+        Serial.print((char) val);
+      return 0;
       break;
-    case 17:
+    case 16: // track_sel_h
+      break; 
+    case 17: // track_sel_l
       break;
-    case 18: // sector
+    case 18: // sector_sel
       break;
-    case 20: // dma L
+    case 20: // dma adr_L
       break;
-    case 21: // dma H
+    case 21: // dma adr_H
       break;
-    case 22:
+    case 22: // exec_dma
       break;
-    default:
-      Serial.print("out @ ");
-      Serial.print(port, HEX);
-      Serial.print(" data ");
-      Serial.print(val, HEX);
-      Serial.println();
+    default: // dma_rs
       break;
     }
+    return 0;
   }
-
 };
 
 #endif
