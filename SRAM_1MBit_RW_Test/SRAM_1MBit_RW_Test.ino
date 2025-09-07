@@ -200,17 +200,8 @@ void loop() {
     sram.write(test_addr + offset, writebuff[offset]);
   }
   Serial_out(writebuff, 32);
-  /*
-  Serial.print(" PORTL ");
-  Serial.print(PORTL, HEX);
-  Serial.print(" PORTA ");
-  Serial.print(PORTA, HEX);
-  Serial.print(" PORTC ");
-  Serial.print(PORTC, HEX);
-  Serial.print(" PORTG ");
-  Serial.print(PORTG, HEX);
- */
   // display memory
+  Serial.println("ReRead: ");
   for(uint32 offset = 0; offset < 32; ++offset) {
     readbuff[offset] = 0;
     readbuff[offset] = sram.read(test_addr + offset);
@@ -231,9 +222,9 @@ void loop() {
     Serial.println(" times!!!\n");
   } else {
     Serial.println("Ok.\n");
-    test_addr += 32;
+    test_addr += 0x0130;
   }
 
   digitalWrite(LED_BUILTIN, LOW);
-  delay(5000);
+  delay(1000);
 }
