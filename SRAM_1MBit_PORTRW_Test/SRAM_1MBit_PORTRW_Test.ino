@@ -6,16 +6,23 @@ typedef uint32_t uint32;
 struct SRAM {
   // pin connection
   const uint8 EN, _CS, _OE, _WE; // ~chip enable, ~output enable, ~write enable
-  const uint8 ABUS_WIDTH = 17;
-  const uint8 * ABUS;
-  const uint8 DBUS_WIDTH = 8;
-  const uint8 * DBUS;
+  static const uint8 ABUS_WIDTH = 16;
+  static const uint8 DBUS_WIDTH = 8;
+  // address low & high -- PA, PC
+  // data 8 bit --- PL
+  static uint8 ABUS[ABUS_WIDTH] = {
+    // PORTA
+    22, 23, 24, 25, 26, 27, 28, 29,
+    // PORTC
+    37, 36, 35, 34, 33, 32, 31, 30,
+    //2 
+  };
+  static uint8 DBUS[DBUS_WIDTH] = {
+    // PORTL
+    49, 48, 47, 46, 45, 44, 43, 42,
+  };
 
-  SRAM(uint8 en, uint8 _cs, uint8 _oe, uint8 _we, 
-    uint8 addr_bus_width, uint8 addr_bus[], 
-    uint8 data_bus_width, uint8 data_bus[]) 
-    : EN(en), _CS(_cs), _OE(_oe), _WE(_we), 
-    ABUS_WIDTH(addr_bus_width), ABUS(addr_bus), DBUS_WIDTH(data_bus_width), DBUS(data_bus) { 
+  SRAM(uint8 en, uint8 _cs, uint8 _oe, uint8 _we)  : EN(en), _CS(_cs), _OE(_oe), _WE(_we) { 
       init();
     }
 
@@ -29,24 +36,13 @@ struct SRAM {
     output_disable();
     pinMode(_WE, OUTPUT);
     write_disable();
-    ADDR_BUS_mode_output();
-    DATA_BUS_mode_input();
-  }
-
-  void ADDR_BUS_mode_output() {
-    /*
     for (uint8 bit = 0; bit < ABUS_WIDTH; ++bit) {
       pinMode(ABUS[bit], OUTPUT); // address bus
     }
-    */
-    DDRA = 0xff;
-    PORTA = 0x00;
-    DDRC = 0xff;
-    PORTC = 0x00;
+    DATA_BUS_mode_input();
   }
 
   void set_ADDR_BUS(uint32 addr) {
-    /*
     for(uint8 bit = 0; bit < ABUS_WIDTH; ++bit) {
       if (addr & 0x0001) {
         digitalWrite(ABUS[bit], HIGH);
@@ -55,10 +51,6 @@ struct SRAM {
       }
       addr >>= 1;
     }
-    */
-    PORTA = (uint8) (addr & 0xff);
-    //digitalWrite(29,(addr>>7) & 0x0001 ? HIGH : LOW);
-    PORTC = (uint8) ((addr >> 8) & 0xff);    
   }
 
   void set_DATA_BUS(uint8 data) {
@@ -137,20 +129,17 @@ struct SRAM {
     DDRL = 0xff;
   }
 
+
   void write(uint32 addr, uint8 data) {
     // ensure the state
     output_disable();  // _OE = High
     write_disable();
-    //
     DATA_BUS_mode_output();
+    //
     set_ADDR_BUS(addr);
-    /*
-    for(uint8 bit = 0; bit < 8; ++bit) {
-      digitalWrite(DBUS[bit], (data & 0x01) );
-      data >>= 1;
-    }
-    */
+    //delayMicroseconds(1); // Wait 1 u sec
     set_DATA_BUS(data);
+    //delayMicroseconds(1); // Wait 1 u sec
     write_enable();   // _WE = Low
     __asm__ __volatile("nop"); // can be possibly omitted in write (1/16MHz = 62.5 ns)
     //delayMicroseconds(1); // Wait 1 u sec
@@ -159,20 +148,15 @@ struct SRAM {
 
   uint8 read(uint32 addr) {
     uint8 val = 0;
-    DATA_BUS_mode_input();
     output_disable();
     write_disable();
+    DATA_BUS_mode_input();
+    //
     set_ADDR_BUS(addr);
+    //delayMicroseconds(1); // Wait 1 u sec
     output_enable();    // _OE = Low, falling edge
     //delayMicroseconds(1); // Wait 1 u sec
     __asm__ __volatile("nop"); //(1/16MHz = 62.5 ns, seems works fine with 55ns chip)
-    /*
-    for (uint8 bit = DBUS_WIDTH; bit > 0; ) {
-      val <<= 1;
-      if (digitalRead(DBUS[--bit]) == HIGH) 
-        val |= 0x01;
-    }
-    */
     val = get_DATA_BUS();
     output_disable();
     return val;
@@ -183,6 +167,7 @@ const uint8 MEGA_EN = 38;
 const uint8 MEGA_CS = 39; // PG2/ALE (_E1)
 const uint8 MEGA_OE = 40; // PG1/RD. (_G)
 const uint8 MEGA_WE = 41; // PG0/WR. (_W)
+/*
 const uint8 ADDR_BUS_WIDTH = 17;
 const uint8 MEGA_ADDR_BUS[ADDR_BUS_WIDTH] = {
   // PORTA
@@ -197,8 +182,8 @@ const uint8 MEGA_DATA_BUS[DATA_BUS_WIDTH] = {
   // PORTL
   49, 48, 47, 46, 45, 44, 43, 42,
 };
-
-SRAM sram(MEGA_EN, MEGA_CS,MEGA_OE, MEGA_WE, ADDR_BUS_WIDTH, MEGA_ADDR_BUS, DATA_BUS_WIDTH, MEGA_DATA_BUS);
+*/
+SRAM sram(MEGA_EN, MEGA_CS,MEGA_OE, MEGA_WE);
 bool toggle_on = true;
 uint32 test_addr = 0;
 const uint32 MAX_ADDR = 0x1ffff;
@@ -299,7 +284,7 @@ void loop() {
     if (readbuff[offset] != writebuff[offset]) {
       failure_count += 1;
       Serial.print("at ");
-      Serial.print(offset, HEX);
+      Serial.print(test_addr + offset, HEX);
       Serial.print(" wriitten ");
       Serial.print(writebuff[offset], HEX);
       Serial.print(" and ");
@@ -312,6 +297,7 @@ void loop() {
     Serial.print(failure_count);
     Serial.println(" times!!!\n");
     delay(3000);
+    test_addr += MEMBUFF_LEN;
   } else {
     Serial.println("Ok.\n");
     test_addr += MEMBUFF_LEN + random(5)*MEMBUFF_LEN;

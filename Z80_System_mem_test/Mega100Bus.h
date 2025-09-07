@@ -56,11 +56,11 @@ public:
     clock_stop();
   //
     address_bus16_mode(INPUT);
-    data_bus_mode(INPUT);
+    data_bus_mode_input();
     pinMode(_RD, INPUT);
     pinMode(_WR, INPUT);
     pinMode(MEMEN, OUTPUT);
-    mem_enable();
+    ram_enable();
 
   // z80 inputs, temporary set input mode.
     pinMode(_INT, INPUT);
@@ -128,25 +128,25 @@ public:
 
   bool DMA_mode() {
     if ( BUSACK() == LOW or RESET() == LOW) {
-      mem_disable();
+      ram_disable();
       address_bus16_mode(OUTPUT);
       pinMode(_MREQ, OUTPUT);
       pinMode(_RD, OUTPUT);
       pinMode(_WR, OUTPUT);
       MREQ(HIGH);
-      mem_enable();
+      ram_enable();
       return true;
     } else
       return false;
   }
 
   bool Z80_mode() {
-    mem_disable();
+    ram_disable();
     address_bus16_mode(INPUT);
     pinMode(_MREQ, INPUT);
     pinMode(_RD, INPUT);
     pinMode(_WR, INPUT);
-    mem_enable();
+    ram_enable();
     if (BUSREQ() == LOW)
       BUSREQ(HIGH);
     if (RESET() == LOW)
@@ -155,7 +155,7 @@ public:
   }
 
   bool memory_mode() {
-    mem_disable();
+    ram_disable();
     address_bus16_mode(INPUT);
     pinMode(_MREQ, INPUT);
     pinMode(_RD, INPUT);
@@ -180,15 +180,18 @@ public:
 
   void address_bus16_set(uint16 addr) {
     ADDR_OUT_L = addr & 0xff;
+    //digitalWrite(29,(addr>>7) & 0x0001 ? HIGH : LOW);
+    // ^ to solve PORTA 7th bit missing problem (reason unknown)
     ADDR_OUT_H = (addr >> 8) & 0xff;
   }
 
-  void data_bus_mode(uint8 in_out) {
-    if (in_out == INPUT) {
-      DATA_DIR = 0x00; DATA_OUT = 0x00;
-    } else {
-      DATA_DIR = 0xff; 
-    }
+  void data_bus_mode_input() {
+    DATA_DIR = 0x00; 
+    DATA_OUT = 0x00;
+  }
+
+  void data_bus_mode_output() {
+    DATA_DIR = 0xff;
   }
 
   uint8 data_bus_get() {
@@ -199,22 +202,21 @@ public:
     DATA_OUT = val;
   }
 
-  void mem_enable() {
+  void ram_enable() {
     digitalWrite(MEMEN, HIGH);
   }
 
-  void mem_disable() {
+  void ram_disable() {
     digitalWrite(MEMEN, LOW);
   }
 
-  void mem_write(uint16 addr, uint8 data) {
+  void ram_write(uint16 addr, uint8 data) {
     // ensure the state 
+    MREQ(LOW);
     RD(HIGH); // _OE
     WR(HIGH); // _WR
-    //address_bus16_mode(OUTPUT); // always output in dma mode
-    data_bus_mode(OUTPUT);
+    data_bus_mode_output();
     address_bus16_set(addr);
-    MREQ(LOW);
     //
     data_bus_set(data);
     WR(LOW); // _WE = Low
@@ -224,15 +226,14 @@ public:
     MREQ(HIGH);
   }
 
-  uint8 mem_read(uint16 addr) {
+  uint8 ram_read(uint16 addr) {
     uint8 val = 0;
     // ensure
+    MREQ(LOW);
     RD(HIGH); // _OE
     WR(HIGH); // _WR
-    data_bus_mode(INPUT);
-    //address_bus16_mode(OUTPUT); // always output in dma mode
     address_bus16_set(addr);
-    MREQ(LOW);
+    data_bus_mode_input();
     //
     RD(LOW);    // _OE = Low, falling edge
     //delayMicroseconds(1); // Wait 1 u sec
@@ -241,6 +242,18 @@ public:
     RD(HIGH);
     MREQ(HIGH);
     return val;
+  }
+
+  uint8 DMA_progmem_load(const uint8 PROGMEM * mem, const uint32 size, const uint32 & dst_addr) {
+    uint32 addr;
+    uint8 data;
+    uint32 errcount = 0;
+    for(uint16 ix = 0; ix < size; ++ix) {
+      addr = dst_addr + ix;
+      data = pgm_read_byte_near(mem + ix);
+      ram_write(addr, data);
+    }
+    return (errcount > 0xff ? 0xff : (uint8) errcount);
   }
 
   void RESET(uint8 val) {
