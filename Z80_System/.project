@@ -47,5 +47,10 @@
 			<type>2</type>
 			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/arduino/hardware/avr/1.8.6/variants/mega</locationURI>
 		</link>
+		<link>
+			<name>libraries/LiquidCrystal</name>
+			<type>2</type>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/LiquidCrystal/1.0.7</locationURI>
+		</link>
 	</linkedResources>
 </projectDescription>

@@ -1,5 +1,5 @@
-#ifndef _MEGA100BUS_H_
-#define _MEGA100BUS_H_
+#ifndef _Z80BUS_H_
+#define _Z80BUS_H_
 
 #ifndef uint8 
 typedef uint8_t uint8;
@@ -17,7 +17,7 @@ typedef uint32_t uint32;
 #define DATA_IN  PINL
 #define DATA_OUT PORTL
 
-struct Mega100Bus {
+struct Z80Bus {
 public:
   static const uint8 IOADDR_BUS_WIDTH = 8;
   static const uint8 ADDR_BUS_WIDTH = 16;
@@ -30,7 +30,7 @@ public:
   const uint8 _INT, _NMI, _WAIT, _BUSREQ, _RESET; // z80 input
   const uint8 _RD, _WR; // z80 out, sram in
   const uint8 _HALT, _MREQ, _IORQ, /* _RD, _WR, */ _BUSACK, _M1, _RFSH; // z80 output
-  const uint8 MEMEN;
+  const uint8 SRAMEN;
 
   volatile uint8 * DATA   = PORTL;
 
@@ -38,8 +38,18 @@ public:
 
   const uint8 MEM_EN = 2;
 
+  enum DMA_mode {
+    NO_REQUEST = 0,
+    READ_RAM  = 1,
+    WRITE_RAM = 2,
+  };
+  uint16 dma_address;
+  const uint16 dma_block_size = 0x100;
+  DMA_mode dma_mode;
+  uint8 dma_result;
+
 public:
-  Mega100Bus(const uint8 & intr, const uint8 & nmi, const uint8 & halt, 
+  Z80Bus(const uint8 & intr, const uint8 & nmi, const uint8 & halt,
             const uint8 & mreq, const uint8 & iorq, const uint8 & rd, const uint8 & wr,
             const uint8 & busack, const uint8 & wait, const uint8 & busreq, 
             const uint8 & reset, const uint8 & m1, const uint8 & rfsh,
@@ -47,7 +57,7 @@ public:
   _INT(intr), _NMI(nmi), _HALT(halt), _MREQ(mreq), _IORQ(iorq), 
   _RD(rd), _WR(wr), _BUSACK(busack), _WAIT(wait), 
   _BUSREQ(busreq), _RESET(reset), _M1(m1), _RFSH(rfsh),
-  MEMEN(memen)
+  SRAMEN(memen)
   {
     init();
   }
@@ -59,7 +69,7 @@ public:
     data_bus_mode_input();
     pinMode(_RD, INPUT);
     pinMode(_WR, INPUT);
-    pinMode(MEMEN, OUTPUT);
+    pinMode(SRAMEN, OUTPUT);
     ram_enable();
 
   // z80 inputs, temporary set input mode.
@@ -75,6 +85,10 @@ public:
     pinMode(_BUSACK, INPUT);
     pinMode(_M1, INPUT); 
     pinMode(_RFSH, INPUT); 
+
+    dma_address = 0;
+    dma_result = 0;
+    dma_mode = NO_REQUEST;
   }
 
   void clock_start(uint8_t presc, uint16_t top) {
@@ -82,16 +96,13 @@ public:
     const uint8_t COM_TOGGLE = B01;
 
     cli();
-
     TCCR1A = 0;
     TCCR1B = 0;
     TCCR1C = 0;
     TCNT1 = 0;
     OCR1A = top - 1;
-
     TCCR1A |= (COM_TOGGLE << COM1C0) | ((WGM_CTC_OCR1A & B0011) << WGM10);
     TCCR1B |= (((WGM_CTC_OCR1A>>2) & B11)<< WGM12)  | (presc << CS10);
-
     sei();
 
     pinMode(CLK_OUT, OUTPUT);
@@ -102,9 +113,7 @@ public:
     const uint8_t COM_DISCONNECT = B00;
 
     cli();
-
     TCCR1A |= (COM_DISCONNECT << COM1C0) | ((WGM_CTC_OCR1A & B0011) << WGM10);
-
     sei();
 
     pinMode(CLK_OUT, INPUT_PULLUP);
@@ -126,19 +135,23 @@ public:
     }
   }
 
-  bool DMA_mode() {
-    if ( BUSACK() == LOW or RESET() == LOW) {
-      ram_disable();
-      address_bus16_mode(OUTPUT);
-      pinMode(_MREQ, OUTPUT);
-      pinMode(_RD, OUTPUT);
-      pinMode(_WR, OUTPUT);
-      MREQ(HIGH);
-      ram_enable();
-      return true;
-    } else
-      return false;
-  }
+	bool DMA_mode() {
+		if (RESET() == HIGH) {
+			if (BUSACK() == HIGH) {
+				BUSREQ (LOW);
+				while (BUSACK() == HIGH)
+					clock_wait_rising_edge();
+			}
+		}
+		ram_disable();
+		address_bus16_mode (OUTPUT);
+		pinMode(_MREQ, OUTPUT);
+		pinMode(_RD, OUTPUT);
+		pinMode(_WR, OUTPUT);
+		MREQ (HIGH);
+		ram_enable();
+		return true;
+	}
 
   bool Z80_mode() {
     ram_disable();
@@ -203,11 +216,11 @@ public:
   }
 
   void ram_enable() {
-    digitalWrite(MEMEN, HIGH);
+    digitalWrite(SRAMEN, HIGH);
   }
 
   void ram_disable() {
-    digitalWrite(MEMEN, LOW);
+    digitalWrite(SRAMEN, LOW);
   }
 
   void ram_write(uint16 addr, uint8 data) {
@@ -244,16 +257,55 @@ public:
     return val;
   }
 
-  uint8 DMA_progmem_load(const uint8 PROGMEM * mem, const uint32 size, const uint32 & dst_addr) {
-    uint32 addr;
+  uint8 DMA_progmem_load(const uint8 PROGMEM * mem, const uint16 size, const uint16 & dst_addr) {
+    uint16 addr;
     uint8 data;
-    uint32 errcount = 0;
+    uint16 errcount = 0;
     for(uint16 ix = 0; ix < size; ++ix) {
       addr = dst_addr + ix;
       data = pgm_read_byte_near(mem + ix);
       ram_write(addr, data);
     }
     return (errcount > 0xff ? 0xff : (uint8) errcount);
+  }
+
+  uint8 DMA_requested() {
+    return dma_mode != NO_REQUEST;
+  }
+
+  uint8 DMA_direction() {
+    return (dma_mode == WRITE_RAM ? OUTPUT : INPUT);
+  }
+
+  void DMA_read(uint8 mem[]) {
+    dma_mode = READ_RAM; // issue request internaly
+    DMA_exec(mem);
+  }
+
+  void DMA_write(uint8 mem[]) {
+    dma_mode = WRITE_RAM; // issue request internaly
+    DMA_exec(mem);
+  }
+
+  void DMA_exec(uint8 mem[]) {
+    if ( dma_mode == NO_REQUEST )
+      return 0x00;
+    if ( BUSACK() == HIGH and RESET() == HIGH ) {
+      dma_mode = NO_REQUEST;
+      dma_result = 0xff;
+      return;
+    }
+    if ( dma_mode == WRITE_RAM ) {
+      for(uint16 ix = 0; ix < dma_block_size; ++ix) {
+        ram_write(dma_address + ix, mem[ix]);
+      }
+    } else if ( dma_mode == READ_RAM ) {
+      for(uint16 ix = 0; ix < dma_block_size; ++ix) {
+        mem[ix] = ram_read(dma_address + ix);
+      }
+    }
+    dma_mode = NO_REQUEST;
+    dma_result = 0x00;
   }
 
   void RESET(uint8 val) {
@@ -345,7 +397,7 @@ public:
     return digitalRead(_RFSH);
   }
   
-  uint8 ioport(const uint8 & port, const uint8 & val, const uint8 & inout) {
+  uint8 z80io(const uint8 & port, const uint8 & val, const uint8 & inout) {
     switch(port) {
       case 0:  //CON_STS
         if ( inout == INPUT ) {
@@ -354,10 +406,7 @@ public:
         break;
     case 1:  // CON_IN
       if ( inout == INPUT ) {
-        if (Serial.available() )
-          return Serial.read();
-        else
-          return 0xff;
+        return Serial.read();
       }
       break;
     case 2:  // CON_OUT
@@ -372,12 +421,26 @@ public:
     case 18: // sector_sel
       break;
     case 20: // dma adr_L
+      if ( inout == OUTPUT ) {
+        dma_address = (dma_address & 0xff00) | val;
+      }
       break;
     case 21: // dma adr_H
+      if ( inout == OUTPUT ) {
+        dma_address = (dma_address & 0x00ff) | (val<<8);
+      }
       break;
     case 22: // exec_dma
+      if (inout == INPUT) {
+        dma_mode = READ_RAM;
+      } else if (inout == OUTPUT) {
+        dma_mode = WRITE_RAM;
+      }
       break;
     default: // dma_rs
+      if (inout == INPUT ) {
+        return dma_result;
+      }
       break;
     }
     return 0;

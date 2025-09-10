@@ -1,7 +1,8 @@
 /* by sin, Aug, 2025 */
 #include <LiquidCrystal.h>
 
-#include "Mega100Bus.h"
+#include "Z80Bus.h"
+#include "progmem_rom.h"
 
 //#define BUS_DEBUG
 
@@ -27,259 +28,214 @@ enum Mega_pin_assign {
   _RFSH   = 12,  // out
 
   // sram
-  MEMEN   = 38, // E2 (positive neable)
+  SRAMEN   = 38, // E2 (positive neable)
 };
 
-Mega100Bus m100bus(
-  //CLK, fixed
+Z80Bus z80bus(
   _INT, _NMI, _HALT, _MREQ, _IORQ, 
   _RD, _WR, _BUSACK, _WAIT, _BUSREQ, _RESET, _M1, _RFSH,
-  MEMEN);
+  SRAMEN);
 
-//const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
-LiquidCrystal lcd(14, 15, 16, 17, 18, 19);
+const int LCD_RS = 14, LCD_EN = 15, LCD_D4 = 16, LCD_D5 = 17, LCD_D6 = 18, LCD_D7 = 19;
+LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+
+struct Terminal {
+  const LiquidCrystal & lcd;
+  char line_buf[4][24];
+  int row, col;
+
+  Terminal(const LiquidCrystal & _lcd) : lcd(_lcd) {
+    lcd.begin(20,4);
+    lcd.clear();
+    col = 0;
+    row = 0;
+  }
+
+  void print(uint8 r, uint8 c, const char * str) {
+    /*
+    for(int i = 0; (c%20)+i < 20; ++i) {
+      line_buf[r%4][(c%20)+i] = str[i];
+    }
+    */
+    row = r % 4;
+    snprintf(line_buf[row], 21, "%-20s", str);
+    //line_buf[row][20] = '\0';
+    lcd.setCursor(0,row);
+    lcd.print(line_buf[row]);
+  }
+
+  void clear() {
+    lcd.clear();
+    row = 0;
+    col = 0;
+  }
+} lcdt(lcd);
 
 uint16 addr;
 uint8 data;
 uint8 flag;
-char strbuf[32];
+char buf[32];
+uint8 dma_buff[256];
 
-const uint16 MEM_MAX = 0x0080;
-const uint16 MEM_ADDR_MASK = MEM_MAX - 1;
-uint8 mem[MEM_MAX] = {
-  /* example 2
-  0x31, 0x30, 0x00, 0x21, 0x13, 0x00,
-  0xcd, 0x0a, 0x00, 
-  0x76, 
-  0x7e, 
-  0xb7, 
-  0xc8, 
-  0xd3, 0x02, 
-  0x23, 
-  0xc3, 0x0a, 0x00,
-  0x0d, 0x0a, 
-  0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x2c, 0x20, 
-  0x77, 0x6f, 0x72, 0x6c, 0x64, 0x21, 0x0d, 0x0a, 0x00,
-  */
-  /* example 1 */
-0x21, 0x38, 0x00, 0x31, 0x7e, 0x00, 0xaf, 0x77, 0x3c, 0xfe, 0x64, 0x28, 0x08, 0xcd, 0x12, 0x00, 
-0x18, 0xf5, 0xd3, 0xff, 0xc9, 0x21, 0x23, 0x00, 0x7e, 0xf6, 0x00, 0x28, 0x05, 0xd3, 0x02, 0x23, 
-0x18, 0xf6, 0x76, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x2c, 0x20, 0x6d, 0x79, 0x20, 0x66, 0x72, 0x69, 
-0x65, 0x6e, 0x64, 0x73, 0x21, 0x0d, 0x0a, 0x00, 0x00,
-};
-uint8 pin_status = 0;
-uint8 clock_pin = LOW;
- 
-void port_out(const uint8 & port, const uint8 & val) {
-	switch(port) {
-	case 2:  // putchar
-		Serial.print((char) val);
-		break;
-	case 16:
-		break;
-	case 17:
-		break;
-	case 18: // sector
-		break;
-	case 20: // dma L
-		break;
-	case 21: // dma H
-		break;
-	case 22:
-		break;
-  case 0xff:
-    dump_mem();
-    break;
-	default:
-		Serial.print("out @ ");
-		Serial.print(port, HEX);
-		Serial.print(" data ");
-		Serial.print(val, HEX);
-		break;
-	}
-}
-
-void dump_mem() {
-  char buf[8];
-  for(uint8 r = 0; r < MEM_MAX / 16; ++r) {
-    for(uint8 c = 0; c < 16; ++c) {
-      snprintf(buf, sizeof(buf), "%02X ", mem[(r<<4) + c]);
-      Serial.print(buf);
+uint16 ram_check(uint32 start_addr = 0x0000, uint32 end_addr = 0x20000, uint32 skip = 0x0100) {
+  uint8 buf[256];
+  uint16 errcount = 0;
+  randomSeed(analogRead(0));
+  for(uint32 addr = start_addr; addr < end_addr; addr += skip) {
+    uint8 t = random(256);
+    Serial.print(addr, HEX);
+    Serial.print(" -- ");
+    Serial.print(addr + 0x100, HEX);
+    Serial.print(", ");
+    for(uint32 ix = 0; ix < 0x100; ++ix) {
+      buf[ix] = z80bus.ram_read(addr + ix);
+      buf[ix] ^= t;
+      z80bus.ram_write(addr+ix, buf[ix]);
     }
-    Serial.println();
+    for(uint32 ix = 0; ix < 0x100; ++ix) {
+      if (buf[ix] != z80bus.ram_read(addr+ix)) {
+        Serial.println(addr+ix, HEX);
+        errcount++;
+      }
+    }
+    if ( errcount > 0 ) {
+      Serial.print(" errors = ");
+      Serial.println(errcount, DEC);
+    } else {
+      // Serial.println(" no errors.");
+    }
   }
   Serial.println();
+  return errcount;
 }
 
-void dump_control_pins(uint8 s) {
-char buf[32];
-snprintf(buf, sizeof(buf), "M1 %1x MREQ %1x IORQ %1x RD %x WR %1x", s>>2 & 1, s>>6 & 1, s>>3 & 1, s>>4 & 1, s>>5&1);
-Serial.print(buf);
+void dump(uint8 mem_buff[], uint16 baseaddr = 0x0000, const uint16 size = 0x0100, const uint16 offset_addr = 0x0000) {
+  char buf[16];
+  uint8 data;
+  for(uint32 ix = 0; ix < size; ++ix) {
+    if ( (ix & 0x0f) == 0 ) {
+      snprintf(buf, 16, "%04X : ", offset_addr+ix);
+      Serial.print(buf);
+    }
+    snprintf(buf, 16, "%02x ", mem_buff[ix]);
+    Serial.print(buf);
+    if ( (ix & 0x0f) == 0x0f ) {
+      Serial.println();
+    }
+    
+  }
 }
 
 void setup() {
   // put your setup code here, to run once:
-  lcd.begin(20, 4);
-  lcd.print("Hi, there!");
+  lcdt.print(0,0, "System Starting.");
+
   Serial.begin(38400);
   while (! Serial) {}
   Serial.println("***********************");
-  Serial.println("    system starting.    ");
+  Serial.println("  Z80 system starting. ");
+  Serial.println("***********************");
 
   // nop test
-  m100bus.mem_disable();
-  m100bus.clock_start(5, 8000);
-  m100bus.address_bus16_mode_input();
-  m100bus.data_bus_mode_input();
+  //z80bus.mem_disable();
+  z80bus.clock_start(5, 200);
+  Serial.println("Reset Z80.");
+  z80bus.cpu_reset();
 
-  Serial.println("Issue BUSREQ");
-  z80bus.BUSREQ(LOW);
-  for(uint8 t = 0; t < 8; ++t) {
-    z80bus.clock_wait_rising_edge();
-    if ( !z80bus.BUSACK() ) break;
-  }
-  if ( !z80bus.BUSACK() ) {
-    Serial.println("Start initial DMA.");
-    z80bus.mem_disable();
-    for(uint16 addr = 0; addr < MEM_MAX; ++addr) {
-      z80bus.mem_write(addr, mem[addr]);
-      Serial.print(mem[addr], HEX);
-      if ((addr & 0xf) == 0xf) {
-        Serial.println();
-      } else {
-        Serial.print(" ");
-      }
-    }
-    Serial.println("Write into SRAM done.\n");
-    for(uint16 addr = 0; addr < MEM_MAX; ++addr) {
-      uint8 val;
-      val = z80bus.mem_read(addr);
-      Serial.print(val, HEX);
-      if ((addr & 0xf) == 0xf) {
-        Serial.println();
-      } else {
-        Serial.print(" ");
-      }
-    }
-    z80bus.address_bus16_mode_input();
-    z80bus.data_bus_mode_input();
-    z80bus.BUSREQ(HIGH);
-  }
-  z80bus.Z80_RESET(LOW);
-  z80bus.clock_wait_rising_edge(5);
-  z80bus.Z80_RESET(HIGH);
+  if (!z80bus.DMA_mode() ) {
+    lcdt.print(0,0,"DMA mode failed.");
+    while (true) ;
+  } else {
+    Serial.println("Entered DMA mode.");
+    lcdt.print(0,0,"DMA mode.");
 
-  /*
-  z80.DATA_BUS_mode(OUTPUT);
-  z80.set_DATA_BUS(0x00);
-  // start z80 clock
-  z80.clock_start(5, 1600);
-  
-  int count = 0;
-  // perform z80 rest, assert pin during at least 3 clocks passed
-  z80.do_reset();
-  Serial.println("Resetting Z80.");
-  */
+    Serial.println("Memory check...");
+    ram_check(0x0000, 0x1000);
+
+    uint8 res = z80bus.DMA_progmem_load(mem, MEM_MAX, 0x0000);
+    if (res != 0) {
+      Serial.println("Something going wrong w/ sram read & write!");
+    }
+
+    z80bus.DMA_read(dma_buff);
+    dump(dma_buff, 0x100);
+
+    Serial.println("Exit to Z80 mode.");
+    z80bus.Z80_mode();
+  }
+  Serial.println("_RESET goes HIGH.");
+  z80bus.RESET(HIGH);
+  lcdt.clear();
+  lcdt.print(0,0,"Z80 starts.");
 }
 
 void loop() {
   z80bus.clock_wait_rising_edge();
-  if ( !z80bus.MREQ() && !z80bus.RD() ) {
-    addr = z80bus.address_bus16_get();
-    flag = z80bus.M1();
-    z80bus.clock_wait_rising_edge();
-    data = z80bus.data_bus_get();
-    snprintf(strbuf, sizeof(strbuf), " READ %04X %01X %02X", addr, flag, data);
-    Serial.println(strbuf);
-  } else if ( !z80bus.MREQ() && !z80bus.WR() ) {
-    addr = z80bus.address_bus16_get();
-    z80bus.clock_wait_rising_edge();
-    data = z80bus.data_bus_get();
-    snprintf(strbuf, sizeof(strbuf), "WRITE %04X   %02X", addr, data);
-    Serial.println(strbuf);
-  } 
-  /*
-  // put your main code here, to run repeatedly:
+  snprintf(buf, 21, "%-4s %-2s %-2s", 
+  (z80bus.MREQ() ? (z80bus.IORQ() ? "" : "IORQ") : "MREQ"),
+  (z80bus.M1() ? "" : "M1"),
+  (z80bus.RD() ? (z80bus.WR() ? "" : "WR") : "RD")
+  );
+  lcdt.print(0,0, buf);
+  snprintf(buf, 21, "%-3s %-3s %-3s %-3s", 
+  (z80bus.WAIT() ? "" : "WAT"),
+  (z80bus.BUSACK() ? "" : "BAK"),
+  (z80bus.HALT() ? "" : "HLT"),
+  (z80bus.RFSH() ? "" : "RFH") );
+  lcdt.print(2,0, buf);
 
-  if (clock_pin == LOW and z80.CLK() == HIGH) {
-    // rising edge
-    clock_pin = HIGH;
-    
-    //pin_status = z80.control_pin_status() | (1<<1);
-    //if (pin_status != 0xff) {
-    //  dump_control_pins(pin_status);
-    //  Serial.println();
-    //}
-
-    if ( (z80.HALT() == LOW) ) {
-      Serial.println("Z80 halted.");
-      while (z80.HALT() == LOW) ;
+  if ( !z80bus.MREQ() ) {
+    if ( ! z80bus.RD() ) {
+      addr = z80bus.address_bus16_get();
+      z80bus.clock_wait_rising_edge();
+      data = z80bus.data_bus_get();
+    } else if ( ! z80bus.WR() ) {
+      addr = z80bus.address_bus16_get();
+      z80bus.clock_wait_rising_edge();
+      data = z80bus.data_bus_get();
     }
-
-    if ( !z80.MREQ() ) {
-      if ( !z80.RD() ) {
-        addr = z80.get_ADDR_BUS();
-#ifdef BUS_DEBUG
-        if (! z80.M1()) {
-          Serial.print("OP FETCH ADDR = ");
-        } else {
-          Serial.print("RD ADDR = ");
-        }
-        Serial.print(addr, HEX);
-#endif
-        z80.DATA_BUS_mode(OUTPUT);
-        data = mem[addr & MEM_ADDR_MASK];
-        z80.set_DATA_BUS(data);
-#ifdef BUS_DEBUG
-        Serial.print("  DATA = ");
-        Serial.println(data, HEX);
-#endif
-        while ( !z80.MREQ() and !z80.RD() ) ;
-      } else if ( !z80.WR() ) {
-        addr = z80.get_ADDR_BUS();
-#ifdef BUS_DEBUG
-        Serial.print("WR ADDR = ");
-        Serial.println(addr, HEX);
-#endif
-        z80.DATA_BUS_mode(INPUT);
-        data = z80.get_DATA_BUS();
-        mem[addr & MEM_ADDR_MASK]= data;
-        //dump_mem();
-        while ( !z80.MREQ() and !z80.WR() ) ;
-      }
-    } else if ( !z80.IORQ() ) {
-      if ( !z80.RD() ) {
-        addr = z80.get_ADDR_BUS();
-#ifdef BUS_DEBUG
-        Serial.print("IN ADDR = ");
-        Serial.print(addr & 0xff, HEX);
-        z80.DATA_BUS_mode(OUTPUT);
-        Serial.print("  DATA = ");
-        Serial.println(z80.get_DATA_BUS(), HEX);
-#endif
-        // port_in
-        while ( !z80.IORQ() and !z80.RD() ) ;
-      } else if ( !z80.WR() ) {
-        addr = z80.get_ADDR_BUS();
-#ifdef BUS_DEBUG
-        Serial.print("OUT ADDR = ");
-        Serial.print(addr & 0xff, HEX);
-#endif
-        z80.DATA_BUS_mode(INPUT);
-        data = z80.get_DATA_BUS();
-#ifdef BUS_DEBUG
-        Serial.print(". DATA = ");
-        Serial.println(z80.get_DATA_BUS(), HEX);
-#endif
-        z80.WAIT_LO();
-        port_out(addr, data);
-        z80.WAIT_HI();
-        while ( !z80.IORQ() and !z80.WR() ) ;
-      }
-    }
-  } else if ( clock_pin == HIGH and z80.CLK() == LOW) {
-    // falling edge
-    clock_pin = LOW;
+    snprintf(buf, 32, "%04X %02X", addr, data);
+    lcdt.print(1,0,buf);
+  } else if ( !z80bus.IORQ() ) {
+    if ( ! z80bus.RD() ) {
+      // in operation
+      addr = z80bus.address_bus16_get();
+      z80bus.data_bus_mode_output();
+      z80bus.data_bus_set(data);
+      z80bus.clock_wait_rising_edge(1);
+      z80bus.z80io(addr, data, INPUT);
+      z80bus.clock_wait_rising_edge(1);
+      z80bus.data_bus_mode_input();
+    } else if ( ! z80bus.WR() ) {
+      // out operation
+      z80bus.data_bus_mode_input();
+      addr = z80bus.address_bus16_get();
+      z80bus.clock_wait_rising_edge(2);
+      data = z80bus.data_bus_get();
+      z80bus.z80io(addr, data, OUTPUT);
+    } 
+    snprintf(buf, 32, "%04X %02X", addr, data);
+    lcdt.print(1,0,buf);
   }
-  */
+  if ( z80bus.DMA_requested() ) {
+    Serial.println("Why? requested!");
+    z80bus.DMA_exec(dma_buff);
+    //dump(dma_buff, 0x100);
+    z80bus.Z80_mode();
+  } 
+  if ( ! z80bus.HALT() ) {
+    Serial.println("Halted.");
+    if ( z80bus.DMA_mode() ) {
+      Serial.println("Entered DMA mode.");
+      lcdt.print(0,0,"DMA mode.");
+      z80bus.DMA_read(dma_buff);
+      Serial.println("Memory dump...");
+      dump(dma_buff, 0x100);
+
+      Serial.println("Exit to Z80 mode.");
+      z80bus.Z80_mode();
+    }
+    z80bus.clock_stop();
+    while (true);
+  }
 }

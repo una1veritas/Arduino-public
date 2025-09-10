@@ -1,5 +1,6 @@
-
-with open('a.bin', 'rb') as f:
+import sys
+file_name = sys.argv[1]
+with open(file_name, 'rb') as f:
     count = 0
     while (b := f.read(1)):
         #print(type(b))

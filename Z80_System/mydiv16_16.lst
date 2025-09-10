@@ -1,0 +1,133 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "mydiv16_16.asm"
+                        ; date: 2025-09-10 16:13:00
+                        ; --------------------------------------
+
+
+                        
+0000:                       org     0000h
+0000:                   rst:
+0000: 310001   [10]         ld      sp, 0100h
+0003: C32000   [20]         jp      main
+                        
+                        ; working area
+                            org     0010h
+0010:                   dividiend:
+0010: 3B00                  db  $3b, $00
+0012:                   divisor:
+0012: 1C00                  db  $1c, $00
+0014:                   quotient:
+0014: 0000                  db  0, 0
+0016:                   reminder:
+0016: 0000                  db  0, 0
+                        
+0018: 00000000              ds  8, 0
+001C: 00000000          
+                        
+                            org     0020h
+0020:                   main:
+0020: 2A1200   [16]         ld      hl, (divisor)
+0023: E5       [27]         push    hl
+0024: 2A1000   [43]         ld      hl, (dividiend)
+0027: E5       [54]         push    hl
+0028: CD3400   [71]         call    div16
+002B: E1       [81]         pop     hl
+002C: 221400   [97]         ld      (quotient), hl
+002F: E1       [107]        pop     hl
+0030: 221600   [123]        ld      (reminder), hl
+                        
+0033: 76       [127]        halt
+                        
+                        ; The following routine divides ac (dividiend) by de (divisor) and 
+                        ; places the quotient in ac and the remainder in hl
+                        ; destrys hl, a, b, c, d, e, ix
+                        ; https://wikiti.brandonw.net/index.php?title=Z80_Routines:Math:Division
+                        ;
+0034:                   div16:
+0034: 210200   [10]         ld      hl, 02
+0037: 39       [21]         add     hl, sp
+0038: 4E       [28]         ld      c, (hl)
+0039: 23       [34]         inc     hl
+003A: 7E       [41]         ld      a, (hl)
+003B: 23       [47]         inc     hl
+003C: 5E23562B [73]         ld      de, (hl)
+0040:                   div16_ac_de:
+0040: 210000   [10]         ld	    hl, 0
+0043: 0610     [17]         ld	    b, 16
+0045:                   div16_ac_de_loop:
+0045: CB31     [ 8]         sll	c
+0047: 17       [12]         rla
+0048: ED6A     [27]         adc	hl, hl
+004A: ED52     [42]         sbc	hl, de
+004C: 3002     [49|54]      jr	nc, $+4 
+004E: 19       [60]         add	hl, de
+004F: 0D       [64]         dec	c
+                            
+0050: 10F3     [72|77]      djnz	div16_ac_de_loop
+0052:                   div16_ac_de_end:
+0052: 5D       [ 4]         ld      e, l
+0053: 54       [ 8]         ld      d, h
+0054: 210200   [18]         ld      hl, 02
+0057: 39       [29]         add     hl, sp
+0058: 71       [36]         ld      (hl), c
+0059: 23       [42]         inc     hl
+005A: 77       [49]         ld      (hl), a
+005B: 23       [55]         inc     hl
+005C: 7323722B [81]         ld      (hl), de
+0060: C9       [91]         ret
+                        
+                        
+                        ; 0010 : 3b 00 1c 00 02 00 03 00 00 00 00 00 00 00 00 00 
+                        ; 0010 : 3b 00 1c 00 02 00 03 00 00 00 00 00 00 00 00 00 
+                        ; 00F0 : 00 00 00 00 00 00 00 00 02 00 2b 00 02 00 03 00
+                        
+                        ; 0010 : 50 30 c8 00 3d 00 a8 00 00 00 00 00 00 00 00 00
+                        
+                        ; 0031 : 19 33 ac 07 69 ba ab 04 
+                        ; 00F0 : 00 00 00 00 00 00 00 00 00 00 0e 00 69 ba ab 04
+                        ; 000e --> call (cd) + 3
+                        
+                        ;The following routine divides hl by c and places the quotient in hl and the remainder in a
+0061:                   div_hl_c:
+0061: AF       [ 4]        xor	a
+0062: 0610     [11]        ld	b, 16
+                        
+0064:                   div_hl_c_loop:
+0064: 29       [11]        add	hl, hl
+0065: 17       [15]        rla
+0066: 3803     [22|27]     jr	c, $+5
+0068: B9       [26]        cp	c
+0069: 3802     [33|38]     jr	c, $+4
+                        
+006B: 91       [37]        sub	c
+006C: 2C       [41]        inc	l
+                           
+006D: 10F5     [49|54]     djnz	div_hl_c_loop
+                           
+006F: C9       [59]        ret
+
+
+; +++ segments +++
+
+#CODE          = $0000 =     0,  size = $0070 =   112
+
+; +++ global symbols +++
+
+_end             = $0070 =   112          mydiv16_16.asm:2 (unused)
+_size            = $0070 =   112          mydiv16_16.asm:2 (unused)
+div16            = $0034 =    52          mydiv16_16.asm:39
+div16_ac_de      = $0040 =    64          mydiv16_16.asm:47 (unused)
+div16_ac_de_end  = $0052 =    82          mydiv16_16.asm:60 (unused)
+div16_ac_de_loop = $0045 =    69          mydiv16_16.asm:50
+div_hl_c         = $0061 =    97          mydiv16_16.asm:84 (unused)
+div_hl_c_loop    = $0064 =   100          mydiv16_16.asm:88
+dividiend        = $0010 =    16          mydiv16_16.asm:9
+divisor          = $0012 =    18          mydiv16_16.asm:11
+main             = $0020 =    32          mydiv16_16.asm:21
+quotient         = $0014 =    20          mydiv16_16.asm:13
+reminder         = $0016 =    22          mydiv16_16.asm:15
+rst              = $0000 =     0          mydiv16_16.asm:3 (unused)
+
+
+total time: 0.0010 sec.
+no errors
