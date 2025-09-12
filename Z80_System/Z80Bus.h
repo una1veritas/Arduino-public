@@ -94,7 +94,7 @@ public:
   void clock_start(uint8_t presc, uint16_t top) {
     const uint8_t WGM_CTC_OCR1A = B0100;
     const uint8_t COM_TOGGLE = B01;
-
+    presc = (presc > 5 ? 5 : presc);
     cli();
     TCCR1A = 0;
     TCCR1B = 0;

@@ -2,94 +2,109 @@
 	org 	0000h
 rst:
 	ld 		sp, 0200h
-    jp  	main
+	jp  	main
 
 	org 	0010h
-	ds 		10, $00
-	ds 		$10, $00
-
-	org 	0020h
 main:
 	ld 		hl, prompt
 	call 	print_hl_str
 	ld 		hl, inputbuffer
 	ld 		b, 127
-	call 	get_line
+	call 	getline
 	ld 		hl, inputbuffer
 	call 	print_hl_str
 	call 	print_endl
 	ld 		hl, inputbuffer
-    call    read_hex
-	ex 		de, hl
-    call    print_hl_dec
+	call    hexstr4_de
+	ld 		hl, de
+	call    print_hl_dec
 	call 	print_endl
 
 	jp 		main
 
 	halt
 
-get_line:
-	in 		a, (0)
-	and 	a
-	jr 		z, get_line
-	in 		a, (1)
-	ld 		(hl), a
-	cp 		10
-	jr 		z, get_line_end
-	cp 		13
-	jr 		z, get_line_end
-	inc 	hl
-	djnz 	get_line
-get_line_end:
-	ld 		(hl), 0
-get_line_clr_buf:
-	in 		a, (0)
+; read and store line until the 1st occurrence of cr or nl
+; in (hl)
+getline:
+	in 		a, (0)		; con status
+	and 	a			; 
+	jr 		z, getline 	; repeat until available
+	in 		a, (1)		; getchar
+	ld 		(hl), a		; store
+	cp 		10			; if nl
+	jr 		z, getline_end
+	cp 		13			; if cr
+	jr 		z, getline_end
+	inc 	hl			; ++hl
+	djnz 	getline		; get next char
+getline_end:
+	ld 		(hl), 0		; terminate by null
+getline_clrbuf:
+	in 		a, (0)		; waste remaining chars in con buffer
 	and 	a
 	ret 	z
 	in 		a, (1)
-	jr 		get_line_clr_buf
+	jr 		getline_clrbuf
 
 
-read_hex:
-    ld      e, $00
-    ld      d, $00
+; read hexadecimal string upto 2 or 4 (set in c) 
+; bytes from (hl) and return integer val in de
+;
+hexstr2_de:
+	ld 		c, 2
+	jr 		hexstr_de
 
-    ld      c, $04
-loop:
+hexstr4_de:
+	ld 		c, 4
+	jr 		hexstr_de
+
+hexstr_de:
+    ld      de, 0000h
+hexstr_de_lp:
     ld      a, (hl)
-    cp      '0'
-    jr      c, err
-	cp      '9'+1
-    jr 		c, one2nine
-	cp 		'A'
-	jr 		c, err
-	cp		'F'+1
-	jr 		c, a2f_lcap
-	cp 		'a'
-	jr		c, err
-	cp 		'f'+1
-	jr 		nc, err
-a2f_scap:
-	and 	$df
-a2f_lcap:
-	sub 	'A'+10
-one2nine:
-	sub		'0'
-
-shift_in:
+	call 	hex2nibble
+	cp 		$ff
+	ret 	z
+	and 	a		; clear Carry bit
 	ld 		b, 4
-shift_in_loop:
-    rl      e
+hexstr_de_rl4:
+    rl      e		 ;rotate left entire de
     rl      d
-    djnz    shift_in_loop
+    djnz    hexstr_de_rl4
 	add 	e
 	ld 		e, a
     inc     hl
-    dec     c
-    jr      nz, loop
+	dec 	c
+    jr      nz, hexstr_de_lp
+	ret
 
-err:
+;convert one hexadecimal char in a to nibble in a 
+;
+hex2nibble:
+    cp      'a'     ; check whether a lower case
+    jr      c, hex2nibble_digit_or_upper  ; a digit or an upper case if carry set
+    and     $df     ; lower case to upper case
+hex2nibble_digit_or_upper:
+    cp      '9' + 1 ; check whether a digit
+    jr      nc, hex2nibble_upper  ; possibly an upper case letter if carry not set
+    sub     a, '0'  ; digit to int value
+    jr      c, hex2nibble_err     ; it was not '0' - '9' 
     ret
+hex2nibble_upper:
+    cp      'F'+1   ; check the digit whether less than 'F'
+    jr      nc, hex2nibble_err      ; error if it is larger than 'F'
+    sub     'A'  	; A - F to integer 0 - 5
+    jr      c, hex2nibble_err       ; it was not 'A' - 'F'
+    add     a, 10   ; A - F to 10 - 15 by +5
+hex2nibble_output:
+    ret
+
+hex2nibble_err:
+	ld 		a, 0xff
+	ret
+
+
 
 ; print the decimal integer in HL 
 print_hl_dec:
@@ -192,4 +207,4 @@ prompt:
 	db 	0
 
 inputbuffer:
-	ds 		32,0
+	ds 		16,0
