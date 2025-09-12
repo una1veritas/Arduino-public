@@ -41,7 +41,7 @@ public:
   enum DMA_mode {
     NO_REQUEST = 0,
     READ_RAM  = 1,
-    WRITE_RAM = 2,
+    WRITE_RAM = 0xff,
   };
   uint16 dma_address;
   const uint16 dma_block_size = 0x100;
@@ -287,6 +287,14 @@ public:
     DMA_exec(mem);
   }
 
+  uint8   DMA_block_size() {
+    return dma_block_size;
+  }
+
+  void DMA_address(const uint16 & addr) {
+    dma_address = addr;
+  }
+
   void DMA_exec(uint8 mem[]) {
     if ( dma_mode == NO_REQUEST )
       return 0x00;
@@ -433,6 +441,7 @@ public:
     case 22: // exec_dma
       if (inout == INPUT) {
         dma_mode = READ_RAM;
+        return 1; // the number of blocks
       } else if (inout == OUTPUT) {
         dma_mode = WRITE_RAM;
       }

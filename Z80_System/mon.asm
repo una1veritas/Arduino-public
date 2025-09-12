@@ -4,34 +4,27 @@ rst:
 	ld 		sp, 0200h
     jp  	main
 
+	org 	0010h
 	ds 		10, $00
 	ds 		$10, $00
 
 	org 	0020h
 main:
-;	ld		hl, greetings
-;	call 	print_hl_str
-;	ld 		b, 19
-;	call 	compute_fibo
-;	ld 		hl, (var_b)
-;	call 	print_hl_hex
-;	call 	print_endl
-;	ld 		a, $df 
-;	call 	print_a_hex
-;	call 	print_endl
-;	ld 		hl, (var_b)
-;	call 	print_hl_dec
-;	call 	print_endl
-
 	ld 		hl, prompt
 	call 	print_hl_str
-	call 	print_endl
 	ld 		hl, inputbuffer
-	ld 		b, 15
+	ld 		b, 127
 	call 	get_line
 	ld 		hl, inputbuffer
 	call 	print_hl_str
 	call 	print_endl
+	ld 		hl, inputbuffer
+    call    read_hex
+	ex 		de, hl
+    call    print_hl_dec
+	call 	print_endl
+
+	jp 		main
 
 	halt
 
@@ -48,32 +41,55 @@ get_line:
 	inc 	hl
 	djnz 	get_line
 get_line_end:
-	ld 	(hl), 0
-	ret
+	ld 		(hl), 0
+get_line_clr_buf:
+	in 		a, (0)
+	and 	a
+	ret 	z
+	in 		a, (1)
+	jr 		get_line_clr_buf
 
-;compute_fibo:
-;	ld 		hl, 1
-;	ld 		(var_a), hl
-;	ld 		(var_b), hl
-;	ld 		a, b
-;	sub 	2
-;	ret 	s
-;	ret 	z
-;	ld 		b, a
-;compute_fibo_loop:
-;	ld 		HL, (var_a)
-;	ld 		d, h
-;	ld 		e, l
-;	ld 		HL, (var_b)
-;	ld 		(var_a), hl
-;	add 	hl, de
-;	ld 		(var_b), hl
-;	djnz	compute_fibo_loop
-;	ret
-;var_a:
-;	db 	0,0
-;var_b:
-;	db 	0,0
+
+read_hex:
+    ld      e, $00
+    ld      d, $00
+
+    ld      c, $04
+loop:
+    ld      a, (hl)
+    cp      '0'
+    jr      c, err
+	cp      '9'+1
+    jr 		c, one2nine
+	cp 		'A'
+	jr 		c, err
+	cp		'F'+1
+	jr 		c, a2f_lcap
+	cp 		'a'
+	jr		c, err
+	cp 		'f'+1
+	jr 		nc, err
+a2f_scap:
+	and 	$df
+a2f_lcap:
+	sub 	'A'+10
+one2nine:
+	sub		'0'
+
+shift_in:
+	ld 		b, 4
+shift_in_loop:
+    rl      e
+    rl      d
+    djnz    shift_in_loop
+	add 	e
+	ld 		e, a
+    inc     hl
+    dec     c
+    jr      nz, loop
+
+err:
+    ret
 
 ; print the decimal integer in HL 
 print_hl_dec:
@@ -170,14 +186,10 @@ div_hl_c_loop:
    
    ret
 
-;greetings:
-;	db	"Hello, everyone!"
-;	db  13, 10
-;	db	0
 
 prompt:
-	db 	"type keys and then return."
+	db 	"> "
 	db 	0
 
 inputbuffer:
-	ds 		16,0
+	ds 		32,0

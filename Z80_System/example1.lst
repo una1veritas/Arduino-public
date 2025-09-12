@@ -1,0 +1,232 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "example1.asm"
+                        ; date: 2025-09-11 17:24:34
+                        ; --------------------------------------
+
+
+                        ;
+0000:                   	org 	0000h
+0000:                   rst:
+0000: 310002   [10]     	ld 		sp, 0200h
+0003: C32000   [20]         jp  	main
+                        
+0006: 00000000          	ds 		10, $00
+000A: 00...             
+0010: 00000000          	ds 		$10, $00
+0014: 00...             
+                        
+                        	org 	0020h
+0020:                   main:
+                        ;	ld		hl, greetings
+                        ;	call 	print_hl_str
+                        ;	ld 		b, 19
+                        ;	call 	compute_fibo
+                        ;	ld 		hl, (var_b)
+                        ;	call 	print_hl_hex
+                        ;	call 	print_endl
+                        ;	ld 		a, $df 
+                        ;	call 	print_a_hex
+                        ;	call 	print_endl
+                        ;	ld 		hl, (var_b)
+                        ;	call 	print_hl_dec
+                        ;	call 	print_endl
+                        
+0020: 21C600   [10]     	ld 		hl, prompt
+0023: CDA500   [27]     	call 	print_hl_str
+0026: CDAE00   [44]     	call 	print_endl
+0029: 21E100   [54]     	ld 		hl, inputbuffer
+002C: 060F     [61]     	ld 		b, 15
+002E: CD3B00   [78]     	call 	get_line
+0031: 21E100   [88]     	ld 		hl, inputbuffer
+0034: CDA500   [105]    	call 	print_hl_str
+0037: CDAE00   [122]    	call 	print_endl
+                        
+003A: 76       [126]    	halt
+                        
+003B:                   get_line:
+003B: DB00     [11]     	in 		a, (0)
+003D: A7       [15]     	and 	a
+003E: 28FB     [22|27]  	jr 		z, get_line
+0040: DB01     [33]     	in 		a, (1)
+0042: 77       [40]     	ld 		(hl), a
+0043: FE0A     [47]     	cp 		10
+0045: 2807     [54|59]  	jr 		z, get_line_end
+0047: FE0D     [61]     	cp 		13
+0049: 2803     [68|73]  	jr 		z, get_line_end
+004B: 23       [74]     	inc 	hl
+004C: 10ED     [82|87]  	djnz 	get_line
+004E:                   get_line_end:
+004E: 3600     [10]     	ld 	(hl), 0
+0050: C9       [20]     	ret
+                        
+                        ;compute_fibo:
+                        ;	ld 		hl, 1
+                        ;	ld 		(var_a), hl
+                        ;	ld 		(var_b), hl
+                        ;	ld 		a, b
+                        ;	sub 	2
+                        ;	ret 	s
+                        ;	ret 	z
+                        ;	ld 		b, a
+                        ;compute_fibo_loop:
+                        ;	ld 		HL, (var_a)
+                        ;	ld 		d, h
+                        ;	ld 		e, l
+                        ;	ld 		HL, (var_b)
+                        ;	ld 		(var_a), hl
+                        ;	add 	hl, de
+                        ;	ld 		(var_b), hl
+                        ;	djnz	compute_fibo_loop
+                        ;	ret
+                        ;var_a:
+                        ;	db 	0,0
+                        ;var_b:
+                        ;	db 	0,0
+                        
+                        ; print the decimal integer in HL 
+0051:                   print_hl_dec:
+0051: DD210000 [14]     	ld 		ix, 0
+0055: DDE5     [29]     	push 	ix  ; secure 6 bytes (null + 5 digits for 16 bit)
+0057: DDE5     [44]     	push 	ix
+0059: DDE5     [59]     	push 	ix
+005B: DD39     [74]     	add 	ix, sp
+005D: 0E0A     [81]     	ld 		c, 10 	; radix = 10
+005F:                   print_hl_dec_loop0:
+005F: DD23     [10]     	inc 	ix  ; at first, skip the place for terminal null char 
+0061: CDB700   [27]     	call 	div_hl_c 	; a = hl % 10, hl = hl / 10
+0064: C630     [34]     	add 	a, $30		; to ascii code '0' to '9'
+0066: DD7700   [53]     	ld 		(ix), a		; ix stays on the last written char
+0069: 7C       [57]     	ld 		a, h 		; are there bits remained in hl?
+006A: B5       [61]     	or 		l
+006B: 2802     [68|73]  	jr 		z, print_hl_dec_output		; if conversion finished
+006D: 18F0     [80]     	jr 		print_hl_dec_loop0
+006F:                   print_hl_dec_output:
+006F: DD7E00   [19]     	ld 		a, (ix)
+0072: A7       [23]     	and 	a
+0073: 2806     [30|35]  	jr 		z, print_hl_dec_exit
+0075: D302     [41]     	out 	(2), a
+0077: DD2B     [51]     	dec 	ix
+0079: 18F4     [63]     	jr 		print_hl_dec_output
+007B:                   print_hl_dec_exit:
+007B: DDE1     [14]     	pop 	ix 
+007D: DDE1     [28]     	pop 	ix 
+007F: DDE1     [42]     	pop 	ix 
+0081: C9       [52]     	ret
+                        
+                        
+0082:                   print_a_hex:
+0082: 67       [ 4]     	ld 		h, a
+0083: 0E02     [11]     	ld 		c, 2
+0085: 1802     [23]     	jr 		print_hl_hex_loop
+                        
+0087:                   print_hl_hex:
+0087: 0E04     [ 7]     	ld 		c, 4
+0089:                   print_hl_hex_loop:
+0089: CD9A00   [17]     	call 	rotleft_ahl_4
+008C: C630     [24]     	add 	'0'
+008E: FE3A     [31]     	cp 		':'
+0090: 3802     [38|43]  	jr 		c, print_hl_hex_loop_out
+0092: C607     [45]     	add 	7
+0094:                   print_hl_hex_loop_out:
+0094: D302     [11]     	out 	(2), a
+0096: 0D       [15]     	dec 	c
+0097: 20F0     [22|27]  	jr 		nz, print_hl_hex_loop
+0099: C9       [32]     	ret
+                        
+009A:                   rotleft_ahl_4:
+009A: 0604     [ 7]     	ld 	b, 4
+009C: AF       [11]     	xor a
+009D:                   rotleft_ahl_4_loop:
+009D: CB15     [ 8]     	rl 	l
+009F: CB14     [16]     	rl 	h
+00A1: 17       [20]     	rla
+00A2: 10F9     [28|33]  	djnz rotleft_ahl_4_loop
+00A4: C9       [38]     	ret
+                        
+00A5:                   print_hl_str:
+00A5: 7E       [ 7]     	ld	a, (HL)
+00A6: B7       [11]     	or	a
+00A7: C8       [16|22]  	ret	z
+00A8: D302     [27]     	out	(2),a
+00AA: 23       [33]     	inc HL
+00AB: C3A500   [43]     	jp	print_hl_str
+                        
+00AE:                   print_endl:
+00AE: 3E0D     [ 7]     	ld 		a, 13
+00B0: D302     [18]     	out		(2), a
+00B2: 3E0A     [25]     	ld 		a, 10
+00B4: D302     [36]     	out 	(2), a
+00B6: C9       [46]     	ret
+                        
+                        ; divides hl by c and places the quotient in hl 
+                        ; and the remainder in a
+00B7:                   div_hl_c:
+00B7: AF       [ 4]        xor	a
+00B8: 0610     [11]        ld	b, 16
+                        
+00BA:                   div_hl_c_loop:
+00BA: 29       [11]        add	hl, hl
+00BB: 17       [15]        rla
+00BC: 3803     [22|27]     jr	c, $+5
+00BE: B9       [26]        cp	c
+00BF: 3802     [33|38]     jr	c, $+4
+                        
+00C1: 91       [37]        sub	c
+00C2: 2C       [41]        inc	l
+                           
+00C3: 10F5     [49|54]     djnz	div_hl_c_loop
+                           
+00C5: C9       [59]        ret
+                        
+                        ;greetings:
+                        ;	db	"Hello, everyone!"
+                        ;	db  13, 10
+                        ;	db	0
+                        
+00C6:                   prompt:
+00C6: 74797065          	db 	"type keys and then return."
+00CA: 206B6579          
+00CE: 7320616E          
+00D2: 64207468          
+00D6: 656E2072          
+00DA: 65747572          
+00DE: 6E2E              
+00E0: 00                	db 	0
+                        
+00E1:                   inputbuffer:
+00E1: 00000000          	ds 		16,0
+00E5: 00...             
+
+
+; +++ segments +++
+
+#CODE          = $0000 =     0,  size = $00F1 =   241
+
+; +++ global symbols +++
+
+_end                = $00F1 =   241          example1.asm:2 (unused)
+_size               = $00F1 =   241          example1.asm:2 (unused)
+div_hl_c            = $00B7 =   183          example1.asm:155
+div_hl_c_loop       = $00BA =   186          example1.asm:159
+get_line            = $003B =    59          example1.asm:38
+get_line_end        = $004E =    78          example1.asm:50
+inputbuffer         = $00E1 =   225          example1.asm:182
+main                = $0020 =    32          example1.asm:11
+print_a_hex         = $0082 =   130          example1.asm:109 (unused)
+print_endl          = $00AE =   174          example1.asm:146
+print_hl_dec        = $0051 =    81          example1.asm:79 (unused)
+print_hl_dec_exit   = $007B =   123          example1.asm:102
+print_hl_dec_loop0  = $005F =    95          example1.asm:86
+print_hl_dec_output = $006F =   111          example1.asm:95
+print_hl_hex        = $0087 =   135          example1.asm:114 (unused)
+print_hl_hex_loop   = $0089 =   137          example1.asm:116
+print_hl_hex_loop_out = $0094 =   148          example1.asm:122
+print_hl_str        = $00A5 =   165          example1.asm:138
+prompt              = $00C6 =   198          example1.asm:178
+rotleft_ahl_4       = $009A =   154          example1.asm:128
+rotleft_ahl_4_loop  = $009D =   157          example1.asm:131
+rst                 = $0000 =     0          example1.asm:3 (unused)
+
+
+total time: 0.0012 sec.
+no errors

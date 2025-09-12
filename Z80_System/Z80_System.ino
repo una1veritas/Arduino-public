@@ -109,7 +109,7 @@ uint16 ram_check(uint32 start_addr = 0x0000, uint32 end_addr = 0x20000, uint32 s
   return errcount;
 }
 
-void dump(uint8 mem_buff[], uint16 baseaddr = 0x0000, const uint16 size = 0x0100, const uint16 offset_addr = 0x0000) {
+void dump(uint8 mem_buff[], const uint16 size = 0x0100, const uint16 offset_addr = 0x0000) {
   char buf[16];
   uint8 data;
   for(uint32 ix = 0; ix < size; ++ix) {
@@ -157,8 +157,12 @@ void setup() {
       Serial.println("Something going wrong w/ sram read & write!");
     }
 
+    z80bus.DMA_address(0);
     z80bus.DMA_read(dma_buff);
-    dump(dma_buff, 0x100);
+    dump(dma_buff, 0x100, 0);
+    z80bus.DMA_address(0x100);
+    z80bus.DMA_read(dma_buff);
+    dump(dma_buff, 0x100, 0x100);
 
     Serial.println("Exit to Z80 mode.");
     z80bus.Z80_mode();
@@ -201,9 +205,9 @@ void loop() {
       // in operation
       addr = z80bus.address_bus16_get();
       z80bus.data_bus_mode_output();
+      data = z80bus.z80io(addr, data, INPUT);
       z80bus.data_bus_set(data);
       z80bus.clock_wait_rising_edge(1);
-      z80bus.z80io(addr, data, INPUT);
       z80bus.clock_wait_rising_edge(1);
       z80bus.data_bus_mode_input();
     } else if ( ! z80bus.WR() ) {
@@ -228,9 +232,13 @@ void loop() {
     if ( z80bus.DMA_mode() ) {
       Serial.println("Entered DMA mode.");
       lcdt.print(0,0,"DMA mode.");
-      z80bus.DMA_read(dma_buff);
       Serial.println("Memory dump...");
-      dump(dma_buff, 0x100);
+      z80bus.DMA_address(0);
+      z80bus.DMA_read(dma_buff);
+      dump(dma_buff, 0x100, 0);
+      z80bus.DMA_address(0x100);
+      z80bus.DMA_read(dma_buff);
+      dump(dma_buff, 0x100, 0x100);
 
       Serial.println("Exit to Z80 mode.");
       z80bus.Z80_mode();

@@ -1,0 +1,249 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "mon.asm"
+                        ; date: 2025-09-12 11:00:06
+                        ; --------------------------------------
+
+
+                        ;
+0000:                   	org 	0000h
+0000:                   rst:
+0000: 310002   [10]     	ld 		sp, 0200h
+0003: C32000   [20]         jp  	main
+                        
+                        	org 	0010h
+0010: 00000000          	ds 		10, $00
+0014: 00...             
+001A: 00000000          	ds 		$10, $00
+001E: 0000210E          
+0022: 01CDED00          
+0026: 21110106          
+                        
+                        	org 	0020h
+0020:                   main:
+0020: 210E01   [10]     	ld 		hl, prompt
+0023: CDED00   [27]     	call 	print_hl_str
+0026: 211101   [37]     	ld 		hl, inputbuffer
+0029: 067F     [44]     	ld 		b, 127
+002B: CD4800   [61]     	call 	get_line
+002E: 211101   [71]     	ld 		hl, inputbuffer
+0031: CDED00   [88]     	call 	print_hl_str
+0034: CDF600   [105]    	call 	print_endl
+0037: 211101   [115]    	ld 		hl, inputbuffer
+003A: CD6500   [132]        call    read_hex
+003D: EB       [136]    	ex 		de, hl
+003E: CD9900   [153]        call    print_hl_dec
+0041: CDF600   [170]    	call 	print_endl
+                        
+0044: C32000   [180]    	jp 		main
+                        
+0047: 76       [184]    	halt
+                        
+0048:                   get_line:
+0048: DB00     [11]     	in 		a, (0)
+004A: A7       [15]     	and 	a
+004B: 28FB     [22|27]  	jr 		z, get_line
+004D: DB01     [33]     	in 		a, (1)
+004F: 77       [40]     	ld 		(hl), a
+0050: FE0A     [47]     	cp 		10
+0052: 2807     [54|59]  	jr 		z, get_line_end
+0054: FE0D     [61]     	cp 		13
+0056: 2803     [68|73]  	jr 		z, get_line_end
+0058: 23       [74]     	inc 	hl
+0059: 10ED     [82|87]  	djnz 	get_line
+005B:                   get_line_end:
+005B: 3600     [10]     	ld 		(hl), 0
+005D:                   get_line_clr_buf:
+005D: DB00     [11]     	in 		a, (0)
+005F: A7       [15]     	and 	a
+0060: C8       [20|26]  	ret 	z
+0061: DB01     [31]     	in 		a, (1)
+0063: 18F8     [43]     	jr 		get_line_clr_buf
+                        
+                        
+0065:                   read_hex:
+0065: 1E00     [ 7]         ld      e, $00
+0067: 1600     [14]         ld      d, $00
+                        
+0069: 0E04     [21]         ld      c, $04
+006B:                   loop:
+006B: 7E       [ 7]         ld      a, (hl)
+006C: FE30     [14]         cp      '0'
+006E: 3828     [21|26]      jr      c, err
+0070: FE3A     [28]     	cp      '9'+1
+0072: 3814     [35|40]      jr 		c, one2nine
+0074: FE41     [42]     	cp 		'A'
+0076: 3820     [49|54]  	jr 		c, err
+0078: FE47     [56]     	cp		'F'+1
+007A: 380A     [63|68]  	jr 		c, a2f_lcap
+007C: FE61     [70]     	cp 		'a'
+007E: 3818     [77|82]  	jr		c, err
+0080: FE67     [84]     	cp 		'f'+1
+0082: 3014     [91|96]  	jr 		nc, err
+0084:                   a2f_scap:
+0084: E6DF     [ 7]     	and 	$df
+0086:                   a2f_lcap:
+0086: D64B     [ 7]     	sub 	'A'+10
+0088:                   one2nine:
+0088: D630     [ 7]     	sub		'0'
+                        
+008A:                   shift_in:
+008A: 0604     [ 7]     	ld 		b, 4
+008C:                   shift_in_loop:
+008C: CB13     [ 8]         rl      e
+008E: CB12     [16]         rl      d
+0090: 10FA     [24|29]      djnz    shift_in_loop
+0092: 83       [28]     	add 	e
+0093: 5F       [32]     	ld 		e, a
+0094: 23       [38]         inc     hl
+0095: 0D       [42]         dec     c
+0096: 20D3     [49|54]      jr      nz, loop
+                        
+0098:                   err:
+0098: C9       [10]         ret
+                        
+                        ; print the decimal integer in HL 
+0099:                   print_hl_dec:
+0099: DD210000 [14]     	ld 		ix, 0
+009D: DDE5     [29]     	push 	ix  ; secure 6 bytes (null + 5 digits for 16 bit)
+009F: DDE5     [44]     	push 	ix
+00A1: DDE5     [59]     	push 	ix
+00A3: DD39     [74]     	add 	ix, sp
+00A5: 0E0A     [81]     	ld 		c, 10 	; radix = 10
+00A7:                   print_hl_dec_loop0:
+00A7: DD23     [10]     	inc 	ix  ; at first, skip the place for terminal null char 
+00A9: CDFF00   [27]     	call 	div_hl_c 	; a = hl % 10, hl = hl / 10
+00AC: C630     [34]     	add 	a, $30		; to ascii code '0' to '9'
+00AE: DD7700   [53]     	ld 		(ix), a		; ix stays on the last written char
+00B1: 7C       [57]     	ld 		a, h 		; are there bits remained in hl?
+00B2: B5       [61]     	or 		l
+00B3: 2802     [68|73]  	jr 		z, print_hl_dec_output		; if conversion finished
+00B5: 18F0     [80]     	jr 		print_hl_dec_loop0
+00B7:                   print_hl_dec_output:
+00B7: DD7E00   [19]     	ld 		a, (ix)
+00BA: A7       [23]     	and 	a
+00BB: 2806     [30|35]  	jr 		z, print_hl_dec_exit
+00BD: D302     [41]     	out 	(2), a
+00BF: DD2B     [51]     	dec 	ix
+00C1: 18F4     [63]     	jr 		print_hl_dec_output
+00C3:                   print_hl_dec_exit:
+00C3: DDE1     [14]     	pop 	ix 
+00C5: DDE1     [28]     	pop 	ix 
+00C7: DDE1     [42]     	pop 	ix 
+00C9: C9       [52]     	ret
+                        
+                        
+00CA:                   print_a_hex:
+00CA: 67       [ 4]     	ld 		h, a
+00CB: 0E02     [11]     	ld 		c, 2
+00CD: 1802     [23]     	jr 		print_hl_hex_loop
+                        
+00CF:                   print_hl_hex:
+00CF: 0E04     [ 7]     	ld 		c, 4
+00D1:                   print_hl_hex_loop:
+00D1: CDE200   [17]     	call 	rotleft_ahl_4
+00D4: C630     [24]     	add 	'0'
+00D6: FE3A     [31]     	cp 		':'
+00D8: 3802     [38|43]  	jr 		c, print_hl_hex_loop_out
+00DA: C607     [45]     	add 	7
+00DC:                   print_hl_hex_loop_out:
+00DC: D302     [11]     	out 	(2), a
+00DE: 0D       [15]     	dec 	c
+00DF: 20F0     [22|27]  	jr 		nz, print_hl_hex_loop
+00E1: C9       [32]     	ret
+                        
+00E2:                   rotleft_ahl_4:
+00E2: 0604     [ 7]     	ld 	b, 4
+00E4: AF       [11]     	xor a
+00E5:                   rotleft_ahl_4_loop:
+00E5: CB15     [ 8]     	rl 	l
+00E7: CB14     [16]     	rl 	h
+00E9: 17       [20]     	rla
+00EA: 10F9     [28|33]  	djnz rotleft_ahl_4_loop
+00EC: C9       [38]     	ret
+                        
+00ED:                   print_hl_str:
+00ED: 7E       [ 7]     	ld	a, (HL)
+00EE: B7       [11]     	or	a
+00EF: C8       [16|22]  	ret	z
+00F0: D302     [27]     	out	(2),a
+00F2: 23       [33]     	inc HL
+00F3: C3ED00   [43]     	jp	print_hl_str
+                        
+00F6:                   print_endl:
+00F6: 3E0D     [ 7]     	ld 		a, 13
+00F8: D302     [18]     	out		(2), a
+00FA: 3E0A     [25]     	ld 		a, 10
+00FC: D302     [36]     	out 	(2), a
+00FE: C9       [46]     	ret
+                        
+                        ; divides hl by c and places the quotient in hl 
+                        ; and the remainder in a
+00FF:                   div_hl_c:
+00FF: AF       [ 4]        xor	a
+0100: 0610     [11]        ld	b, 16
+                        
+0102:                   div_hl_c_loop:
+0102: 29       [11]        add	hl, hl
+0103: 17       [15]        rla
+0104: 3803     [22|27]     jr	c, $+5
+0106: B9       [26]        cp	c
+0107: 3802     [33|38]     jr	c, $+4
+                        
+0109: 91       [37]        sub	c
+010A: 2C       [41]        inc	l
+                           
+010B: 10F5     [49|54]     djnz	div_hl_c_loop
+                           
+010D: C9       [59]        ret
+                        
+                        
+010E:                   prompt:
+010E: 3E20              	db 	"> "
+0110: 00                	db 	0
+                        
+0111:                   inputbuffer:
+0111: 00000000          	ds 		32,0
+0115: 00...             
+
+
+; +++ segments +++
+
+#CODE          = $0000 =     0,  size = $0131 =   305
+
+; +++ global symbols +++
+
+_end                = $0131 =   305          mon.asm:2 (unused)
+_size               = $0131 =   305          mon.asm:2 (unused)
+a2f_lcap            = $0086 =   134          mon.asm:74
+a2f_scap            = $0084 =   132          mon.asm:72 (unused)
+div_hl_c            = $00FF =   255          mon.asm:171
+div_hl_c_loop       = $0102 =   258          mon.asm:175
+err                 = $0098 =   152          mon.asm:91
+get_line            = $0048 =    72          mon.asm:31
+get_line_clr_buf    = $005D =    93          mon.asm:45
+get_line_end        = $005B =    91          mon.asm:43
+inputbuffer         = $0111 =   273          mon.asm:194
+loop                = $006B =   107          mon.asm:58
+main                = $0020 =    32          mon.asm:12
+one2nine            = $0088 =   136          mon.asm:76
+print_a_hex         = $00CA =   202          mon.asm:125 (unused)
+print_endl          = $00F6 =   246          mon.asm:162
+print_hl_dec        = $0099 =   153          mon.asm:95
+print_hl_dec_exit   = $00C3 =   195          mon.asm:118
+print_hl_dec_loop0  = $00A7 =   167          mon.asm:102
+print_hl_dec_output = $00B7 =   183          mon.asm:111
+print_hl_hex        = $00CF =   207          mon.asm:130 (unused)
+print_hl_hex_loop   = $00D1 =   209          mon.asm:132
+print_hl_hex_loop_out = $00DC =   220          mon.asm:138
+print_hl_str        = $00ED =   237          mon.asm:154
+prompt              = $010E =   270          mon.asm:190
+read_hex            = $0065 =   101          mon.asm:53
+rotleft_ahl_4       = $00E2 =   226          mon.asm:144
+rotleft_ahl_4_loop  = $00E5 =   229          mon.asm:147
+rst                 = $0000 =     0          mon.asm:3 (unused)
+shift_in            = $008A =   138          mon.asm:79 (unused)
+shift_in_loop       = $008C =   140          mon.asm:81
+
+
+total time: 0.0015 sec.
+no errors

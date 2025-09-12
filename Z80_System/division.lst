@@ -1,0 +1,149 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "division.asm"
+                        ; date: 2025-09-11 15:12:30
+                        ; --------------------------------------
+
+
+                        
+0000:                       org     0000h
+0000:                   rst:
+0000: 310001   [10]         ld      sp, 0100h
+0003: C32000   [20]         jp      main
+                        
+                        ; working area
+                            org     0010h
+0010:                   dividiend:
+0010: B3E6                  dw      $e6b3 
+0012:                   divisor:
+0012: 8500                  dw      $0085
+0014:                   quotient:
+0014: 0000                  dw      0
+0016:                   reminder:
+0016: 0000                  dw      0
+                        
+0018: 00000000              ds      8, 0
+001C: 00000000          
+                        
+                            org     0020h
+0020:                   main:
+0020: 2A1200   [16]         ld      hl, (divisor)
+0023: E5       [27]         push    hl
+0024: 2A1000   [43]         ld      hl, (dividiend)
+0027: E5       [54]         push    hl
+0028: CD4700   [71]         call    div16
+002B: E1       [81]         pop     hl
+002C: 221400   [97]         ld      (quotient), hl
+002F: E1       [107]        pop     hl
+0030: 221600   [123]        ld      (reminder), hl
+                        
+0033: 2A1600   [139]        ld      hl, (reminder)
+0036: E5       [150]        push    hl
+0037: 2A1400   [166]        ld      hl, (quotient)
+003A: E5       [177]        push    hl
+003B: CD7C00   [194]        call    div16_8
+003E: E1       [204]        pop     hl
+003F: 221800   [220]        ld      (quotient+4), hl
+0042: E1       [230]        pop     hl
+0043: 221A00   [246]        ld      (reminder+4), hl
+0046: 76       [250]        halt
+                        
+                        ; dvi_hl_de stack in out wrapper
+                        ; [ret addr] [dividiend] [divisor] 
+                        ; --> [ret addr] [quotient] [reminder]
+0047:                   div16:
+0047: DD210200 [14]         ld      ix, 02
+004B: DD39     [29]         add     ix, sp
+004D: DD4E00   [48]         ld      c, (ix)
+0050: DD7E01   [67]         ld      a, (ix+1)
+0053: DD5E02   [86]         ld      de, (ix+2)
+0056: DD5603   [105]    
+0059: CD6900   [122]        call    div_ac_de
+005C: DD7502   [141]        ld      (ix+2), hl
+005F: DD7403   [160]    
+0062: DD7100   [179]        ld      (ix), c
+0065: DD7701   [198]        ld      (ix+1), a
+0068: C9       [208]        ret
+                        
+                        ; The following routine divides ac (dividiend) by de (divisor) and 
+                        ; places the quotient in ac and the remainder in hl
+                        ; destrys hl, a, b, c, d, e, ix
+                        ; https://wikiti.brandonw.net/index.php?title=Z80_Routines:Math:Division
+                        ;
+0069:                   div_ac_de:
+0069: 210000   [10]         ld	    hl, 0
+006C: 0610     [17]         ld	    b, 16
+006E:                   div_ac_de_loop:
+006E: CB31     [ 8]         sll	c
+0070: 17       [12]         rla
+0071: ED6A     [27]         adc	hl, hl
+0073: ED52     [42]         sbc	hl, de
+0075: 3002     [49|54]      jr	nc, $+4 
+0077: 19       [60]         add	hl, de
+0078: 0D       [64]         dec	c
+                            
+0079: 10F3     [72|77]      djnz	div_ac_de_loop
+007B: C9       [82]         ret
+                        
+                        
+                        
+                        
+                        ; dvi_hl_c stack in out wrapper
+                        ; [ret addr] [dividiend] [divisor:low] 
+                        ; --> [ret addr] [quotient] [reminder:low]
+007C:                   div16_8:
+007C: DD210200 [14]         ld      ix, 02
+0080: DD39     [29]         add     ix, sp
+0082: DD6E00   [48]         ld      hl, (ix)
+0085: DD6601   [67]     
+0088: DD4E02   [86]         ld      c, (ix+2)
+008B: CD9800   [103]        call    div_hl_c
+008E: DD7500   [122]        ld      (ix), hl
+0091: DD7401   [141]    
+0094: DD7702   [160]        ld      (ix+2), a
+0097: C9       [170]        ret
+                        
+                        ; divides hl by c and places the quotient in hl 
+                        ; and the remainder in a
+0098:                   div_hl_c:
+0098: AF       [ 4]        xor	a
+0099: 0610     [11]        ld	b, 16
+                        
+009B:                   div_hl_c_loop:
+009B: 29       [11]        add	hl, hl
+009C: 17       [15]        rla
+009D: 3803     [22|27]     jr	c, $+5
+009F: B9       [26]        cp	c
+00A0: 3802     [33|38]     jr	c, $+4
+                        
+00A2: 91       [37]        sub	c
+00A3: 2C       [41]        inc	l
+                           
+00A4: 10F5     [49|54]     djnz	div_hl_c_loop
+                           
+00A6: C9       [59]        ret
+
+
+; +++ segments +++
+
+#CODE          = $0000 =     0,  size = $00A7 =   167
+
+; +++ global symbols +++
+
+_end           = $00A7 =   167          division.asm:2 (unused)
+_size          = $00A7 =   167          division.asm:2 (unused)
+div16          = $0047 =    71          division.asm:46
+div16_8        = $007C =   124          division.asm:84
+div_ac_de      = $0069 =   105          division.asm:63
+div_ac_de_loop = $006E =   110          division.asm:66
+div_hl_c       = $0098 =   152          division.asm:96
+div_hl_c_loop  = $009B =   155          division.asm:100
+dividiend      = $0010 =    16          division.asm:9
+divisor        = $0012 =    18          division.asm:11
+main           = $0020 =    32          division.asm:21
+quotient       = $0014 =    20          division.asm:13
+reminder       = $0016 =    22          division.asm:15
+rst            = $0000 =     0          division.asm:3 (unused)
+
+
+total time: 0.0012 sec.
+no errors
