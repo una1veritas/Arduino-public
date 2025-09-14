@@ -3,26 +3,105 @@
 rst:
 	ld 		sp, 0200h
 	jp  	main
-
+;
+;;
+; a  ... working reg.
+; b  ... dnjz counter
+; c  ... nibble value
+; de ... start address
+; hl ... end address
+; (ix).. the last inpu char/command
+;
 	org 	0010h
+	ld 		ix, mon_cmd
+	ld 		(ix), 0
 main:
-	ld 		hl, prompt
-	call 	print_hl_str
-	ld 		hl, inputbuffer
-	ld 		b, 127
-	call 	getline
-	ld 		hl, inputbuffer
-	call 	print_hl_str
-	call 	print_endl
-	ld 		hl, inputbuffer
-	call    hexstr4_de
-	ld 		hl, de
-	call    print_hl_dec
-	call 	print_endl
+	ld 		a, '>'
+	out 	(2), a
+	ld 		a, ' '
+	out 	(2), a
+wait_next_char:
+	call 	getchar
+	out 	(2), a 		; echo back
 
-	jp 		main
+	call 	hex2nibble
+	cp 		$ff
+	jr 		z, cmd
+	ld 		c, a
+shift_in:
+	rl		c
+	rl		c
+	rl		c
+	rl		c
+_loop:
+	rl 		c
+	rl		e
+	rl 		d
+	djnz 	_loop
+	jr 		wait_next_char
+
+cmd:
+	ld 		a, c
+	cp 		'H'
+	jr 		nz, next_cmd1
 
 	halt
+
+next_cmd1:
+	cp 		'R'
+	jr 		nz, next_cmd2
+	push 	de
+	ret
+
+next_cmd2:
+	cp 		'.'
+	jr 		nz, next3
+	ld 		(ix), a
+
+next3:
+	cp 		$0d
+	jr 		nz, next4
+	jr 		exec_command
+
+exec_command:
+	call 	dump_a_byte
+	jr 		main
+
+; dump memory b bytes from address stored in addrptr
+dump_a_byte:
+	ld 		hl, (mon_ptr0)
+dump_a_byte_loop:
+	ld 		a, h
+	call 	print_a_hex
+	ld 		a, l
+	call 	print_a_hex
+	ld 		a, ' '
+	out 	(2), a
+	ld 		a, ':'
+	out 	(2), a
+	ld 		a, ' '
+	out 	(2), a
+	ld 		b, 16
+dump_16:
+	ld 		a, (hl)
+	call 	print_a_hex
+	ld 		a, ' '
+	out 	(2), a
+	inc 	hl
+	djnz 	dump_16
+dump_a_byte_exit:
+	ld 		(mon_ptr0), hl
+	call 	print_endl;
+	ret
+
+; read one character from con in 
+; returns ascii code in A reg.
+getchar:
+	in 		a, (0)
+	and 	a 
+	jr 		z, getchar
+	in 		a, (1)
+	ret
 
 ; read and store line until the 1st occurrence of cr or nl
 ; in (hl)
@@ -79,7 +158,8 @@ hexstr_de_rl4:
     jr      nz, hexstr_de_lp
 	ret
 
-;convert one hexadecimal char in a to nibble in a 
+; convert one char expressing a hexadecimal digit 
+; in A reg. to nibble in A
 ;
 hex2nibble:
     cp      'a'     ; check whether a lower case
@@ -106,64 +186,25 @@ hex2nibble_err:
 
 
 
-; print the decimal integer in HL 
-print_hl_dec:
-	ld 		ix, 0
-	push 	ix  ; secure 6 bytes (null + 5 digits for 16 bit)
-	push 	ix
-	push 	ix
-	add 	ix, sp
-	ld 		c, 10 	; radix = 10
-print_hl_dec_loop0:
-	inc 	ix  ; at first, skip the place for terminal null char 
-	call 	div_hl_c 	; a = hl % 10, hl = hl / 10
-	add 	a, $30		; to ascii code '0' to '9'
-	ld 		(ix), a		; ix stays on the last written char
-	ld 		a, h 		; are there bits remained in hl?
-	or 		l
-	jr 		z, print_hl_dec_output		; if conversion finished
-	jr 		print_hl_dec_loop0
-print_hl_dec_output:
-	ld 		a, (ix)
-	and 	a
-	jr 		z, print_hl_dec_exit
-	out 	(2), a
-	dec 	ix
-	jr 		print_hl_dec_output
-print_hl_dec_exit:
-	pop 	ix 
-	pop 	ix 
-	pop 	ix 
-	ret
-
-
-print_a_hex:
-	ld 		h, a
-	ld 		c, 2
-	jr 		print_hl_hex_loop
-
-print_hl_hex:
-	ld 		c, 4
-print_hl_hex_loop:
-	call 	rotleft_ahl_4
+print_nibble_hex:
+	and 	$0f
 	add 	'0'
 	cp 		':'
-	jr 		c, print_hl_hex_loop_out
+	jr 		c, print_nibble_hex_out
 	add 	7
-print_hl_hex_loop_out:
+print_nibble_hex_out:
 	out 	(2), a
-	dec 	c
-	jr 		nz, print_hl_hex_loop
 	ret
 
-rotleft_ahl_4:
-	ld 	b, 4
-	xor a
-rotleft_ahl_4_loop:
-	rl 	l
-	rl 	h
-	rla
-	djnz rotleft_ahl_4_loop
+print_a_hex:
+	push 	af
+	rlca
+	rlca
+	rlca
+	rlca
+	call 	print_nibble_hex
+	pop 	af
+	call 	print_nibble_hex
 	ret
 
 print_hl_str:
@@ -181,30 +222,18 @@ print_endl:
 	out 	(2), a
 	ret
 
-; divides hl by c and places the quotient in hl 
-; and the remainder in a
-div_hl_c:
-   xor	a
-   ld	b, 16
 
-div_hl_c_loop:
-   add	hl, hl
-   rla
-   jr	c, $+5
-   cp	c
-   jr	c, $+4
-
-   sub	c
-   inc	l
-   
-   djnz	div_hl_c_loop
-   
-   ret
-
-
+	org 	0100h
+; monitor working area
 prompt:
 	db 	"> "
 	db 	0
 
-inputbuffer:
-	ds 		16,0
+mon_cmd:
+	db 		$0
+addrstart:
+	dw 		0000h
+addrend:
+	dw 		0000h
+inbuff:
+	ds 		32,0

@@ -40,6 +40,23 @@ main:
     ld      (reminder+4), hl
     halt
 
+; divide dividiend in d by divisor in e 
+; returns quotient in d and remainder in a
+div_d_e:
+   xor	a
+   ld	b, 8
+
+div_d_e_loop:
+   sla	d
+   rla
+   cp	e
+   jr	c, $+4
+   sub	e
+   inc	d
+   
+   djnz	div_d_e_loop
+   
+   ret
 ; dvi_hl_de stack in out wrapper
 ; [ret addr] [dividiend] [divisor] 
 ; --> [ret addr] [quotient] [reminder]
@@ -110,3 +127,26 @@ div_hl_c_loop:
    djnz	div_hl_c_loop
    
    ret
+
+
+; print the decimal integer in HL 
+print_hl_dec:
+	xor 	a
+	push 	af 		; terminal null char
+	ld 		c, 10 	; radix = 10
+
+print_hl_dec_loop0:
+	call 	div_hl_c 	; a = hl % 10, hl = hl / 10
+	add 	a, $30		; to ascii code between '0' and '9'
+	push 	af
+	ld 		a, h 		; check whether hl is empty
+	or 		l
+	jr 		z, print_hl_dec_output		; if z then conversion finished
+	jr 		print_hl_dec_loop0
+
+print_hl_dec_output:
+	pop 	af
+	and 	a
+	ret 	z
+	out 	(2), a
+	jr 		print_hl_dec_output

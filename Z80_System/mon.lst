@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "mon.asm"
-                        ; date: 2025-09-13 01:12:28
+                        ; date: 2025-09-14 02:12:40
                         ; --------------------------------------
 
 
@@ -8,255 +8,310 @@
 0000:                   	org 	0000h
 0000:                   rst:
 0000: 310002   [10]     	ld 		sp, 0200h
-0003: C31000   [20]     	jp  	main
-                        
+0003: C31800   [20]     	jp  	main
+                        ;
+                        ;;
+                        ; a  ... working reg.
+                        ; b  ... dnjz counter
+                        ; c  ... nibble value
+                        ; de ... start address
+                        ; hl ... end address
+                        ; (ix).. the last inpu char/command
+                        ;
                         	org 	0010h
-0010:                   main:
-0010: 210A01   [10]     	ld 		hl, prompt
-0013: CDE900   [27]     	call 	print_hl_str
-0016: 210D01   [37]     	ld 		hl, inputbuffer
-0019: 067F     [44]     	ld 		b, 127
-001B: CD3900   [61]     	call 	getline
-001E: 210D01   [71]     	ld 		hl, inputbuffer
-0021: CDE900   [88]     	call 	print_hl_str
-0024: CDF200   [105]    	call 	print_endl
-0027: 210D01   [115]    	ld 		hl, inputbuffer
-002A: CD5A00   [132]    	call    hexstr4_de
-002D: 626B     [140]    	ld 		hl, de
-002F: CD9500   [157]    	call    print_hl_dec
-0032: CDF200   [174]    	call 	print_endl
+0010: DD210301 [34]     	ld 		ix, mon_cmd
+0014: DD360000 [53]     	ld 		(ix), 0
+0018:                   main:
+0018: 3E3E     [ 7]     	ld 		a, '>'
+001A: D302     [18]     	out 	(2), a
+001C: 3E20     [25]     	ld 		a, ' '
+001E: D302     [36]     	out 	(2), a
+0020:                   wait_next_char:
+0020: CD8F00   [17]     	call 	getchar
+0023: D302     [28]     	out 	(2), a 		; echo back
+0025: 4F       [32]     	ld 		c, a
                         
-0035: C31000   [184]    	jp 		main
+0026: CDD600   [49]     	call 	hex2nibble
+0029: FEFF     [56]     	cp 		$ff
+002B: 2813     [63|68]  	jr 		z, cmd
+002D: 4F       [67]     	ld 		c, a
+002E:                   shift_in:
+002E: CB11     [ 8]     	rl		c
+0030: CB11     [16]     	rl		c
+0032: CB11     [24]     	rl		c
+0034: CB11     [32]     	rl		c
+0036:                   _loop:
+0036: CB11     [ 8]     	rl 		c
+0038: CB13     [16]     	rl		e
+003A: CB12     [24]     	rl 		d
+003C: 10F8     [32|37]  	djnz 	_loop
+003E: 18E0     [44]     	jr 		wait_next_char
                         
-0038: 76       [188]    	halt
+0040:                   cmd:
+0040: 79       [ 4]     	ld 		a, c
+0041: FE48     [11]     	cp 		'H'
+0043: 2001     [18|23]  	jr 		nz, next_cmd1
+                        
+0045: 76       [22]     	halt
+                        
+0046:                   next_cmd1:
+0046: FE52     [ 7]     	cp 		'R'
+0048: 2002     [14|19]  	jr 		nz, next_cmd2
+004A: D5       [25]     	push 	de
+004B: C9       [35]     	ret
+                        
+004C:                   next_cmd2:
+004C: FE2E     [ 7]     	cp 		'.'
+004E: 2004     [14|19]  	jr 		nz, next3
+0050: FFFFFFFF [58]     	ld 		(ix), mode_end
+***ERROR***             	   		              ^ label "mode_end" not found
+                        
+0054:                   next3:
+0054: FE0D     [ 7]     	cp 		$0d
+0056: FFFF     [29]     	jr 		nz, next4
+***ERROR***             	   		         ^ label "next4" not found
+0058: 1802     [41]     	jr 		exec_command
+                        
+005A: 18BC     [53]     	jr 		main
+                        
+005C:                   exec_command:
+005C: DD7E00   [19]     	ld 		a, (ix)
+                        
+005F: CD6400   [36]     	call 	dump_a_byte
+0062: 18B4     [48]     	jr 		main
+                        
+                        ; dump memory b bytes from address stored in addrptr
+0064:                   dump_a_byte:
+0064: FFFFFF   [33]     	ld 		hl, (mon_ptr0)
+***ERROR***             	   		             ^ label "mon_ptr0" not found
+0067:                   dump_a_byte_loop:
+0067: 7C       [ 4]     	ld 		a, h
+0068: CD0001   [21]     	call 	print_a_hex
+006B: 7D       [25]     	ld 		a, l
+006C: CD0001   [42]     	call 	print_a_hex
+006F: 3E20     [49]     	ld 		a, ' '
+0071: D302     [60]     	out 	(2), a
+0073: 3E3A     [67]     	ld 		a, ':'
+0075: D302     [78]     	out 	(2), a
+0077: 3E20     [85]     	ld 		a, ' '
+0079: D302     [96]     	out 	(2), a
+007B: 0610     [103]    	ld 		b, 16
+007D:                   dump_16:
+007D: 7E       [ 7]     	ld 		a, (hl)
+007E: CD0001   [24]     	call 	print_a_hex
+0081: 3E20     [31]     	ld 		a, ' '
+0083: D302     [42]     	out 	(2), a
+0085: 23       [48]     	inc 	hl
+0086: 10F5     [56|61]  	djnz 	dump_16
+0088:                   dump_a_byte_exit:
+0088: FFFFFF   [33]     	ld 		(mon_ptr0), hl
+***ERROR***             	   		         ^ label "mon_ptr0" not found
+008B: CD1601   [50]     	call 	print_endl;
+008E: C9       [60]     	ret
+                        
+                        ; read one character from con in 
+                        ; returns ascii code in A reg.
+008F:                   getchar:
+008F: DB00     [11]     	in 		a, (0)
+0091: A7       [15]     	and 	a 
+0092: 28FB     [22|27]  	jr 		z, getchar
+0094: DB01     [33]     	in 		a, (1)
+0096: C9       [43]     	ret
                         
                         ; read and store line until the 1st occurrence of cr or nl
                         ; in (hl)
-0039:                   getline:
-0039: DB00     [11]     	in 		a, (0)		; con status
-003B: A7       [15]     	and 	a			; 
-003C: 28FB     [22|27]  	jr 		z, getline 	; repeat until available
-003E: DB01     [33]     	in 		a, (1)		; getchar
-0040: 77       [40]     	ld 		(hl), a		; store
-0041: FE0A     [47]     	cp 		10			; if nl
-0043: 2807     [54|59]  	jr 		z, getline_end
-0045: FE0D     [61]     	cp 		13			; if cr
-0047: 2803     [68|73]  	jr 		z, getline_end
-0049: 23       [74]     	inc 	hl			; ++hl
-004A: 10ED     [82|87]  	djnz 	getline		; get next char
-004C:                   getline_end:
-004C: 3600     [10]     	ld 		(hl), 0		; terminate by null
-004E:                   getline_clrbuf:
-004E: DB00     [11]     	in 		a, (0)		; waste remaining chars in con buffer
-0050: A7       [15]     	and 	a
-0051: C8       [20|26]  	ret 	z
-0052: DB01     [31]     	in 		a, (1)
-0054: 18F8     [43]     	jr 		getline_clrbuf
+0097:                   getline:
+0097: DB00     [11]     	in 		a, (0)		; con status
+0099: A7       [15]     	and 	a			; 
+009A: 28FB     [22|27]  	jr 		z, getline 	; repeat until available
+009C: DB01     [33]     	in 		a, (1)		; getchar
+009E: 77       [40]     	ld 		(hl), a		; store
+009F: FE0A     [47]     	cp 		10			; if nl
+00A1: 2807     [54|59]  	jr 		z, getline_end
+00A3: FE0D     [61]     	cp 		13			; if cr
+00A5: 2803     [68|73]  	jr 		z, getline_end
+00A7: 23       [74]     	inc 	hl			; ++hl
+00A8: 10ED     [82|87]  	djnz 	getline		; get next char
+00AA:                   getline_end:
+00AA: 3600     [10]     	ld 		(hl), 0		; terminate by null
+00AC:                   getline_clrbuf:
+00AC: DB00     [11]     	in 		a, (0)		; waste remaining chars in con buffer
+00AE: A7       [15]     	and 	a
+00AF: C8       [20|26]  	ret 	z
+00B0: DB01     [31]     	in 		a, (1)
+00B2: 18F8     [43]     	jr 		getline_clrbuf
                         
                         
                         ; read hexadecimal string upto 2 or 4 (set in c) 
                         ; bytes from (hl) and return integer val in de
                         ;
-0056:                   hexstr2_de:
-0056: 0E02     [ 7]     	ld 		c, 2
-0058: 1804     [19]     	jr 		hexstr_de
+00B4:                   hexstr2_de:
+00B4: 0E02     [ 7]     	ld 		c, 2
+00B6: 1804     [19]     	jr 		hexstr_de
                         
-005A:                   hexstr4_de:
-005A: 0E04     [ 7]     	ld 		c, 4
-005C: 1800     [19]     	jr 		hexstr_de
+00B8:                   hexstr4_de:
+00B8: 0E04     [ 7]     	ld 		c, 4
+00BA: 1800     [19]     	jr 		hexstr_de
                         
-005E:                   hexstr_de:
-005E: 110000   [10]         ld      de, 0000h
-0061:                   hexstr_de_lp:
-0061: 7E       [ 7]         ld      a, (hl)
-0062: CD7800   [24]     	call 	hex2nibble
-0065: FEFF     [31]     	cp 		$ff
-0067: C8       [36|42]  	ret 	z
-0068: A7       [40]     	and 	a		; clear Carry bit
-0069: 0604     [47]     	ld 		b, 4
-006B:                   hexstr_de_rl4:
-006B: CB13     [ 8]         rl      e		 ;rotate left entire de
-006D: CB12     [16]         rl      d
-006F: 10FA     [24|29]      djnz    hexstr_de_rl4
-0071: 83       [28]     	add 	e
-0072: 5F       [32]     	ld 		e, a
-0073: 23       [38]         inc     hl
-0074: 0D       [42]     	dec 	c
-0075: 20EA     [49|54]      jr      nz, hexstr_de_lp
-0077: C9       [59]     	ret
+00BC:                   hexstr_de:
+00BC: 110000   [10]         ld      de, 0000h
+00BF:                   hexstr_de_lp:
+00BF: 7E       [ 7]         ld      a, (hl)
+00C0: CDD600   [24]     	call 	hex2nibble
+00C3: FEFF     [31]     	cp 		$ff
+00C5: C8       [36|42]  	ret 	z
+00C6: A7       [40]     	and 	a		; clear Carry bit
+00C7: 0604     [47]     	ld 		b, 4
+00C9:                   hexstr_de_rl4:
+00C9: CB13     [ 8]         rl      e		 ;rotate left entire de
+00CB: CB12     [16]         rl      d
+00CD: 10FA     [24|29]      djnz    hexstr_de_rl4
+00CF: 83       [28]     	add 	e
+00D0: 5F       [32]     	ld 		e, a
+00D1: 23       [38]         inc     hl
+00D2: 0D       [42]     	dec 	c
+00D3: 20EA     [49|54]      jr      nz, hexstr_de_lp
+00D5: C9       [59]     	ret
                         
-                        ;convert one hexadecimal char in a to nibble in a 
+                        ; convert one char expressing a hexadecimal digit 
+                        ; in A reg. to nibble in A
                         ;
-0078:                   hex2nibble:
-0078: FE61     [ 7]         cp      'a'     ; check whether a lower case
-007A: 3802     [14|19]      jr      c, hex2nibble_digit_or_upper  ; a digit or an upper case if carry set
-007C: E6DF     [21]         and     $df     ; lower case to upper case
-007E:                   hex2nibble_digit_or_upper:
-007E: FE3A     [ 7]         cp      '9' + 1 ; check whether a digit
-0080: 3005     [14|19]      jr      nc, hex2nibble_upper  ; possibly an upper case letter if carry not set
-0082: D630     [21]         sub     a, '0'  ; digit to int value
-0084: 380C     [28|33]      jr      c, hex2nibble_err     ; it was not '0' - '9' 
-0086: C9       [38]         ret
-0087:                   hex2nibble_upper:
-0087: FE47     [ 7]         cp      'F'+1   ; check the digit whether less than 'F'
-0089: 3007     [14|19]      jr      nc, hex2nibble_err      ; error if it is larger than 'F'
-008B: D641     [21]         sub     'A'  	; A - F to integer 0 - 5
-008D: 3803     [28|33]      jr      c, hex2nibble_err       ; it was not 'A' - 'F'
-008F: C60A     [35]         add     a, 10   ; A - F to 10 - 15 by +5
-0091:                   hex2nibble_output:
-0091: C9       [10]         ret
+00D6:                   hex2nibble:
+00D6: FE61     [ 7]         cp      'a'     ; check whether a lower case
+00D8: 3802     [14|19]      jr      c, hex2nibble_digit_or_upper  ; a digit or an upper case if carry set
+00DA: E6DF     [21]         and     $df     ; lower case to upper case
+00DC:                   hex2nibble_digit_or_upper:
+00DC: FE3A     [ 7]         cp      '9' + 1 ; check whether a digit
+00DE: 3005     [14|19]      jr      nc, hex2nibble_upper  ; possibly an upper case letter if carry not set
+00E0: D630     [21]         sub     a, '0'  ; digit to int value
+00E2: 380C     [28|33]      jr      c, hex2nibble_err     ; it was not '0' - '9' 
+00E4: C9       [38]         ret
+00E5:                   hex2nibble_upper:
+00E5: FE47     [ 7]         cp      'F'+1   ; check the digit whether less than 'F'
+00E7: 3007     [14|19]      jr      nc, hex2nibble_err      ; error if it is larger than 'F'
+00E9: D641     [21]         sub     'A'  	; A - F to integer 0 - 5
+00EB: 3803     [28|33]      jr      c, hex2nibble_err       ; it was not 'A' - 'F'
+00ED: C60A     [35]         add     a, 10   ; A - F to 10 - 15 by +5
+00EF:                   hex2nibble_output:
+00EF: C9       [10]         ret
                         
-0092:                   hex2nibble_err:
-0092: 3EFF     [ 7]     	ld 		a, 0xff
-0094: C9       [17]     	ret
-                        
-                        
-                        
-                        ; print the decimal integer in HL 
-0095:                   print_hl_dec:
-0095: DD210000 [14]     	ld 		ix, 0
-0099: DDE5     [29]     	push 	ix  ; secure 6 bytes (null + 5 digits for 16 bit)
-009B: DDE5     [44]     	push 	ix
-009D: DDE5     [59]     	push 	ix
-009F: DD39     [74]     	add 	ix, sp
-00A1: 0E0A     [81]     	ld 		c, 10 	; radix = 10
-00A3:                   print_hl_dec_loop0:
-00A3: DD23     [10]     	inc 	ix  ; at first, skip the place for terminal null char 
-00A5: CDFB00   [27]     	call 	div_hl_c 	; a = hl % 10, hl = hl / 10
-00A8: C630     [34]     	add 	a, $30		; to ascii code '0' to '9'
-00AA: DD7700   [53]     	ld 		(ix), a		; ix stays on the last written char
-00AD: 7C       [57]     	ld 		a, h 		; are there bits remained in hl?
-00AE: B5       [61]     	or 		l
-00AF: 2802     [68|73]  	jr 		z, print_hl_dec_output		; if conversion finished
-00B1: 18F0     [80]     	jr 		print_hl_dec_loop0
-00B3:                   print_hl_dec_output:
-00B3: DD7E00   [19]     	ld 		a, (ix)
-00B6: A7       [23]     	and 	a
-00B7: 2806     [30|35]  	jr 		z, print_hl_dec_exit
-00B9: D302     [41]     	out 	(2), a
-00BB: DD2B     [51]     	dec 	ix
-00BD: 18F4     [63]     	jr 		print_hl_dec_output
-00BF:                   print_hl_dec_exit:
-00BF: DDE1     [14]     	pop 	ix 
-00C1: DDE1     [28]     	pop 	ix 
-00C3: DDE1     [42]     	pop 	ix 
-00C5: C9       [52]     	ret
+00F0:                   hex2nibble_err:
+00F0: 3EFF     [ 7]     	ld 		a, 0xff
+00F2: C9       [17]     	ret
                         
                         
-00C6:                   print_a_hex:
-00C6: 67       [ 4]     	ld 		h, a
-00C7: 0E02     [11]     	ld 		c, 2
-00C9: 1802     [23]     	jr 		print_hl_hex_loop
                         
-00CB:                   print_hl_hex:
-00CB: 0E04     [ 7]     	ld 		c, 4
-00CD:                   print_hl_hex_loop:
-00CD: CDDE00   [17]     	call 	rotleft_ahl_4
-00D0: C630     [24]     	add 	'0'
-00D2: FE3A     [31]     	cp 		':'
-00D4: 3802     [38|43]  	jr 		c, print_hl_hex_loop_out
-00D6: C607     [45]     	add 	7
-00D8:                   print_hl_hex_loop_out:
-00D8: D302     [11]     	out 	(2), a
-00DA: 0D       [15]     	dec 	c
-00DB: 20F0     [22|27]  	jr 		nz, print_hl_hex_loop
-00DD: C9       [32]     	ret
+00F3:                   print_nibble_hex:
+00F3: E60F     [ 7]     	and 	$0f
+00F5: C630     [14]     	add 	'0'
+00F7: FE3A     [21]     	cp 		':'
+00F9: 3802     [28|33]  	jr 		c, print_nibble_hex_out
+00FB: C607     [35]     	add 	7
+00FD:                   print_nibble_hex_out:
+00FD: D302     [11]     	out 	(2), a
+00FF: C9       [21]     	ret
                         
-00DE:                   rotleft_ahl_4:
-00DE: 0604     [ 7]     	ld 	b, 4
-00E0: AF       [11]     	xor a
-00E1:                   rotleft_ahl_4_loop:
-00E1: CB15     [ 8]     	rl 	l
-00E3: CB14     [16]     	rl 	h
-00E5: 17       [20]     	rla
-00E6: 10F9     [28|33]  	djnz rotleft_ahl_4_loop
-00E8: C9       [38]     	ret
+0100:                   print_a_hex:
+0100: 3E       [ 7]     	push 	af
+0101: 20       [14|19]  	rlca
+0102: 00       [18]     	rlca
+0103: 00       [22]     	rlca
+0104: 00       [26]     	rlca
+0105: 000000   [38]     	call 	print_nibble_hex
+0108: 00       [42]     	pop 	af
+0109: 000000   [54]     	call 	print_nibble_hex
+010C: 00       [58]     	ret
                         
-00E9:                   print_hl_str:
-00E9: 7E       [ 7]     	ld	a, (HL)
-00EA: B7       [11]     	or	a
-00EB: C8       [16|22]  	ret	z
-00EC: D302     [27]     	out	(2),a
-00EE: 23       [33]     	inc HL
-00EF: C3E900   [43]     	jp	print_hl_str
+010D:                   print_hl_str:
+010D: 00       [ 4]     	ld	a, (HL)
+010E: 00       [ 8]     	or	a
+010F: 00       [12]     	ret	z
+0110: 0000     [20]     	out	(2),a
+0112: 00       [24]     	inc HL
+0113: 000000   [36]     	jp	print_hl_str
                         
-00F2:                   print_endl:
-00F2: 3E0D     [ 7]     	ld 		a, 13
-00F4: D302     [18]     	out		(2), a
-00F6: 3E0A     [25]     	ld 		a, 10
-00F8: D302     [36]     	out 	(2), a
-00FA: C9       [46]     	ret
-                        
-                        ; divides hl by c and places the quotient in hl 
-                        ; and the remainder in a
-00FB:                   div_hl_c:
-00FB: AF       [ 4]        xor	a
-00FC: 0610     [11]        ld	b, 16
-                        
-00FE:                   div_hl_c_loop:
-00FE: 29       [11]        add	hl, hl
-00FF: 17       [15]        rla
-0100: 3803     [22|27]     jr	c, $+5
-0102: B9       [26]        cp	c
-0103: 3802     [33|38]     jr	c, $+4
-                        
-0105: 91       [37]        sub	c
-0106: 2C       [41]        inc	l
-                           
-0107: 10F5     [49|54]     djnz	div_hl_c_loop
-                           
-0109: C9       [59]        ret
+0116:                   print_endl:
+0116: 0000     [ 8]     	ld 		a, 13
+0118: 0000     [16]     	out		(2), a
+011A: 0000     [24]     	ld 		a, 10
+011C: 0000     [32]     	out 	(2), a
+011E: 00       [36]     	ret
                         
                         
-010A:                   prompt:
-010A: 3E20              	db 	"> "
-010C: 00                	db 	0
+                        	org 	0100h
+                        ; monitor working area
+0100:                   prompt:
+0100: 3E20              	db 	"> "
+0102: 00                	db 	0
                         
-010D:                   inputbuffer:
-010D: 00000000          	ds 		16,0
-0111: 00...             
+0103:                   mon_cmd:
+0103: 00                	db 		$0
+0104:                   addrstart:
+0104: 0000              	dw 		0000h
+0106:                   addrend:
+0106: 0000              	dw 		0000h
+0108:                   inbuff:
+0108: 00000000          	ds 		32,0
+010C: 00...             
 
 
 ; +++ segments +++
 
-#CODE          = $0000 =     0,  size = $011D =   285
+#CODE          = $0000 =     0,  size = $0128 =   296
 
 ; +++ global symbols +++
 
-_end                  = $011D =   285          mon.asm:2 (unused)
-_size                 = $011D =   285          mon.asm:2 (unused)
-div_hl_c              = $00FB =   251          mon.asm:186
-div_hl_c_loop         = $00FE =   254          mon.asm:190
-getline               = $0039 =    57          mon.asm:29
-getline_clrbuf        = $004E =    78          mon.asm:43
-getline_end           = $004C =    76          mon.asm:41
-hex2nibble            = $0078 =   120          mon.asm:84
-hex2nibble_digit_or_upper = $007E =   126          mon.asm:88
-hex2nibble_err        = $0092 =   146          mon.asm:103
-hex2nibble_output     = $0091 =   145          mon.asm:100 (unused)
-hex2nibble_upper      = $0087 =   135          mon.asm:94
-hexstr2_de            = $0056 =    86          mon.asm:54 (unused)
-hexstr4_de            = $005A =    90          mon.asm:58
-hexstr_de             = $005E =    94          mon.asm:62
-hexstr_de_lp          = $0061 =    97          mon.asm:64
-hexstr_de_rl4         = $006B =   107          mon.asm:71
-inputbuffer           = $010D =   269          mon.asm:209
-main                  = $0010 =    16          mon.asm:8
-print_a_hex           = $00C6 =   198          mon.asm:140 (unused)
-print_endl            = $00F2 =   242          mon.asm:177
-print_hl_dec          = $0095 =   149          mon.asm:110
-print_hl_dec_exit     = $00BF =   191          mon.asm:133
-print_hl_dec_loop0    = $00A3 =   163          mon.asm:117
-print_hl_dec_output   = $00B3 =   179          mon.asm:126
-print_hl_hex          = $00CB =   203          mon.asm:145 (unused)
-print_hl_hex_loop     = $00CD =   205          mon.asm:147
-print_hl_hex_loop_out = $00D8 =   216          mon.asm:153
-print_hl_str          = $00E9 =   233          mon.asm:169
-prompt                = $010A =   266          mon.asm:205
-rotleft_ahl_4         = $00DE =   222          mon.asm:159
-rotleft_ahl_4_loop    = $00E1 =   225          mon.asm:162
-rst                   = $0000 =     0          mon.asm:3 (unused)
+_end              = $0128 =   296          mon.asm:2 (unused)
+_loop             = $0036 =    54          mon.asm:37
+_size             = $0128 =   296          mon.asm:2 (unused)
+addrend           = $0106 =   262          mon.asm:241 (unused)
+addrstart         = $0104 =   260          mon.asm:239 (unused)
+cmd               = $0040 =    64          mon.asm:44
+dump_16           = $007D =   125          mon.asm:90
+dump_a_byte       = $0064 =   100          mon.asm:76
+dump_a_byte_exit  = $0088 =   136          mon.asm:97 (unused)
+dump_a_byte_loop  = $0067 =   103          mon.asm:78 (unused)
+exec_command      = $005C =    92          mon.asm:69
+getchar           = $008F =   143          mon.asm:104
+getline           = $0097 =   151          mon.asm:113
+getline_clrbuf    = $00AC =   172          mon.asm:127
+getline_end       = $00AA =   170          mon.asm:125
+hex2nibble        = $00D6 =   214          mon.asm:169
+hex2nibble_digit_or_upper = $00DC =   220          mon.asm:173
+hex2nibble_err    = $00F0 =   240          mon.asm:188
+hex2nibble_output = $00EF =   239          mon.asm:185 (unused)
+hex2nibble_upper  = $00E5 =   229          mon.asm:179
+hexstr2_de        = $00B4 =   180          mon.asm:138 (unused)
+hexstr4_de        = $00B8 =   184          mon.asm:142 (unused)
+hexstr_de         = $00BC =   188          mon.asm:146
+hexstr_de_lp      = $00BF =   191          mon.asm:148
+hexstr_de_rl4     = $00C9 =   201          mon.asm:155
+inbuff            = $0108 =   264          mon.asm:243 (unused)
+main              = $0018 =    24          mon.asm:18
+mode_end          = ***UNDEFINED***
+mon_cmd           = $0103 =   259          mon.asm:237
+mon_ptr0          = ***UNDEFINED***
+next3             = $0054 =    84          mon.asm:62
+next4             = ***UNDEFINED***
+next_cmd1         = $0046 =    70          mon.asm:51
+next_cmd2         = $004C =    76          mon.asm:57
+print_a_hex       = $0100 =   256          mon.asm:204
+print_endl        = $0116 =   278          mon.asm:223
+print_hl_str      = $010D =   269          mon.asm:215
+print_nibble_hex  = $00F3 =   243          mon.asm:194
+print_nibble_hex_out = $00FD =   253          mon.asm:200
+prompt            = $0100 =   256          mon.asm:233 (unused)
+rst               = $0000 =     0          mon.asm:3 (unused)
+shift_in          = $002E =    46          mon.asm:32 (unused)
+wait_next_char    = $0020 =    32          mon.asm:23
 
 
-total time: 0.0012 sec.
-no errors
+; +++ used but undefined or unresolved labels +++
+
+mode_end = ***undefined***
+next4    = ***undefined***
+mon_ptr0 = ***undefined***
+
+
+total time: 0.0015 sec.
+4 errors

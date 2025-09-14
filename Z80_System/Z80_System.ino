@@ -138,7 +138,7 @@ void setup() {
 
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_start(5, 100);
+  z80bus.clock_start(4, 200);
   Serial.println("Reset Z80.");
   z80bus.cpu_reset();
 
@@ -180,13 +180,13 @@ void loop() {
   (z80bus.M1() ? "" : "M1"),
   (z80bus.RD() ? (z80bus.WR() ? "" : "WR") : "RD")
   );
-  lcdt.print(0,0, buf);
+ // lcdt.print(0,0, buf);
   snprintf(buf, 21, "%-3s %-3s %-3s %-3s", 
   (z80bus.WAIT() ? "" : "WAT"),
   (z80bus.BUSACK() ? "" : "BAK"),
   (z80bus.HALT() ? "" : "HLT"),
   (z80bus.RFSH() ? "" : "RFH") );
-  lcdt.print(2,0, buf);
+  //lcdt.print(2,0, buf);
 
   if ( !z80bus.MREQ() ) {
     if ( ! z80bus.RD() ) {
@@ -198,8 +198,10 @@ void loop() {
       z80bus.clock_wait_rising_edge();
       data = z80bus.data_bus_get();
     }
+    z80bus.WAIT(LOW);
     snprintf(buf, 32, "%04X %02X", addr, data);
     lcdt.print(1,0,buf);
+    z80bus.WAIT(HIGH);
   } else if ( !z80bus.IORQ() ) {
     if ( ! z80bus.RD() ) {
       // in operation
@@ -218,8 +220,10 @@ void loop() {
       data = z80bus.data_bus_get();
       z80bus.z80io(addr, data, OUTPUT);
     } 
+    z80bus.WAIT(LOW);
     snprintf(buf, 32, "%04X %02X", addr, data);
     lcdt.print(1,0,buf);
+    z80bus.WAIT(HIGH);
   }
   if ( z80bus.DMA_requested() ) {
     Serial.println("Why? requested!");
