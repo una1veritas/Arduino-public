@@ -10,11 +10,10 @@ rst:
 ; c  ... nibble value
 ; de ... start address
 ; hl ... end address
-; (ix).. the last inpu char/command
 ;
 	org 	0010h
-	ld 		ix, mon_cmd
-	ld 		(ix), 0
+	ld 		hl, mon_cmd
+	ld 		(hl), 0
 main:
 	ld 		a, '>'
 	out 	(2), a
@@ -33,11 +32,14 @@ shift_in:
 	rl		c
 	rl		c
 	rl		c
+	ld 		b, 4
 _loop:
 	rl 		c
 	rl		e
 	rl 		d
 	djnz 	_loop
+	ld 		hl, mon_curr_addr
+	ld 		(hl), de
 	jr 		wait_next_char
 
 cmd:
@@ -56,21 +58,24 @@ next_cmd1:
 next_cmd2:
 	cp 		'.'
 	jr 		nz, next3
-	ld 		(ix), a
+	ld 		hl, mon_cmd
+	ld 		(hl), a
 
 next3:
 	cp 		$0d
-	jr 		nz, next4
-	jr 		exec_command
+	jr 		z, exec_command
+
+next4:
+	jr 		main
 
 exec_command:
-	call 	dump_a_byte
+	call 	dump_16_byte
 	jr 		main
 
 ; dump memory b bytes from address stored in addrptr
-dump_a_byte:
-	ld 		hl, (mon_ptr0)
-dump_a_byte_loop:
+dump_16_byte:
+	ld 		hl, (mon_curr_addr)
+dump_16_byte_loop:
 	ld 		a, h
 	call 	print_a_hex
 	ld 		a, l
@@ -89,8 +94,8 @@ dump_16:
 	out 	(2), a
 	inc 	hl
 	djnz 	dump_16
-dump_a_byte_exit:
-	ld 		(mon_ptr0), hl
+dump_16_byte_exit:
+	ld 		(mon_curr_addr), hl
 	call 	print_endl;
 	ret
 
@@ -231,9 +236,5 @@ prompt:
 
 mon_cmd:
 	db 		$0
-addrstart:
+mon_curr_addr:
 	dw 		0000h
-addrend:
-	dw 		0000h
-inbuff:
-	ds 		32,0

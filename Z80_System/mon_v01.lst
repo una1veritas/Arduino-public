@@ -1,0 +1,65 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "mon_v01.asm"
+                        ; date: 2025-09-14 22:50:57
+                        ; --------------------------------------
+
+
+                        ;
+0000:                   	org 	0000h
+0000:                   rst:
+0000: 310002   [10]     	ld 		sp, 0200h
+0003: C31500   [20]     	jp  	main
+                        ;
+                        ;;
+                        ; a  ... working reg.
+                        ; b  ... dnjz counter
+                        ; c  ... command
+                        ; de ... address
+                        ;
+                        	org 	0010h
+0010: 0E00     [27]     	ld      c, 0
+0012: 110000   [37]         ld      de, 0
+0015:                   main:
+0015: 3E3E     [ 7]     	ld 		a, '>'
+0017: D302     [18]     	out 	(2), a
+0019: 3E20     [25]     	ld 		a, ' '
+001B: D302     [36]     	out 	(2), a
+001D:                   next_char:
+001D: CD2D00   [17]     	call 	getchar
+0020: D302     [28]     	out 	(2), a 		; echo back
+0022: FE0A     [35]         cp      $0a
+0024: 2806     [42|47]      jr      z, mon_halt
+0026: FE0D     [49]         cp  $0d
+0028: 2802     [56|61]      jr  z, mon_halt
+002A: 18F1     [68]         jr  next_char
+                        
+002C:                   mon_halt
+002C: 76       [ 4]         halt
+                        
+                        ; read one character from con in 
+                        ; returns ascii code in A reg.
+002D:                   getchar:
+002D: DB00     [11]     	in 		a, (0)
+002F: A7       [15]     	and 	a 
+0030: 28FB     [22|27]  	jr 		z, getchar
+0032: DB01     [33]     	in 		a, (1)
+0034: C9       [43]     	ret
+
+
+; +++ segments +++
+
+#CODE          = $0000 =     0,  size = $0035 =    53
+
+; +++ global symbols +++
+
+_end      = $0035 =    53          mon_v01.asm:2 (unused)
+_size     = $0035 =    53          mon_v01.asm:2 (unused)
+getchar   = $002D =    45          mon_v01.asm:35
+main      = $0015 =    21          mon_v01.asm:16
+mon_halt  = $002C =    44          mon_v01.asm:30
+next_char = $001D =    29          mon_v01.asm:21
+rst       = $0000 =     0          mon_v01.asm:3 (unused)
+
+
+total time: 0.0008 sec.
+no errors

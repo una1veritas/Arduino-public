@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "mon.asm"
-                        ; date: 2025-09-14 02:12:40
+                        ; date: 2025-09-14 22:40:50
                         ; --------------------------------------
 
 
@@ -8,7 +8,7 @@
 0000:                   	org 	0000h
 0000:                   rst:
 0000: 310002   [10]     	ld 		sp, 0200h
-0003: C31800   [20]     	jp  	main
+0003: C31500   [20]     	jp  	main
                         ;
                         ;;
                         ; a  ... working reg.
@@ -16,75 +16,72 @@
                         ; c  ... nibble value
                         ; de ... start address
                         ; hl ... end address
-                        ; (ix).. the last inpu char/command
                         ;
                         	org 	0010h
-0010: DD210301 [34]     	ld 		ix, mon_cmd
-0014: DD360000 [53]     	ld 		(ix), 0
-0018:                   main:
-0018: 3E3E     [ 7]     	ld 		a, '>'
-001A: D302     [18]     	out 	(2), a
-001C: 3E20     [25]     	ld 		a, ' '
-001E: D302     [36]     	out 	(2), a
-0020:                   wait_next_char:
-0020: CD8F00   [17]     	call 	getchar
-0023: D302     [28]     	out 	(2), a 		; echo back
-0025: 4F       [32]     	ld 		c, a
+0010: 210301   [30]     	ld 		hl, mon_cmd
+0013: 3600     [40]     	ld 		(hl), 0
+0015:                   main:
+0015: 3E3E     [ 7]     	ld 		a, '>'
+0017: D302     [18]     	out 	(2), a
+0019: 3E20     [25]     	ld 		a, ' '
+001B: D302     [36]     	out 	(2), a
+001D:                   wait_next_char:
+001D: CD8F00   [17]     	call 	getchar
+0020: D302     [28]     	out 	(2), a 		; echo back
                         
-0026: CDD600   [49]     	call 	hex2nibble
-0029: FEFF     [56]     	cp 		$ff
-002B: 2813     [63|68]  	jr 		z, cmd
-002D: 4F       [67]     	ld 		c, a
-002E:                   shift_in:
-002E: CB11     [ 8]     	rl		c
-0030: CB11     [16]     	rl		c
-0032: CB11     [24]     	rl		c
-0034: CB11     [32]     	rl		c
-0036:                   _loop:
-0036: CB11     [ 8]     	rl 		c
-0038: CB13     [16]     	rl		e
-003A: CB12     [24]     	rl 		d
-003C: 10F8     [32|37]  	djnz 	_loop
-003E: 18E0     [44]     	jr 		wait_next_char
+0022: CDD600   [45]     	call 	hex2nibble
+0025: FEFF     [52]     	cp 		$ff
+0027: 281C     [59|64]  	jr 		z, cmd
+0029: 4F       [63]     	ld 		c, a
+002A:                   shift_in:
+002A: CB11     [ 8]     	rl		c
+002C: CB11     [16]     	rl		c
+002E: CB11     [24]     	rl		c
+0030: CB11     [32]     	rl		c
+0032: 0604     [39]     	ld 		b, 4
+0034:                   _loop:
+0034: CB11     [ 8]     	rl 		c
+0036: CB13     [16]     	rl		e
+0038: CB12     [24]     	rl 		d
+003A: 10F8     [32|37]  	djnz 	_loop
+003C: 210401   [42]     	ld 		hl, mon_curr_addr
+003F: 7323722B [68]     	ld 		(hl), de
+0043: 18D8     [80]     	jr 		wait_next_char
                         
-0040:                   cmd:
-0040: 79       [ 4]     	ld 		a, c
-0041: FE48     [11]     	cp 		'H'
-0043: 2001     [18|23]  	jr 		nz, next_cmd1
+0045:                   cmd:
+0045: 79       [ 4]     	ld 		a, c
+0046: FE48     [11]     	cp 		'H'
+0048: 2001     [18|23]  	jr 		nz, next_cmd1
                         
-0045: 76       [22]     	halt
+004A: 76       [22]     	halt
                         
-0046:                   next_cmd1:
-0046: FE52     [ 7]     	cp 		'R'
-0048: 2002     [14|19]  	jr 		nz, next_cmd2
-004A: D5       [25]     	push 	de
-004B: C9       [35]     	ret
+004B:                   next_cmd1:
+004B: FE52     [ 7]     	cp 		'R'
+004D: 2002     [14|19]  	jr 		nz, next_cmd2
+004F: D5       [25]     	push 	de
+0050: C9       [35]     	ret
                         
-004C:                   next_cmd2:
-004C: FE2E     [ 7]     	cp 		'.'
-004E: 2004     [14|19]  	jr 		nz, next3
-0050: FFFFFFFF [58]     	ld 		(ix), mode_end
-***ERROR***             	   		              ^ label "mode_end" not found
+0051:                   next_cmd2:
+0051: FE2E     [ 7]     	cp 		'.'
+0053: 2004     [14|19]  	jr 		nz, next3
+0055: 210301   [24]     	ld 		hl, mon_cmd
+0058: 77       [31]     	ld 		(hl), a
                         
-0054:                   next3:
-0054: FE0D     [ 7]     	cp 		$0d
-0056: FFFF     [29]     	jr 		nz, next4
-***ERROR***             	   		         ^ label "next4" not found
-0058: 1802     [41]     	jr 		exec_command
+0059:                   next3:
+0059: FE0D     [ 7]     	cp 		$0d
+005B: 2802     [14|19]  	jr 		z, exec_command
                         
-005A: 18BC     [53]     	jr 		main
+005D:                   next4:
+005D: 18B6     [12]     	jr 		main
                         
-005C:                   exec_command:
-005C: DD7E00   [19]     	ld 		a, (ix)
-                        
-005F: CD6400   [36]     	call 	dump_a_byte
-0062: 18B4     [48]     	jr 		main
+005F:                   exec_command:
+005F: CD6400   [17]     	call 	dump_16_byte
+0062: 18B1     [29]     	jr 		main
                         
                         ; dump memory b bytes from address stored in addrptr
-0064:                   dump_a_byte:
-0064: FFFFFF   [33]     	ld 		hl, (mon_ptr0)
-***ERROR***             	   		             ^ label "mon_ptr0" not found
-0067:                   dump_a_byte_loop:
+0064:                   dump_16_byte:
+0064: 2A0401   [16]     	ld 		hl, (mon_curr_addr)
+0067:                   dump_16_byte_loop:
 0067: 7C       [ 4]     	ld 		a, h
 0068: CD0001   [21]     	call 	print_a_hex
 006B: 7D       [25]     	ld 		a, l
@@ -103,11 +100,10 @@
 0083: D302     [42]     	out 	(2), a
 0085: 23       [48]     	inc 	hl
 0086: 10F5     [56|61]  	djnz 	dump_16
-0088:                   dump_a_byte_exit:
-0088: FFFFFF   [33]     	ld 		(mon_ptr0), hl
-***ERROR***             	   		         ^ label "mon_ptr0" not found
-008B: CD1601   [50]     	call 	print_endl;
-008E: C9       [60]     	ret
+0088:                   dump_16_byte_exit:
+0088: 220401   [16]     	ld 		(mon_curr_addr), hl
+008B: CD1601   [33]     	call 	print_endl;
+008E: C9       [43]     	ret
                         
                         ; read one character from con in 
                         ; returns ascii code in A reg.
@@ -217,25 +213,25 @@
 0102: 00       [18]     	rlca
 0103: 00       [22]     	rlca
 0104: 00       [26]     	rlca
-0105: 000000   [38]     	call 	print_nibble_hex
-0108: 00       [42]     	pop 	af
-0109: 000000   [54]     	call 	print_nibble_hex
-010C: 00       [58]     	ret
+0105: 00F300   [38]     	call 	print_nibble_hex
+0108: F1       [48]     	pop 	af
+0109: CDF300   [65]     	call 	print_nibble_hex
+010C: C9       [75]     	ret
                         
 010D:                   print_hl_str:
-010D: 00       [ 4]     	ld	a, (HL)
-010E: 00       [ 8]     	or	a
-010F: 00       [12]     	ret	z
-0110: 0000     [20]     	out	(2),a
-0112: 00       [24]     	inc HL
-0113: 000000   [36]     	jp	print_hl_str
+010D: 7E       [ 7]     	ld	a, (HL)
+010E: B7       [11]     	or	a
+010F: C8       [16|22]  	ret	z
+0110: D302     [27]     	out	(2),a
+0112: 23       [33]     	inc HL
+0113: C30D01   [43]     	jp	print_hl_str
                         
 0116:                   print_endl:
-0116: 0000     [ 8]     	ld 		a, 13
-0118: 0000     [16]     	out		(2), a
-011A: 0000     [24]     	ld 		a, 10
-011C: 0000     [32]     	out 	(2), a
-011E: 00       [36]     	ret
+0116: 3E0D     [ 7]     	ld 		a, 13
+0118: D302     [18]     	out		(2), a
+011A: 3E0A     [25]     	ld 		a, 10
+011C: D302     [36]     	out 	(2), a
+011E: C9       [46]     	ret
                         
                         
                         	org 	0100h
@@ -246,72 +242,56 @@
                         
 0103:                   mon_cmd:
 0103: 00                	db 		$0
-0104:                   addrstart:
+0104:                   mon_curr_addr:
 0104: 0000              	dw 		0000h
-0106:                   addrend:
-0106: 0000              	dw 		0000h
-0108:                   inbuff:
-0108: 00000000          	ds 		32,0
-010C: 00...             
 
 
 ; +++ segments +++
 
-#CODE          = $0000 =     0,  size = $0128 =   296
+#CODE          = $0000 =     0,  size = $011F =   287
 
 ; +++ global symbols +++
 
-_end              = $0128 =   296          mon.asm:2 (unused)
-_loop             = $0036 =    54          mon.asm:37
-_size             = $0128 =   296          mon.asm:2 (unused)
-addrend           = $0106 =   262          mon.asm:241 (unused)
-addrstart         = $0104 =   260          mon.asm:239 (unused)
-cmd               = $0040 =    64          mon.asm:44
-dump_16           = $007D =   125          mon.asm:90
-dump_a_byte       = $0064 =   100          mon.asm:76
-dump_a_byte_exit  = $0088 =   136          mon.asm:97 (unused)
-dump_a_byte_loop  = $0067 =   103          mon.asm:78 (unused)
-exec_command      = $005C =    92          mon.asm:69
-getchar           = $008F =   143          mon.asm:104
-getline           = $0097 =   151          mon.asm:113
-getline_clrbuf    = $00AC =   172          mon.asm:127
-getline_end       = $00AA =   170          mon.asm:125
-hex2nibble        = $00D6 =   214          mon.asm:169
+_end                 = $011F =   287          mon.asm:2 (unused)
+_loop                = $0034 =    52          mon.asm:36
+_size                = $011F =   287          mon.asm:2 (unused)
+cmd                  = $0045 =    69          mon.asm:45
+dump_16              = $007D =   125          mon.asm:90
+dump_16_byte         = $0064 =   100          mon.asm:76
+dump_16_byte_exit    = $0088 =   136          mon.asm:97 (unused)
+dump_16_byte_loop    = $0067 =   103          mon.asm:78 (unused)
+exec_command         = $005F =    95          mon.asm:71
+getchar              = $008F =   143          mon.asm:104
+getline              = $0097 =   151          mon.asm:113
+getline_clrbuf       = $00AC =   172          mon.asm:127
+getline_end          = $00AA =   170          mon.asm:125
+hex2nibble           = $00D6 =   214          mon.asm:169
 hex2nibble_digit_or_upper = $00DC =   220          mon.asm:173
-hex2nibble_err    = $00F0 =   240          mon.asm:188
-hex2nibble_output = $00EF =   239          mon.asm:185 (unused)
-hex2nibble_upper  = $00E5 =   229          mon.asm:179
-hexstr2_de        = $00B4 =   180          mon.asm:138 (unused)
-hexstr4_de        = $00B8 =   184          mon.asm:142 (unused)
-hexstr_de         = $00BC =   188          mon.asm:146
-hexstr_de_lp      = $00BF =   191          mon.asm:148
-hexstr_de_rl4     = $00C9 =   201          mon.asm:155
-inbuff            = $0108 =   264          mon.asm:243 (unused)
-main              = $0018 =    24          mon.asm:18
-mode_end          = ***UNDEFINED***
-mon_cmd           = $0103 =   259          mon.asm:237
-mon_ptr0          = ***UNDEFINED***
-next3             = $0054 =    84          mon.asm:62
-next4             = ***UNDEFINED***
-next_cmd1         = $0046 =    70          mon.asm:51
-next_cmd2         = $004C =    76          mon.asm:57
-print_a_hex       = $0100 =   256          mon.asm:204
-print_endl        = $0116 =   278          mon.asm:223
-print_hl_str      = $010D =   269          mon.asm:215
-print_nibble_hex  = $00F3 =   243          mon.asm:194
+hex2nibble_err       = $00F0 =   240          mon.asm:188
+hex2nibble_output    = $00EF =   239          mon.asm:185 (unused)
+hex2nibble_upper     = $00E5 =   229          mon.asm:179
+hexstr2_de           = $00B4 =   180          mon.asm:138 (unused)
+hexstr4_de           = $00B8 =   184          mon.asm:142 (unused)
+hexstr_de            = $00BC =   188          mon.asm:146
+hexstr_de_lp         = $00BF =   191          mon.asm:148
+hexstr_de_rl4        = $00C9 =   201          mon.asm:155
+main                 = $0015 =    21          mon.asm:17
+mon_cmd              = $0103 =   259          mon.asm:237
+mon_curr_addr        = $0104 =   260          mon.asm:239
+next3                = $0059 =    89          mon.asm:64
+next4                = $005D =    93          mon.asm:68 (unused)
+next_cmd1            = $004B =    75          mon.asm:52
+next_cmd2            = $0051 =    81          mon.asm:58
+print_a_hex          = $0100 =   256          mon.asm:204
+print_endl           = $0116 =   278          mon.asm:223
+print_hl_str         = $010D =   269          mon.asm:215
+print_nibble_hex     = $00F3 =   243          mon.asm:194
 print_nibble_hex_out = $00FD =   253          mon.asm:200
-prompt            = $0100 =   256          mon.asm:233 (unused)
-rst               = $0000 =     0          mon.asm:3 (unused)
-shift_in          = $002E =    46          mon.asm:32 (unused)
-wait_next_char    = $0020 =    32          mon.asm:23
-
-
-; +++ used but undefined or unresolved labels +++
-
-mode_end = ***undefined***
-next4    = ***undefined***
-mon_ptr0 = ***undefined***
+prompt               = $0100 =   256          mon.asm:233 (unused)
+rst                  = $0000 =     0          mon.asm:3 (unused)
+shift_in             = $002A =    42          mon.asm:30 (unused)
+wait_next_char       = $001D =    29          mon.asm:22
 
 
 total time: 0.0015 sec.
-4 errors
+no errors
