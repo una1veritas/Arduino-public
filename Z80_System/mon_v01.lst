@@ -1,200 +1,267 @@
                         ; --------------------------------------
                         ; zasm: assemble "mon_v01.asm"
-                        ; date: 2025-09-15 01:27:47
+                        ; date: 2025-09-15 16:04:47
                         ; --------------------------------------
 
 
                         ;
 0000:                   	org 	0000h
 0000:                   rst:
-0000: 310002   [10]     	ld 		sp, 0200h
+0000: 315001   [10]     	ld 		sp, 0150h
 0003: C31000   [20]     	jp  	monitor
                         ;
                         ;;
-                        ; a  ... working reg.
-                        ; b  ... dnjz counter
+                        ; a  ... workspace reg.
+                        ; b  ... workspace reg. dnjz counter
                         ; c  ... command
                         ; de ... address
+                        ; ix ...  mon_curr_addr
                         ;
+                        
+0000:                   MODE_NOITEM		equ 	0
+0001:                   MODE_HASITTEM 	equ		1
+0000:                   MODE_ITTEM_BIT 	equ		0
+0004:                   MODE_RANGE		equ 	4
+0002:                   MODE_RANGE_BIT	equ 	2
+0008:                   MODE_WRITE		equ 	8
+0003:                   MODE_WRITE_BIT	equ 	3
+                        
                         	org 	0010h
 0010:                   monitor:
-0010: 0E00     [ 7]     	ld      c, 0
-0012: DD21D100 [21]     	ld 		ix, mon_curr_addr
-0016: DD5E00   [40]         ld      de, (ix)
-0019: DD5601   [59]     
-001C:                   monitor_main:
-001C: CDAA00   [17]     	call 	print_endl
-001F: 3E2A     [24]     	ld 		a, '*'
-0021: D302     [35]     	out 	(2), a
-0023: 3E20     [42]     	ld 		a, ' '
-0025: D302     [53]     	out 	(2), a
-0027:                   next_char:
-0027: CD6B00   [17]     	call 	getchar
-002A: FE0D     [24]     	cp 		$0d
-002C: 28F9     [31|36]  	jr 		z, next_char
-002E: FE0A     [38]     	cp 		$0a
-0030: 281B     [45|50]  	jr 		z, exec_cmd
-0032:                   echo_back:
-0032: D302     [11]     	out 	(2), a 		; echo back (including cr)
-0034: FE48     [18]         cp      'H'
-0036: 2814     [25|30]      jr      z, mon_halt
+0010: DD212001 [14]     	ld 		ix, mon_curr_addr
+0014:                   monitor_init:
+0014: 0E00     [ 7]     	ld      c, MODE_NOITEM
+0016: 110000   [17]         ld      de, 0
+0019:                   monitor_main:
+0019: CDB200   [17]     	call 	print_endl
+001C: 3E2A     [24]     	ld 		a, '*'
+001E: D302     [35]     	out 	(2), a
+0020: 3E20     [42]     	ld 		a, ' '
+0022: D302     [53]     	out 	(2), a
+0024:                   next_char:
+0024: CD7300   [17]     	call 	getchar
+0027: FE0D     [24]     	cp 		$0d
+0029: 28F9     [31|36]  	jr 		z, next_char 	; ignore
+                        ;
+002B: FE0A     [38]     	cp 		$0a
+002D: 283F     [45|50]  	jr 		z, exec_cmd 	; line ended
+002F:                   echo_back:
+002F: D302     [11]     	out 	(2), a 		; echo back (including cr)
                         
-0038: CD7300   [42]     	call 	hex2nibble
-003B: FEFF     [49]     	cp 		a, $ff
-003D: 28E8     [56|61]  	jr 		z, next_char 	; delimiter or other error char
-003F: 0604     [63]     	ld 		b, 4
-0041:                   _rl_4
-0041: A7       [ 4]     	and 	a		; clr carry
-0042: CB13     [12]     	rl		e
-0044: CB12     [20]     	rl 		d
-0046: 10F9     [28|33]  	djnz 	_rl_4
-0048: 83       [32]     	add 	e
-0049: 5F       [36]     	ld 		e, a
-004A: 18DB     [48]         jr  	next_char
+                        ; single char command
+0031: FE48     [18]         cp      'H'
+0033: 2838     [25|30]      jr      z, mon_halt
                         
-004C:                   mon_halt
-004C: 76       [ 4]         halt
+                        ; mode command
+0035: FE2E     [32]     	cp 		'.'
+0037: 2002     [39|44]  	jr 		nz, skip_mode_read
+0039: CBD1     [47]     	set 	MODE_RANGE_BIT, c
+003B:                   skip_mode_read:
                         
-004D:                   exec_cmd:
-004D: CDAA00   [17]     	call 	print_endl
-0050: DD21D100 [31]     	ld 		ix, mon_curr_addr
-0054: DD7300   [50]     	ld 		(ix), de
-0057: DD7201   [69]     
-005A: DD6E00   [88]     	ld 		hl, (ix)
-005D: DD6601   [107]    
-0060: CDAF00   [124]    	call 	dump
-0063: DD7500   [143]    	ld 		(ix), hl
-0066: DD7401   [162]    
-0069: 18A5     [174]    	jr 		monitor
+003B: FE3A     [ 7]     	cp 		':'
+003D: 2002     [14|19]  	jr 		nz, skip_mode_write
+003F: CBD9     [22]     	set 	MODE_WRITE_BIT, c
+0041:                   skip_mode_write:
+                        
+0041: CD7B00   [17]     	call 	hex2nibble
+0044: FEFF     [24]     	cp 		a, $ff
+0046: 28DC     [31|36]  	jr 		z, next_char 	; seems got delimiter or other error char
+                        ;
+                        ; read one hex digit for a nibble
+0048: 0604     [38]     	ld 		b, 4
+004A:                   _rl_4
+004A: A7       [ 4]     	and 	a		; clr carry
+004B: CB13     [12]     	rl		e
+004D: CB12     [20]     	rl 		d
+004F: 10F9     [28|33]  	djnz 	_rl_4
+0051: 83       [32]     	add 	e
+0052: 5F       [36]     	ld 		e, a
+                        ;
+0053: CBC1     [44]     	set		MODE_ITTEM_BIT, c
+                        
+0055: CB51     [52]     	bit 	MODE_RANGE_BIT, c
+0057: 200C     [59|64]  	jr 		nz, __second_item
+0059: CB59     [67]     	bit 	MODE_WRITE_BIT, c
+005B: 2008     [74|79]  	jr 		nz, __second_item
+005D: DD7300   [93]     	ld 		(ix), de
+0060: DD7201   [112]    
+0063: 18BF     [124]        jr  	next_char
+0065:                   __second_item:
+0065: DD7302   [19]     	ld 		(ix+2), de
+0068: DD7203   [38]     
+006B: 18B7     [50]     	jr 		next_char
+                        
+006D:                   mon_halt:
+006D: 76       [ 4]         halt
+                        
+006E:                   exec_cmd:
+006E: CDB700   [17]     	call 	dump
+0071: 18A1     [29]     	jr 		monitor_init
                         
                         
                         
                         ; read one character from con in 
                         ; returns ascii code in A reg.
-006B:                   getchar:
-006B: DB00     [11]     	in 		a, (0)
-006D: A7       [15]     	and 	a 
-006E: 28FB     [22|27]  	jr 		z, getchar
-0070: DB01     [33]     	in 		a, (1)
-0072: C9       [43]     	ret
+0073:                   getchar:
+0073: DB00     [11]     	in 		a, (0)
+0075: A7       [15]     	and 	a 
+0076: 28FB     [22|27]  	jr 		z, getchar
+0078: DB01     [33]     	in 		a, (1)
+007A: C9       [43]     	ret
                         
                         
                         ; convert one char expressing a hexadecimal digit 
                         ; in A reg. to nibble in A
                         ;
-0073:                   hex2nibble:
-0073: FE61     [ 7]         cp      'a'     ; check whether a lower case
-0075: 3802     [14|19]      jr      c, hex2nibble_digit_or_upper  ; a digit or an upper case if carry set
-0077: E6DF     [21]         and     $df     ; lower case to upper case
-0079:                   hex2nibble_digit_or_upper:
-0079: FE3A     [ 7]         cp      '9' + 1 ; check whether a digit
-007B: 3005     [14|19]      jr      nc, hex2nibble_upper  ; possibly an upper case letter if carry not set
-007D: D630     [21]         sub     a, '0'  ; digit to int value
-007F: 380C     [28|33]      jr      c, hex2nibble_err     ; it was not '0' - '9' 
-0081: C9       [38]         ret
-0082:                   hex2nibble_upper:
-0082: FE47     [ 7]         cp      'F'+1   ; check the digit whether less than 'F'
-0084: 3007     [14|19]      jr      nc, hex2nibble_err      ; error if it is larger than 'F'
-0086: D641     [21]         sub     'A'  	; A - F to integer 0 - 5
-0088: 3803     [28|33]      jr      c, hex2nibble_err       ; it was not 'A' - 'F'
-008A: C60A     [35]         add     a, 10   ; A - F to 10 - 15 by +5
-008C:                   hex2nibble_output:
-008C: C9       [10]         ret
+007B:                   hex2nibble:
+007B: FE61     [ 7]         cp      'a'     ; check whether a lower case
+007D: 3802     [14|19]      jr      c, hex2nibble_digit_or_upper  ; a digit or an upper case if carry set
+007F: E6DF     [21]         and     $df     ; lower case to upper case
+0081:                   hex2nibble_digit_or_upper:
+0081: FE3A     [ 7]         cp      '9' + 1 ; check whether a digit
+0083: 3005     [14|19]      jr      nc, hex2nibble_upper  ; possibly an upper case letter if carry not set
+0085: D630     [21]         sub     a, '0'  ; digit to int value
+0087: 380C     [28|33]      jr      c, hex2nibble_err     ; it was not '0' - '9' 
+0089: C9       [38]         ret
+008A:                   hex2nibble_upper:
+008A: FE47     [ 7]         cp      'F'+1   ; check the digit whether less than 'F'
+008C: 3007     [14|19]      jr      nc, hex2nibble_err      ; error if it is larger than 'F'
+008E: D641     [21]         sub     'A'  	; A - F to integer 0 - 5
+0090: 3803     [28|33]      jr      c, hex2nibble_err       ; it was not 'A' - 'F'
+0092: C60A     [35]         add     a, 10   ; A - F to 10 - 15 by +5
+0094:                   hex2nibble_output:
+0094: C9       [10]         ret
                         
-008D:                   hex2nibble_err:
-008D: 3EFF     [ 7]     	ld 		a, 0xff
-008F: C9       [17]     	ret
+0095:                   hex2nibble_err:
+0095: 3EFF     [ 7]     	ld 		a, 0xff
+0097: C9       [17]     	ret
                         
                         
                         ; print a nibble in A
-0090:                   print_nibble_hex:
-0090: E60F     [ 7]     	and 	$0f
-0092: C630     [14]     	add 	'0'
-0094: FE3A     [21]     	cp 		':'
-0096: 3802     [28|33]  	jr 		c, print_nibble_hex_out
-0098: C607     [35]     	add 	7
-009A:                   print_nibble_hex_out:
-009A: D302     [11]     	out 	(2), a
-009C: C9       [21]     	ret
+0098:                   print_nibble_hex:
+0098: E60F     [ 7]     	and 	$0f
+009A: C630     [14]     	add 	'0'
+009C: FE3A     [21]     	cp 		':'
+009E: 3802     [28|33]  	jr 		c, print_nibble_hex_out
+00A0: C607     [35]     	add 	7
+00A2:                   print_nibble_hex_out:
+00A2: D302     [11]     	out 	(2), a
+00A4: C9       [21]     	ret
                         
                         ; print a byte in A
-009D:                   print_byte_hex:
-009D: F5       [11]     	push 	af
-009E: 07       [15]     	rlca
-009F: 07       [19]     	rlca
-00A0: 07       [23]     	rlca
-00A1: 07       [27]     	rlca
-00A2: CD9000   [44]     	call 	print_nibble_hex
-00A5: F1       [54]     	pop 	af
-00A6: CD9000   [71]     	call 	print_nibble_hex
-00A9: C9       [81]     	ret
+00A5:                   print_byte_hex:
+00A5: F5       [11]     	push 	af
+00A6: 07       [15]     	rlca
+00A7: 07       [19]     	rlca
+00A8: 07       [23]     	rlca
+00A9: 07       [27]     	rlca
+00AA: CD9800   [44]     	call 	print_nibble_hex
+00AD: F1       [54]     	pop 	af
+00AE: CD9800   [71]     	call 	print_nibble_hex
+00B1: C9       [81]     	ret
                         
-00AA:                   print_endl:
-00AA: 3E0A     [ 7]     	ld 	a, $0a
-00AC: D302     [18]     	out 	(2), A
+00B2:                   print_endl:
+00B2: 3E0A     [ 7]     	ld 	a, $0a
+00B4: D302     [18]     	out 	(2), A
                         	;ld 		a, $0d
                         	;out 	(2), A
-00AE: C9       [28]     	ret
+00B6: C9       [28]     	ret
                         
-                        ; dump memory b bytes from address stored in addrptr
-00AF:                   dump:
-00AF: 7C       [ 4]     	ld 		a, h
-00B0: CD9D00   [21]     	call 	print_byte_hex
-00B3: 7D       [25]     	ld 		a, l
-00B4: CD9D00   [42]     	call 	print_byte_hex
-00B7: 3E20     [49]     	ld 		a, ' '
-00B9: D302     [60]     	out 	(2), a
-00BB: 3E3A     [67]     	ld 		a, ':'
-00BD: D302     [78]     	out 	(2), a
-00BF: 3E20     [85]     	ld 		a, ' '
-00C1: D302     [96]     	out 	(2), a
-00C3: 0610     [103]    	ld 		b, 16
-00C5:                   dump_16:
-00C5: 7E       [ 7]     	ld 		a, (hl)
-00C6: CD9D00   [24]     	call 	print_byte_hex
-00C9: 3E20     [31]     	ld 		a, ' '
-00CB: D302     [42]     	out 	(2), a
-00CD: 23       [48]     	inc 	hl
-00CE: 10F5     [56|61]  	djnz 	dump_16
-00D0:                   dump_exit:
-                        	; call 	print_endl;
-00D0: C9       [10]     	ret
+                        ; dump memory b bytes from address in hl
+00B7:                   dump:
+00B7: DD6E00   [19]     	ld 		hl, (ix)
+00BA: DD6601   [38]     
+00BD:                   dump_header:
+00BD: CDB200   [17]     	call 	print_endl
+00C0: 7C       [21]     	ld 		a, h
+00C1: CDA500   [38]     	call 	print_byte_hex
+00C4: 7D       [42]     	ld 		a, l
+00C5: CDA500   [59]     	call 	print_byte_hex
+00C8: 3E20     [66]     	ld 		a, ' '
+00CA: D302     [77]     	out 	(2), a
+00CC: 3E3A     [84]     	ld 		a, ':'
+00CE: D302     [95]     	out 	(2), a
+00D0: 3E20     [102]    	ld 		a, ' '
+00D2: D302     [113]    	out 	(2), a
+                        ;
+00D4: 0610     [120]    	ld 		b, 16
+00D6:                   dump_16:
+00D6: 7E       [ 7]     	ld 		a, (hl)
+00D7: CDA500   [24]     	call 	print_byte_hex
+00DA: 3E20     [31]     	ld 		a, ' '
+00DC: D302     [42]     	out 	(2), a
+00DE: 23       [48]     	inc 	hl
+                        ;
+00DF: DD7500   [67]     	ld 		(ix), hl
+00E2: DD7401   [86]     
+00E5: DD5E02   [105]    	ld	 	de, (ix+2)
+00E8: DD5603   [124]    
+00EB: A7       [128]    	and 	a
+00EC: ED52     [143]    	sbc 	hl ,de
+00EE: DD6E00   [162]    	ld		hl, (ix)
+00F1: DD6601   [181]    
+00F4: 2804     [188|193]	jr 		z, dump_exit
+00F6: 10DE     [196|201]	djnz 	dump_16
+00F8: 18C3     [208]    	jr 		dump_header
                         
-00D1:                   mon_curr_addr:
-00D1: 0000              	dw		0000h
+00FA:                   dump_exit:
+00FA: 111000   [10]     	ld 		de, 16
+00FD: 19       [21]     	add 	hl, de
+00FE: DD7502   [40]     	ld 		(ix+2), hl
+0101: DD7403   [59]     
+0104: C9       [69]     	ret
+                        
+                        	org		0120h
+0120:                   mon_curr_addr:
+0120: 0000              	dw		0000h
+0122:                   mon_end_addr:
+0122: 0000              	dw		0000h
 
 
 ; +++ segments +++
 
-#CODE          = $0000 =     0,  size = $00D3 =   211
+#CODE          = $0000 =     0,  size = $0124 =   292
 
 ; +++ global symbols +++
 
-_end                 = $00D3 =   211          mon_v01.asm:2 (unused)
-_rl_4                = $0041 =    65          mon_v01.asm:39
-_size                = $00D3 =   211          mon_v01.asm:2 (unused)
-dump                 = $00AF =   175          mon_v01.asm:130
-dump_16              = $00C5 =   197          mon_v01.asm:142
-dump_exit            = $00D0 =   208          mon_v01.asm:149 (unused)
-echo_back            = $0032 =    50          mon_v01.asm:30 (unused)
-exec_cmd             = $004D =    77          mon_v01.asm:51
-getchar              = $006B =   107          mon_v01.asm:64
-hex2nibble           = $0073 =   115          mon_v01.asm:75
-hex2nibble_digit_or_upper = $0079 =   121          mon_v01.asm:79
-hex2nibble_err       = $008D =   141          mon_v01.asm:94
-hex2nibble_output    = $008C =   140          mon_v01.asm:91 (unused)
-hex2nibble_upper     = $0082 =   130          mon_v01.asm:85
-mon_curr_addr        = $00D1 =   209          mon_v01.asm:153
-mon_halt             = $004C =    76          mon_v01.asm:48
-monitor              = $0010 =    16          mon_v01.asm:14
-monitor_main         = $001C =    28          mon_v01.asm:18 (unused)
-next_char            = $0027 =    39          mon_v01.asm:24
-print_byte_hex       = $009D =   157          mon_v01.asm:111
-print_endl           = $00AA =   170          mon_v01.asm:122
-print_nibble_hex     = $0090 =   144          mon_v01.asm:100
-print_nibble_hex_out = $009A =   154          mon_v01.asm:106
+MODE_HASITTEM        = $0001 =     1          mon_v01.asm:16 (unused)
+MODE_ITTEM_BIT       = $0000 =     0          mon_v01.asm:17
+MODE_NOITEM          = $0000 =     0          mon_v01.asm:15
+MODE_RANGE           = $0004 =     4          mon_v01.asm:18 (unused)
+MODE_RANGE_BIT       = $0002 =     2          mon_v01.asm:19
+MODE_WRITE           = $0008 =     8          mon_v01.asm:20 (unused)
+MODE_WRITE_BIT       = $0003 =     3          mon_v01.asm:21
+__second_item        = $0065 =   101          mon_v01.asm:82
+_end                 = $0124 =   292          mon_v01.asm:2 (unused)
+_rl_4                = $004A =    74          mon_v01.asm:66
+_size                = $0124 =   292          mon_v01.asm:2 (unused)
+dump                 = $00B7 =   183          mon_v01.asm:163
+dump_16              = $00D6 =   214          mon_v01.asm:179
+dump_exit            = $00FA =   250          mon_v01.asm:195
+dump_header          = $00BD =   189          mon_v01.asm:165
+echo_back            = $002F =    47          mon_v01.asm:42 (unused)
+exec_cmd             = $006E =   110          mon_v01.asm:89
+getchar              = $0073 =   115          mon_v01.asm:97
+hex2nibble           = $007B =   123          mon_v01.asm:108
+hex2nibble_digit_or_upper = $0081 =   129          mon_v01.asm:112
+hex2nibble_err       = $0095 =   149          mon_v01.asm:127
+hex2nibble_output    = $0094 =   148          mon_v01.asm:124 (unused)
+hex2nibble_upper     = $008A =   138          mon_v01.asm:118
+mon_curr_addr        = $0120 =   288          mon_v01.asm:202
+mon_end_addr         = $0122 =   290          mon_v01.asm:204 (unused)
+mon_halt             = $006D =   109          mon_v01.asm:86
+monitor              = $0010 =    16          mon_v01.asm:24
+monitor_init         = $0014 =    20          mon_v01.asm:26
+monitor_main         = $0019 =    25          mon_v01.asm:29 (unused)
+next_char            = $0024 =    36          mon_v01.asm:35
+print_byte_hex       = $00A5 =   165          mon_v01.asm:144
+print_endl           = $00B2 =   178          mon_v01.asm:155
+print_nibble_hex     = $0098 =   152          mon_v01.asm:133
+print_nibble_hex_out = $00A2 =   162          mon_v01.asm:139
 rst                  = $0000 =     0          mon_v01.asm:3 (unused)
+skip_mode_read       = $003B =    59          mon_v01.asm:53
+skip_mode_write      = $0041 =    65          mon_v01.asm:58
 
 
-total time: 0.0012 sec.
+total time: 0.0015 sec.
 no errors

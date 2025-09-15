@@ -86,7 +86,7 @@ uint16 ram_check(uint32 start_addr = 0x0000, uint32 end_addr = 0x20000, uint32 s
     Serial.print(addr, HEX);
     Serial.print(" -- ");
     Serial.print(addr + 0x100, HEX);
-    Serial.print(", ");
+    Serial.print(" ");
     for(uint32 ix = 0; ix < 0x100; ++ix) {
       buf[ix] = z80bus.ram_read(addr + ix);
       buf[ix] ^= t;
@@ -99,10 +99,11 @@ uint16 ram_check(uint32 start_addr = 0x0000, uint32 end_addr = 0x20000, uint32 s
       }
     }
     if ( errcount > 0 ) {
-      Serial.print(" errors = ");
+      Serial.println();
+      Serial.print("Errors = ");
       Serial.println(errcount, DEC);
     } else {
-      // Serial.println(" no errors.");
+      Serial.print("Ok, ");
     }
   }
   Serial.println();
@@ -138,7 +139,7 @@ void setup() {
 
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_start(4, 200);
+  z80bus.clock_start(4, 50);
   Serial.println("Reset Z80.");
   z80bus.cpu_reset();
 
@@ -175,20 +176,7 @@ void setup() {
 
 void loop() {
   z80bus.clock_wait_rising_edge();
-  snprintf(buf, 21, "%-4s %-2s %-2s", 
-  (z80bus.MREQ() ? (z80bus.IORQ() ? "" : "IORQ") : "MREQ"),
-  (z80bus.M1() ? "" : "M1"),
-  (z80bus.RD() ? (z80bus.WR() ? "" : "WR") : "RD")
-  );
- // lcdt.print(0,0, buf);
-  snprintf(buf, 21, "%-3s %-3s %-3s %-3s", 
-  (z80bus.WAIT() ? "" : "WAT"),
-  (z80bus.BUSACK() ? "" : "BAK"),
-  (z80bus.HALT() ? "" : "HLT"),
-  (z80bus.RFSH() ? "" : "RFH") );
-  //lcdt.print(2,0, buf);
-
-  if ( !z80bus.MREQ() ) {
+   if ( !z80bus.MREQ() ) {
     if ( ! z80bus.RD() ) {
       addr = z80bus.address_bus16_get();
       z80bus.clock_wait_rising_edge();
@@ -198,10 +186,12 @@ void loop() {
       z80bus.clock_wait_rising_edge();
       data = z80bus.data_bus_get();
     }
+    /*
     z80bus.WAIT(LOW);
-    snprintf(buf, 32, "%04X %02X", addr, data);
-    lcdt.print(1,0,buf);
+    snprintf(buf, 32, "MEM %04X %02X", addr, data);
+    lcdt.print(0,0,buf);
     z80bus.WAIT(HIGH);
+    */
   } else if ( !z80bus.IORQ() ) {
     if ( ! z80bus.RD() ) {
       // in operation
@@ -220,13 +210,15 @@ void loop() {
       data = z80bus.data_bus_get();
       z80bus.z80io(addr, data, OUTPUT);
     } 
+    /*
     z80bus.WAIT(LOW);
-    snprintf(buf, 32, "%04X %02X", addr, data);
-    lcdt.print(1,0,buf);
+    snprintf(buf, 32, "I/O %04X %02X", addr, data);
+    lcdt.print(0,0,buf);
     z80bus.WAIT(HIGH);
+    */
   }
   if ( z80bus.DMA_requested() ) {
-    Serial.println("Why? requested!");
+    Serial.println("DMA requested!");
     z80bus.DMA_exec(dma_buff);
     //dump(dma_buff, 0x100);
     z80bus.Z80_mode();

@@ -1,20 +1,31 @@
 ;
 	org 	0000h
 rst:
-	ld 		sp, 0200h
+	ld 		sp, 0150h
 	jp  	monitor
 ;
 ;;
-; a  ... working reg.
-; b  ... dnjz counter
+; a  ... workspace reg.
+; b  ... workspace reg. dnjz counter
 ; c  ... command
 ; de ... address
+; ix ...  mon_curr_addr
 ;
+
+MODE_NOITEM		equ 	0
+MODE_HASITTEM 	equ		1
+MODE_ITTEM_BIT 	equ		0
+MODE_RANGE		equ 	4
+MODE_RANGE_BIT	equ 	2
+MODE_WRITE		equ 	8
+MODE_WRITE_BIT	equ 	3
+
 	org 	0010h
 monitor:
-	ld      c, 0
 	ld 		ix, mon_curr_addr
-    ld      de, (ix)
+monitor_init:
+	ld      c, MODE_NOITEM
+    ld      de, 0
 monitor_main:
 	call 	print_endl
 	ld 		a, '*'
@@ -24,17 +35,33 @@ monitor_main:
 next_char:
 	call 	getchar
 	cp 		$0d
-	jr 		z, next_char
+	jr 		z, next_char 	; ignore
+;
 	cp 		$0a
-	jr 		z, exec_cmd
+	jr 		z, exec_cmd 	; line ended
 echo_back:
 	out 	(2), a 		; echo back (including cr)
+
+; single char command
     cp      'H'
     jr      z, mon_halt
 
+; mode command
+	cp 		'.'
+	jr 		nz, skip_mode_read
+	set 	MODE_RANGE_BIT, c
+skip_mode_read:
+
+	cp 		':'
+	jr 		nz, skip_mode_write
+	set 	MODE_WRITE_BIT, c
+skip_mode_write:
+
 	call 	hex2nibble
 	cp 		a, $ff
-	jr 		z, next_char 	; delimiter or other error char
+	jr 		z, next_char 	; seems got delimiter or other error char
+;
+; read one hex digit for a nibble
 	ld 		b, 4
 _rl_4
 	and 	a		; clr carry
@@ -43,19 +70,25 @@ _rl_4
 	djnz 	_rl_4
 	add 	e
 	ld 		e, a
-    jr  	next_char
+;
+	set		MODE_ITTEM_BIT, c
 
-mon_halt
+	bit 	MODE_RANGE_BIT, c
+	jr 		nz, __second_item
+	bit 	MODE_WRITE_BIT, c
+	jr 		nz, __second_item
+	ld 		(ix), de
+    jr  	next_char
+__second_item:
+	ld 		(ix+2), de
+	jr 		next_char
+
+mon_halt:
     halt
 
 exec_cmd:
-	call 	print_endl
-	ld 		ix, mon_curr_addr
-	ld 		(ix), de
-	ld 		hl, (ix)
 	call 	dump
-	ld 		(ix), hl
-	jr 		monitor
+	jr 		monitor_init
 
 
 
@@ -126,8 +159,11 @@ print_endl:
 	;out 	(2), A
 	ret
 
-; dump memory b bytes from address stored in addrptr
+; dump memory b bytes from address in hl
 dump:
+	ld 		hl, (ix)
+dump_header:
+	call 	print_endl
 	ld 		a, h
 	call 	print_byte_hex
 	ld 		a, l
@@ -138,6 +174,7 @@ dump:
 	out 	(2), a
 	ld 		a, ' '
 	out 	(2), a
+;
 	ld 		b, 16
 dump_16:
 	ld 		a, (hl)
@@ -145,10 +182,24 @@ dump_16:
 	ld 		a, ' '
 	out 	(2), a
 	inc 	hl
+;
+	ld 		(ix), hl
+	ld	 	de, (ix+2)
+	and 	a
+	sbc 	hl ,de
+	ld		hl, (ix)
+	jr 		z, dump_exit
 	djnz 	dump_16
+	jr 		dump_header
+
 dump_exit:
-	; call 	print_endl;
+	ld 		de, 16
+	add 	hl, de
+	ld 		(ix+2), hl
 	ret
 
+	org		0120h
 mon_curr_addr:
+	dw		0000h
+mon_end_addr:
 	dw		0000h
