@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "mon_v01.asm"
-                        ; date: 2025-09-15 16:04:47
+                        ; date: 2025-09-16 11:42:57
                         ; --------------------------------------
 
 
@@ -41,10 +41,10 @@
 0024:                   next_char:
 0024: CD7300   [17]     	call 	getchar
 0027: FE0D     [24]     	cp 		$0d
-0029: 28F9     [31|36]  	jr 		z, next_char 	; ignore
-                        ;
+0029: 2843     [31|36]  	jr 		z, exec_cmd 	; line ended
 002B: FE0A     [38]     	cp 		$0a
 002D: 283F     [45|50]  	jr 		z, exec_cmd 	; line ended
+                        ;
 002F:                   echo_back:
 002F: D302     [11]     	out 	(2), a 		; echo back (including cr)
                         
@@ -200,16 +200,17 @@
 00EC: ED52     [143]    	sbc 	hl ,de
 00EE: DD6E00   [162]    	ld		hl, (ix)
 00F1: DD6601   [181]    
-00F4: 2804     [188|193]	jr 		z, dump_exit
-00F6: 10DE     [196|201]	djnz 	dump_16
-00F8: 18C3     [208]    	jr 		dump_header
+00F4: 2807     [188|193]	jr 		z, dump_exit
+00F6: FAFD00   [198|198]	jp 		s, dump_exit
+00F9: 10DB     [206|211]	djnz 	dump_16
+00FB: 18C0     [218]    	jr 		dump_header
                         
-00FA:                   dump_exit:
-00FA: 111000   [10]     	ld 		de, 16
-00FD: 19       [21]     	add 	hl, de
-00FE: DD7502   [40]     	ld 		(ix+2), hl
-0101: DD7403   [59]     
-0104: C9       [69]     	ret
+00FD:                   dump_exit:
+00FD: 111000   [10]     	ld 		de, 16
+0100: 19       [21]     	add 	hl, de
+0101: DD7502   [40]     	ld 		(ix+2), hl
+0104: DD7403   [59]     
+0107: C9       [69]     	ret
                         
                         	org		0120h
 0120:                   mon_curr_addr:
@@ -237,7 +238,7 @@ _rl_4                = $004A =    74          mon_v01.asm:66
 _size                = $0124 =   292          mon_v01.asm:2 (unused)
 dump                 = $00B7 =   183          mon_v01.asm:163
 dump_16              = $00D6 =   214          mon_v01.asm:179
-dump_exit            = $00FA =   250          mon_v01.asm:195
+dump_exit            = $00FD =   253          mon_v01.asm:196
 dump_header          = $00BD =   189          mon_v01.asm:165
 echo_back            = $002F =    47          mon_v01.asm:42 (unused)
 exec_cmd             = $006E =   110          mon_v01.asm:89
@@ -247,8 +248,8 @@ hex2nibble_digit_or_upper = $0081 =   129          mon_v01.asm:112
 hex2nibble_err       = $0095 =   149          mon_v01.asm:127
 hex2nibble_output    = $0094 =   148          mon_v01.asm:124 (unused)
 hex2nibble_upper     = $008A =   138          mon_v01.asm:118
-mon_curr_addr        = $0120 =   288          mon_v01.asm:202
-mon_end_addr         = $0122 =   290          mon_v01.asm:204 (unused)
+mon_curr_addr        = $0120 =   288          mon_v01.asm:203
+mon_end_addr         = $0122 =   290          mon_v01.asm:205 (unused)
 mon_halt             = $006D =   109          mon_v01.asm:86
 monitor              = $0010 =    16          mon_v01.asm:24
 monitor_init         = $0014 =    20          mon_v01.asm:26

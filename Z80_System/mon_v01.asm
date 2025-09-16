@@ -35,10 +35,10 @@ monitor_main:
 next_char:
 	call 	getchar
 	cp 		$0d
-	jr 		z, next_char 	; ignore
-;
+	jr 		z, exec_cmd 	; line ended
 	cp 		$0a
 	jr 		z, exec_cmd 	; line ended
+;
 echo_back:
 	out 	(2), a 		; echo back (including cr)
 
@@ -189,6 +189,7 @@ dump_16:
 	sbc 	hl ,de
 	ld		hl, (ix)
 	jr 		z, dump_exit
+	jp 		s, dump_exit
 	djnz 	dump_16
 	jr 		dump_header
 
