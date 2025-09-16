@@ -20,13 +20,8 @@
  ****************************************************/
 
 #include <Wire.h>
-#include <Adafruit_GFX.h>
 #include "Adafruit_LEDBackpack.h"
-
-#ifndef _BV
-  #define _BV(bit) (1<<(bit))
-#endif
-
+#include "Adafruit_GFX.h"
 
 Adafruit_LEDBackpack matrix = Adafruit_LEDBackpack();
 
