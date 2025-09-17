@@ -11,41 +11,57 @@ rst:
 ; de ... address
 ; ix ...  mon_curr_addr, curr_addr + 2 == end_addr
 ;
-		org 	0080h
+		org 	0020h
 addr:	dw		$0
-valu:	dw 		$0	
-lbuf:	ds 		32, 0
+valu:	dw 		$0
+status:	db 		0, 0
+lbuf:	ds 		20, 0
 
-        org     00a0h
+        org     0040h
 mon:            ;entry point
+		ld 		ix, addr
+		ld 		iy, status
+read_line:
+		call	getln
+		call 	print_endl
+		ld 		hl, lbuf
+		call 	print_str_hl
+		call 	print_endl
+		jr 		read_line
+; バッファ方式にしてるから最大4ニブルを一気に読んだ方がかんたんでは？
 
-; やっぱり、一行よむバッファがないと、delete/backspace も
-; 処理できないから、getline タイプに改める。
-; そうしないと、del/backspace で de レジスタを逆転するだけじゃなく、
-; . や : を跨いでもどさないといけないし
+
+; subroutines
 
 getln:
-		ld 		ix, addr
-getln_prompt:
 		ld 		hl, lbuf 	; buf ptr
 		ld 		(hl), 0
-		ld 		c, 0 		; parse status
 		ld 		b, 0		; char count
 		ld 		de, (ix)
+
 		call 	print_endl
 		ld 		a, '*'
 		out 	(2), a
+
 getln_wait:
 		in 		a, (0)
 		and 	a
 		jr 		z, getln_wait
-		;
+;
+; no echo back
 		in 		a, (1)
 		cp 		$08 	;backspace
 		jr 		z, getln_bkspc
 		cp 		$7f		; del
 		jr 		z, getln_bkspc
-		jr 		non_del
+		cp 		$0a
+		jr 		z, getln_end
+		cp 		$0d
+		jr 		z, getln_end
+; other ctrl codes
+		cp 		$20
+		jr 		nc, getln_echo_proceed
+		jr 		getln_wait
 
 getln_bkspc:
 		ld 		a, b
@@ -54,7 +70,7 @@ getln_bkspc:
 		ld 		a, $08
 		out 	(2), a
 		ld 		a, ' '
-		out 	(2), A
+		out 	(2), a
 		ld 		a, $08
 		out 	(2), a
 		dec 	hl
@@ -62,111 +78,73 @@ getln_bkspc:
 		dec 	b
 		jr 		getln_wait
 
-non_del:
-; return codes
-		cp 		$0d
-		jr 		z, line_ended
-		cp 		$0a
-		jr 		z, line_ended
-; escape seq
-;		cp 		$1b 		; ESC
-;		jr 		z, ESC_SEQ
-; other ctrl codes
-		cp 		$20
-		jr 		nc, __echo
-		ld 		c, a
-		ld 		a, '$'
-		out		(2), a
-		ld 		a, c
-		call 	print_byte
-		jr 		getln_wait
-
-__echo:
+getln_echo_proceed:
 		out 	(2), a 		; echo back
-
-		ld 		(hl),a
+		;
+		ld 		(hl),a		; *ptr++ = a
 		inc 	hl
-		ld 		(hl), $0
+		ld 		(hl), $0	; *ptr = NULL
 		inc 	b
-		ld 		a, b
-		cp 		31
-		jr 		z, line_ended  ; force terminate line
+;		ld 		a, b
+;		cp 		30
+;		jr 		nc, getln_end  ; force terminate line
 		jr 		getln_wait
 
+getln_end:	; parse lbuf
+		ret
 
-line_ended:	; parse lbuf
-		ld 		hl, lbuf
-lbuf_parse_loop:
-		ld 		a, (hl)
-		and 	a
-		jr 		z, end_parse
-		cp 		'.'
-		jr 		z, next_item
-
-; ここバッファ方式にしてるから最大4ニブルを一気に読んだ方がかんたんでは？
-
-		call 	hex2nibble
-		cp 		a, $ff
-		jr 		z, next_item 	; seems got error by unexpected char
-; shift DE 4 bit and add the nibble in A 
-		ld 		b, 4
-_rl_4:
-		and 	a		; clr carry
-		rl		e
-		rl 		d
-		djnz 	_rl_4
-		add 	e
-		ld 		e, a
-		ld 		a, c
-		cp 		'.'
-		jr  	z, valu_update
-		ld 		(ix), de
-		jr 		addr_updated
-valu_update:
-		ld 		(ix+2), de
-addr_updated:
-		inc 	hl
-		jr 		lbuf_parse_loop
-
-next_item:
-		ld 		c, '.'
-		jr 		lbuf_parse_loop
-
-end_parse:
-;		call 	print_endl ; echo back does end the line
-		ld 		hl, (ix)
-		call 	dump
-		ld 		(ix), hl
-		jp 		getln_prompt
-
-; subroutines
 
 ; convert one char expressing a hexadecimal digit 
 ; in A reg. to nibble in A
 ;
-hex2nibble:
-    cp      'a'     ; check whether a lower case
-    jr      c, hex2nibble_digit_or_upper  ; a digit or an upper case if carry set
-    and     $df     ; lower case to upper case
-hex2nibble_digit_or_upper:
-    cp      '9' + 1 ; check whether a digit
-    jr      nc, hex2nibble_upper  ; possibly an upper case letter if carry not set
-    sub     a, '0'  ; digit to int value
-    jr      c, hex2nibble_err     ; it was not '0' - '9' 
-    ret
-hex2nibble_upper:
-    cp      'F'+1   ; check the digit whether less than 'F'
-    jr      nc, hex2nibble_err      ; error if it is larger than 'F'
-    sub     'A'  	; A - F to integer 0 - 5
-    jr      c, hex2nibble_err       ; it was not 'A' - 'F'
-    add     a, 10   ; A - F to 10 - 15 by +5
-hex2nibble_output:
-    ret
+hex2nib:
+		cp      'a'     ; check whether a lower case
+		jr      c, hex2nib_alnum  ; a digit or an upper case if carry set
+		and     $df     ; lower case to upper case
+hex2nib_alnum:
+		cp      '9' + 1 ; check whether a digit
+		jr      nc, hex2nib_alpha  ; possibly an upper case letter if carry not set
+		sub     a, '0'  ; digit to int value
+		jr      c, hex2nib_err     ; it was not '0' - '9' 
+		ret
+hex2nib_alpha:
+		cp      'F'+1   ; check the digit whether less than 'F'
+		jr      nc, hex2nib_err      ; error if it is larger than 'F'
+		sub     'A'  	; A - F to integer 0 - 5
+		jr      c, hex2nib_err       ; it was not 'A' - 'F'
+		add     a, 10   ; A - F to 10 - 15 by +5
+		ret
 
-hex2nibble_err:
-	ld 		a, 0xff
+hex2nib_err:
+		or 		$ff
+		ret
+
+
+; read hexadecimal string char upto 2 or 4 (set in c) 
+; bytes from (hl) and return int val in de
+;
+hexstr_de:
+    ld      de, 0000h
+hexstr_de_lp:
+    ld      a, (hl)
+	call 	hex2nibble
+	cp 		$ff
+	ret 	z
+	and 	a		; clear Carry bit
+	ld 		b, 4
+hexstr_de_rl4:
+    rl      e		 ;rotate left entire de
+    rl      d
+    djnz    hexstr_de_rl4
+	add 	e
+	ld 		e, a
+    inc     hl
+	dec 	c
+    jr      nz, hexstr_de_lp
 	ret
 
+;
+;
 print_str_hl:
 		ld 		a,(hl)
 		and 	A
@@ -201,7 +179,7 @@ print_byte:
 print_endl:
 		ld 		a, $0a
 		out 	(2), A
-		ld 	a, $0d
+		ld 		a, $0d
 		out 	(2), A
 		ret
 
