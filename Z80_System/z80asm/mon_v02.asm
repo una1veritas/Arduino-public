@@ -1,7 +1,7 @@
 ;
 	    org 	0000h
 rst:
-	    ld 		sp, 1000h
+	    ld 		sp, 0800h
 	    jp  	mon
 ;
 ;;
@@ -25,13 +25,20 @@ mon:            ;entry point
 ; . や : を跨いでもどさないといけないし
 
 getln:
+		ld 		ix, addr
+getln_prompt:
 		ld 		hl, lbuf 	; buf ptr
 		ld 		(hl), 0
+		ld 		c, 0 		; parse status
 		ld 		b, 0		; char count
-getln_loop:
+		ld 		de, (ix)
+		call 	print_endl
+		ld 		a, '*'
+		out 	(2), a
+getln_wait:
 		in 		a, (0)
 		and 	a
-		jr 		z, getln_loop
+		jr 		z, getln_wait
 		;
 		in 		a, (1)
 		cp 		$08 	;backspace
@@ -43,7 +50,7 @@ getln_loop:
 getln_bkspc:
 		ld 		a, b
 		and 	a
-		jr 		z, getln_loop
+		jr 		z, getln_wait
 		ld 		a, $08
 		out 	(2), a
 		ld 		a, ' '
@@ -53,9 +60,9 @@ getln_bkspc:
 		dec 	hl
 		ld 		(hl), $0
 		dec 	b
-		jr 		getln_loop
+		jr 		getln_wait
 
-non_del:	
+non_del:
 ; return codes
 		cp 		$0d
 		jr 		z, line_ended
@@ -70,9 +77,9 @@ non_del:
 		ld 		c, a
 		ld 		a, '$'
 		out		(2), a
-		ld 		a,c
+		ld 		a, c
 		call 	print_byte
-		jr 		getln_loop
+		jr 		getln_wait
 
 __echo:
 		out 	(2), a 		; echo back
@@ -83,17 +90,21 @@ __echo:
 		inc 	b
 		ld 		a, b
 		cp 		31
-		jr 		z, getln
-		jr 		getln_loop
+		jr 		z, line_ended  ; force terminate line
+		jr 		getln_wait
 
 
-line_ended:
-		ld 		de, 0
+line_ended:	; parse lbuf
 		ld 		hl, lbuf
-line_buf_loop:
+lbuf_parse_loop:
 		ld 		a, (hl)
 		and 	a
+		jr 		z, end_parse
+		cp 		'.'
 		jr 		z, next_item
+
+; ここバッファ方式にしてるから最大4ニブルを一気に読んだ方がかんたんでは？
+
 		call 	hex2nibble
 		cp 		a, $ff
 		jr 		z, next_item 	; seems got error by unexpected char
@@ -106,21 +117,27 @@ _rl_4:
 		djnz 	_rl_4
 		add 	e
 		ld 		e, a
+		ld 		a, c
+		cp 		'.'
+		jr  	z, valu_update
+		ld 		(ix), de
+		jr 		addr_updated
+valu_update:
+		ld 		(ix+2), de
+addr_updated:
 		inc 	hl
-		jr 		line_buf_loop
+		jr 		lbuf_parse_loop
 
 next_item:
-		call 	print_endl
-		ld 		hl, lbuf
-		call 	print_str_hl
-		call 	print_endl
-		ld 		a, d
-		call 	print_byte
-		ld 		a, e
-		call 	print_byte
-		call 	print_endl
+		ld 		c, '.'
+		jr 		lbuf_parse_loop
+
+end_parse:
+;		call 	print_endl ; echo back does end the line
+		ld 		hl, (ix)
 		call 	dump
-		jp 		getln
+		ld 		(ix), hl
+		jp 		getln_prompt
 
 ; subroutines
 
@@ -160,26 +177,26 @@ print_str_hl:
 
 ; print a nibble in A
 print_nibble:
-	and 	$0f
-	add 	'0'
-	cp 		':'
-	jr 		c, print_nibble_out
-	add 	7
+		and 	$0f
+		add 	'0'
+		cp 		':'
+		jr 		c, print_nibble_out
+		add 	7
 print_nibble_out:
-	out 	(2), a
-	ret
+		out 	(2), a
+		ret
 
 ; print a byte in A
 print_byte:
-	push 	af
-	rlca
-	rlca
-	rlca
-	rlca
-	call 	print_nibble
-	pop 	af
-	call 	print_nibble
-	ret
+		push 	af
+		rlca
+		rlca
+		rlca
+		rlca
+		call 	print_nibble
+		pop 	af
+		call 	print_nibble
+		ret
 
 print_endl:
 		ld 		a, $0a
@@ -190,8 +207,6 @@ print_endl:
 
 ; dump memory b bytes from address in hl
 dump:
-	ld 		h, d
-	ld 		l, e
 dump_header:
 	call 	print_endl
 	ld 		a, h
@@ -217,6 +232,4 @@ dump_16:
 ;	jr 		dump_header
 
 dump_exit:
-	ld 		d, h
-	ld 		l, e
 	ret

@@ -1,226 +1,284 @@
-;
-	    org 	0000h
-rst:
-	    ld 		sp, 1000h
-	    jp  	mon
-;
-;;
-; a  ... workspace reg.
-; b  ... workspace reg. dnjz counter
-; c  ... command
-; de ... address
-; ix ...  mon_curr_addr, curr_addr + 2 == end_addr
-;
-		org 	0080h
-addr:	dw		$0
-valu:	dw 		$0	
-lbuf:	ds 		32, 0
-
-        org     00a0h
-mon:            ;entry point
-
-; やっぱり、一行よむバッファがないと、delete/backspace も
-; 処理できないから、getline タイプに改める。
-; そうしないと、del/backspace で de レジスタを逆転するだけじゃなく、
-; . や : を跨いでもどさないといけないし
-
-getln:
-		ld 		hl, lbuf 	; buf ptr
-		ld 		(hl), 0
-		ld 		b, 0		; char count
-getln_loop:
-		in 		a, (0)
-		and 	a
-		jr 		z, getln_loop
-		;
-		in 		a, (1)
-		cp 		$08 	;backspace
-		jr 		z, getln_bkspc
-		cp 		$7f		; del
-		jr 		z, getln_bkspc
-		jr 		non_del
-
-getln_bkspc:
-		ld 		a, b
-		and 	a
-		jr 		z, getln_loop
-		ld 		a, $08
-		out 	(2), a
-		ld 		a, ' '
-		out 	(2), A
-		ld 		a, $08
-		out 	(2), a
-		dec 	hl
-		ld 		(hl), $0
-		dec 	b
-		jr 		getln_loop
-
-non_del:	
-; return codes
-		cp 		$0d
-		jr 		z, line_ended
-		cp 		$0a
-		jr 		z, line_ended
-; escape seq
-;		cp 		$1b 		; ESC
-;		jr 		z, ESC_SEQ
-; other ctrl codes
-		cp 		$20
-		jr 		nc, __echo
-		ld 		c, a
-		ld 		a, '$'
-		out		(2), a
-		ld 		a,c
-		call 	print_byte
-		jr 		getln_loop
-
-__echo:
-		out 	(2), a 		; echo back
-
-		ld 		(hl),a
-		inc 	hl
-		ld 		(hl), $0
-		inc 	b
-		ld 		a, b
-		cp 		31
-		jr 		z, getln
-		jr 		getln_loop
+                        ; --------------------------------------
+                        ; zasm: assemble "mon_v02.asm"
+                        ; date: 2025-09-17 18:05:49
+                        ; --------------------------------------
 
 
-line_ended:
-		ld 		de, 0
-		ld 		hl, lbuf
-line_buf_loop:
-		ld 		a, (hl)
-		and 	a
-		jr 		z, next_item
-		call 	hex2nibble
-		cp 		a, $ff
-		jr 		z, next_item 	; seems got error by unexpected char
-; shift DE 4 bit and add the nibble in A 
-		ld 		b, 4
-_rl_4:
-		and 	a		; clr carry
-		rl		e
-		rl 		d
-		djnz 	_rl_4
-		add 	e
-		ld 		e, a
-		inc 	hl
-		jr 		line_buf_loop
+                        ;
+0000:                   	    org 	0000h
+0000:                   rst:
+0000: 310008   [10]     	    ld 		sp, 0800h
+0003: C3A000   [20]     	    jp  	mon
+                        ;
+                        ;;
+                        ; a  ... workspace reg.
+                        ; b  ... workspace reg. dnjz counter
+                        ; c  ... command
+                        ; de ... address
+                        ; ix ...  mon_curr_addr, curr_addr + 2 == end_addr
+                        ;
+                        		org 	0080h
+0080: 0000              addr:	dw		$0
+0082: 0000              valu:	dw 		$0	
+0084: 00000000          lbuf:	ds 		32, 0
+0088: 00000000          
+008C: 00000000          
+0090: 00000000          
+0094: 00000000          
+0098: 00000000          
+009C: 00000000          
+00A0: DD218000          
+                        
+                                org     00a0h
+00A0:                   mon:            ;entry point
+                        
+                        ; やっぱり、一行よむバッファがないと、delete/backspace も
+                        ; 処理できないから、getline タイプに改める。
+                        ; そうしないと、del/backspace で de レジスタを逆転するだけじゃなく、
+                        ; . や : を跨いでもどさないといけないし
+                        
+00A0:                   getln:
+00A0: DD218000 [14]     		ld 		ix, addr
+00A4:                   getln_prompt:
+00A4: 218400   [10]     		ld 		hl, lbuf 	; buf ptr
+00A7: 3600     [20]     		ld 		(hl), 0
+00A9: 0600     [27]     		ld 		b, 0		; char count
+00AB: DD5E00   [46]     		ld 		de, (ix)
+00AE: DD5601   [65]     
+00B1: CD7701   [82]     		call 	print_endl
+00B4: 3E2A     [89]     		ld 		a, '*'
+00B6: D302     [100]    		out 	(2), a
+00B8:                   getln_wait:
+00B8: DB00     [11]     		in 		a, (0)
+00BA: A7       [15]     		and 	a
+00BB: 28FB     [22|27]  		jr 		z, getln_wait
+                        		;
+00BD: DB01     [33]     		in 		a, (1)
+00BF: FE08     [40]     		cp 		$08 	;backspace
+00C1: 2806     [47|52]  		jr 		z, getln_bkspc
+00C3: FE7F     [54]     		cp 		$7f		; del
+00C5: 2802     [61|66]  		jr 		z, getln_bkspc
+00C7: 1816     [73]     		jr 		non_del
+                        
+00C9:                   getln_bkspc:
+00C9: 78       [ 4]     		ld 		a, b
+00CA: A7       [ 8]     		and 	a
+00CB: 28EB     [15|20]  		jr 		z, getln_wait
+00CD: 3E08     [22]     		ld 		a, $08
+00CF: D302     [33]     		out 	(2), a
+00D1: 3E20     [40]     		ld 		a, ' '
+00D3: D302     [51]     		out 	(2), A
+00D5: 3E08     [58]     		ld 		a, $08
+00D7: D302     [69]     		out 	(2), a
+00D9: 2B       [75]     		dec 	hl
+00DA: 3600     [85]     		ld 		(hl), $0
+00DC: 05       [89]     		dec 	b
+00DD: 18D9     [101]    		jr 		getln_wait
+                        
+00DF:                   non_del:
+                        ; return codes
+00DF: FE0D     [ 7]     		cp 		$0d
+00E1: 2821     [14|19]  		jr 		z, line_ended
+00E3: FE0A     [21]     		cp 		$0a
+00E5: 281D     [28|33]  		jr 		z, line_ended
+                        ; escape seq
+                        ;		cp 		$1b 		; ESC
+                        ;		jr 		z, ESC_SEQ
+                        ; other ctrl codes
+00E7: FE20     [35]     		cp 		$20
+00E9: 300B     [42|47]  		jr 		nc, __echo
+00EB: 4F       [46]     		ld 		c, a
+00EC: 3E24     [53]     		ld 		a, '$'
+00EE: D302     [64]     		out		(2), a
+00F0: 79       [68]     		ld 		a,c
+00F1: CD6A01   [85]     		call 	print_byte
+00F4: 18C2     [97]     		jr 		getln_wait
+                        
+00F6:                   __echo:
+00F6: D302     [11]     		out 	(2), a 		; echo back
+                        
+00F8: 77       [18]     		ld 		(hl),a
+00F9: 23       [24]     		inc 	hl
+00FA: 3600     [34]     		ld 		(hl), $0
+00FC: 04       [38]     		inc 	b
+00FD: 78       [42]     		ld 		a, b
+00FE: FE1F     [49]     		cp 		31
+0100: 2802     [56|61]  		jr 		z, line_ended  ; force terminate line
+0102: 18B4     [68]     		jr 		getln_wait
+                        
+                        
+0104:                   line_ended:	; parse lbuf
+0104: 218400   [10]     		ld 		hl, lbuf
+0107:                   line_buf_loop:
+0107: 7E       [ 7]     		ld 		a, (hl)
+0108: 4F       [11]     		ld 		c, a
+0109: A7       [15]     		and 	a
+010A: 281E     [22|27]  		jr 		z, end_parse
+010C: CD3801   [39]     		call 	hex2nibble
+010F: FEFF     [46]     		cp 		a, $ff
+0111: 2814     [53|58]  		jr 		z, next_item 	; seems got error by unexpected char
+                        ; shift DE 4 bit and add the nibble in A 
+0113: 0604     [60]     		ld 		b, 4
+0115:                   _rl_4:
+0115: A7       [ 4]     		and 	a		; clr carry
+0116: CB13     [12]     		rl		e
+0118: CB12     [20]     		rl 		d
+011A: 10F9     [28|33]  		djnz 	_rl_4
+011C: 83       [32]     		add 	e
+011D: 5F       [36]     		ld 		e, a
+011E: DD7300   [55]     		ld 		(ix), de
+0121: DD7201   [74]     
+0124: 23       [80]     		inc 	hl
+0125: 18E0     [92]     		jr 		line_buf_loop
+                        
+0127:                   next_item:
+0127: 79       [ 4]     		ld 		a, c
+0128: FE2E     [11]     		cp 		'.' 	; read until next item (addr)
+                        
+012A:                   end_parse:
+                        ;		call 	print_endl ; echo back does end the line
+012A: 62       [ 4]     		ld 		h, d
+012B: 6B       [ 8]     		ld 		l, e
+012C: CD8001   [25]     		call 	dump
+012F: DD7500   [44]     		ld 		(ix), hl
+0132: DD7401   [63]     
+0135: C3A400   [73]     		jp 		getln_prompt
+                        
+                        ; subroutines
+                        
+                        ; convert one char expressing a hexadecimal digit 
+                        ; in A reg. to nibble in A
+                        ;
+0138:                   hex2nibble:
+0138: FE61     [ 7]         cp      'a'     ; check whether a lower case
+013A: 3802     [14|19]      jr      c, hex2nibble_digit_or_upper  ; a digit or an upper case if carry set
+013C: E6DF     [21]         and     $df     ; lower case to upper case
+013E:                   hex2nibble_digit_or_upper:
+013E: FE3A     [ 7]         cp      '9' + 1 ; check whether a digit
+0140: 3005     [14|19]      jr      nc, hex2nibble_upper  ; possibly an upper case letter if carry not set
+0142: D630     [21]         sub     a, '0'  ; digit to int value
+0144: 380C     [28|33]      jr      c, hex2nibble_err     ; it was not '0' - '9' 
+0146: C9       [38]         ret
+0147:                   hex2nibble_upper:
+0147: FE47     [ 7]         cp      'F'+1   ; check the digit whether less than 'F'
+0149: 3007     [14|19]      jr      nc, hex2nibble_err      ; error if it is larger than 'F'
+014B: D641     [21]         sub     'A'  	; A - F to integer 0 - 5
+014D: 3803     [28|33]      jr      c, hex2nibble_err       ; it was not 'A' - 'F'
+014F: C60A     [35]         add     a, 10   ; A - F to 10 - 15 by +5
+0151:                   hex2nibble_output:
+0151: C9       [10]         ret
+                        
+0152:                   hex2nibble_err:
+0152: 3EFF     [ 7]     	ld 		a, 0xff
+0154: C9       [17]     	ret
+                        
+0155:                   print_str_hl:
+0155: 7E       [ 7]     		ld 		a,(hl)
+0156: A7       [11]     		and 	A
+0157: C8       [16|22]  		ret 	z
+0158: D302     [27]     		out 	(2), a
+015A: 23       [33]     		inc 	hl
+015B: 18F8     [45]     		jr 		print_str_hl
+                        
+                        ; print a nibble in A
+015D:                   print_nibble:
+015D: E60F     [ 7]     		and 	$0f
+015F: C630     [14]     		add 	'0'
+0161: FE3A     [21]     		cp 		':'
+0163: 3802     [28|33]  		jr 		c, print_nibble_out
+0165: C607     [35]     		add 	7
+0167:                   print_nibble_out:
+0167: D302     [11]     		out 	(2), a
+0169: C9       [21]     		ret
+                        
+                        ; print a byte in A
+016A:                   print_byte:
+016A: F5       [11]     		push 	af
+016B: 07       [15]     		rlca
+016C: 07       [19]     		rlca
+016D: 07       [23]     		rlca
+016E: 07       [27]     		rlca
+016F: CD5D01   [44]     		call 	print_nibble
+0172: F1       [54]     		pop 	af
+0173: CD5D01   [71]     		call 	print_nibble
+0176: C9       [81]     		ret
+                        
+0177:                   print_endl:
+0177: 3E0A     [ 7]     		ld 		a, $0a
+0179: D302     [18]     		out 	(2), A
+017B: 3E0D     [25]     		ld 	a, $0d
+017D: D302     [36]     		out 	(2), A
+017F: C9       [46]     		ret
+                        
+                        ; dump memory b bytes from address in hl
+0180:                   dump:
+0180:                   dump_header:
+0180: CD7701   [17]     	call 	print_endl
+0183: 7C       [21]     	ld 		a, h
+0184: CD6A01   [38]     	call 	print_byte
+0187: 7D       [42]     	ld 		a, l
+0188: CD6A01   [59]     	call 	print_byte
+018B: 3E20     [66]     	ld 		a, ' '
+018D: D302     [77]     	out 	(2), a
+018F: 3E3A     [84]     	ld 		a, ':'
+0191: D302     [95]     	out 	(2), a
+0193: 3E20     [102]    	ld 		a, ' '
+0195: D302     [113]    	out 	(2), a
+                        ;
+0197: 0610     [120]    	ld 		b, 16
+0199:                   dump_16:
+0199: 7E       [ 7]     	ld 		a, (hl)
+019A: CD6A01   [24]     	call 	print_byte
+019D: 3E20     [31]     	ld 		a, ' '
+019F: D302     [42]     	out 	(2), a
+01A1: 23       [48]     	inc 	hl
+                        ;
+01A2: 10F5     [56|61]  	djnz 	dump_16
+                        ;	jr 		dump_header
+                        
+01A4:                   dump_exit:
+01A4: C9       [10]     	ret
 
-next_item:
-		call 	print_endl
-		ld 		hl, lbuf
-		call 	print_str_hl
-		call 	print_endl
-		ld 		a, d
-		call 	print_byte
-		ld 		a, e
-		call 	print_byte
-		call 	print_endl
-		call 	dump
-		jp 		getln
 
-; subroutines
+; +++ segments +++
 
-; convert one char expressing a hexadecimal digit 
-; in A reg. to nibble in A
-;
-hex2nibble:
-    cp      'a'     ; check whether a lower case
-    jr      c, hex2nibble_digit_or_upper  ; a digit or an upper case if carry set
-    and     $df     ; lower case to upper case
-hex2nibble_digit_or_upper:
-    cp      '9' + 1 ; check whether a digit
-    jr      nc, hex2nibble_upper  ; possibly an upper case letter if carry not set
-    sub     a, '0'  ; digit to int value
-    jr      c, hex2nibble_err     ; it was not '0' - '9' 
-    ret
-hex2nibble_upper:
-    cp      'F'+1   ; check the digit whether less than 'F'
-    jr      nc, hex2nibble_err      ; error if it is larger than 'F'
-    sub     'A'  	; A - F to integer 0 - 5
-    jr      c, hex2nibble_err       ; it was not 'A' - 'F'
-    add     a, 10   ; A - F to 10 - 15 by +5
-hex2nibble_output:
-    ret
+#CODE          = $0000 =     0,  size = $01A5 =   421
 
-hex2nibble_err:
-	ld 		a, 0xff
-	ret
+; +++ global symbols +++
 
-print_str_hl:
-		ld 		a,(hl)
-		and 	A
-		ret 	z
-		out 	(2), a
-		inc 	hl
-		jr 		print_str_hl
-
-; print a nibble in A
-print_nibble:
-	and 	$0f
-	add 	'0'
-	cp 		':'
-	jr 		c, print_nibble_out
-	add 	7
-print_nibble_out:
-	out 	(2), a
-	ret
-
-; print a byte in A
-print_byte:
-	push 	af
-	rlca
-	rlca
-	rlca
-	rlca
-	call 	print_nibble
-	pop 	af
-	call 	print_nibble
-	ret
-
-print_endl:
-		ld 		a, $0a
-		out 	(2), A
-		ld 	a, $0d
-		out 	(2), A
-		ret
-
-; dump memory b bytes from address in hl
-dump:
-	ld 		h, d
-	ld 		l, e
-dump_header:
-	call 	print_endl
-	ld 		a, h
-	call 	print_byte
-	ld 		a, l
-	call 	print_byte
-	ld 		a, ' '
-	out 	(2), a
-	ld 		a, ':'
-	out 	(2), a
-	ld 		a, ' '
-	out 	(2), a
-;
-	ld 		b, 16
-dump_16:
-	ld 		a, (hl)
-	call 	print_byte
-	ld 		a, ' '
-	out 	(2), a
-	inc 	hl
-;
-	djnz 	dump_16
-;	jr 		dump_header
-
-dump_exit:
-	ld 		d, h
-	ld 		l, e
-	ret
+__echo            = $00F6 =   246          mon_v02.asm:83
+_end              = $01A5 =   421          mon_v02.asm:2 (unused)
+_rl_4             = $0115 =   277          mon_v02.asm:108
+_size             = $01A5 =   421          mon_v02.asm:2 (unused)
+addr              = $0080 =   128          mon_v02.asm:15
+dump              = $0180 =   384          mon_v02.asm:198
+dump_16           = $0199 =   409          mon_v02.asm:213
+dump_exit         = $01A4 =   420          mon_v02.asm:223 (unused)
+dump_header       = $0180 =   384          mon_v02.asm:199 (unused)
+end_parse         = $012A =   298          mon_v02.asm:123
+getln             = $00A0 =   160          mon_v02.asm:27 (unused)
+getln_bkspc       = $00C9 =   201          mon_v02.asm:49
+getln_prompt      = $00A4 =   164          mon_v02.asm:29
+getln_wait        = $00B8 =   184          mon_v02.asm:37
+hex2nibble        = $0138 =   312          mon_v02.asm:136
+hex2nibble_digit_or_upper = $013E =   318          mon_v02.asm:140
+hex2nibble_err    = $0152 =   338          mon_v02.asm:155
+hex2nibble_output = $0151 =   337          mon_v02.asm:152 (unused)
+hex2nibble_upper  = $0147 =   327          mon_v02.asm:146
+lbuf              = $0084 =   132          mon_v02.asm:17
+line_buf_loop     = $0107 =   263          mon_v02.asm:98
+line_ended        = $0104 =   260          mon_v02.asm:96
+mon               = $00A0 =   160          mon_v02.asm:20
+next_item         = $0127 =   295          mon_v02.asm:119
+non_del           = $00DF =   223          mon_v02.asm:64
+print_byte        = $016A =   362          mon_v02.asm:179
+print_endl        = $0177 =   375          mon_v02.asm:190
+print_nibble      = $015D =   349          mon_v02.asm:168
+print_nibble_out  = $0167 =   359          mon_v02.asm:174
+print_str_hl      = $0155 =   341          mon_v02.asm:159
+rst               = $0000 =     0          mon_v02.asm:3 (unused)
+valu              = $0082 =   130          mon_v02.asm:16 (unused)
 
 
-total time: 0.0017 sec.
+total time: 0.0016 sec.
 no errors

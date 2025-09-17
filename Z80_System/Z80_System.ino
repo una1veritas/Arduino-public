@@ -1,4 +1,5 @@
 /* by sin, Aug, 2025 */
+#include <SPI.h>
 #include <LiquidCrystal.h>
 
 #include "Z80Bus.h"
@@ -71,9 +72,48 @@ struct Terminal {
   }
 } lcdt(lcd);
 
+const int SPI_CS = 53;//latchPin = 53; --- must be controlled by user
+const int SPI_CLK = 52; //clockPin = 52; --- controlled by SPI module.
+const int SPI_COPI = 51; //dataPin = 51; --- controlled by SPI module.
+
+byte ascii7seg(byte ch) {
+  const static uint8_t numeric7[] = { 0xc0, 0xf9, 0xa4, 0xb0, 0x99, 0x92, 0x82, 0xf8, 0x80, 0x90, 0xff };
+  const static uint8_t alpha7[] = { 0x88, 0x83, 0xc6, 0xa1, 0x86, 0x8e, 0xc2, 0x89, 0x79, 0xe1,
+    0x09 /* 0x89*/, 0xc7, 0xbb /* 0xaa*/, 0xab /* 0xc8*/, 0xa3, 0x8c, 0x98, 0xaf /* 0xce */, 0x92 /*0x9b*/,
+    0x87, 0xc1, 0xc1 /* 0xe3*/, 0x86 /* 0xd5 */, 0xb6, 0x91, 0x24 /* 0xb8*/,
+  };  //a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
+  if ('0' <= ch and ch <= '9') {
+    return numeric7[ch - '0'];
+  }
+  switch(ch){
+    case '.':
+    case ',':
+      return 0x7f;
+      break;
+    case ' ':
+      return 0xff;
+      break;
+    case 'i':
+      return 0x7b;
+      break;
+    case 'o':
+      return 0xa3;
+      break;
+    case 'u':
+      return 0xe3;
+      break;
+  }
+  ch = toupper(ch);
+  if ('A' <= ch and ch <= 'Z') {
+    return alpha7[ch - 'A'];
+  } 
+  return 0xff;
+}
+
+
 uint16 addr;
 uint8 data;
-uint8 flag;
+char busmode = ' ';
 char buf[32];
 uint8 dma_buff[256];
 
@@ -111,7 +151,7 @@ uint16 ram_check(uint32 start_addr = 0x0000, uint32 end_addr = 0x20000, uint32 s
 }
 
 void dump(uint8 mem_buff[], const uint16 size = 0x0100, const uint16 offset_addr = 0x0000) {
-  char buf[16];
+  //char buf[16];
   uint8 data;
   for(uint32 ix = 0; ix < size; ++ix) {
     if ( (ix & 0x0f) == 0 ) {
@@ -136,6 +176,11 @@ void setup() {
   Serial.println("***********************");
   Serial.println("  Z80 system starting. ");
   Serial.println("***********************");
+
+  pinMode(SPI_CS, OUTPUT);
+  digitalWrite(SPI_CS, HIGH);
+  // SPI.setClockDivider(SPI_CLOCK_DIV4);  -- div4 seems to be the default clock divider value
+  SPI.begin();
 
   // nop test
   //z80bus.mem_disable();
@@ -181,17 +226,13 @@ void loop() {
       addr = z80bus.address_bus16_get();
       z80bus.clock_wait_rising_edge();
       data = z80bus.data_bus_get();
+      busmode = 'r';
     } else if ( ! z80bus.WR() ) {
       addr = z80bus.address_bus16_get();
       z80bus.clock_wait_rising_edge();
       data = z80bus.data_bus_get();
+      busmode = 'u';
     }
-    /*
-    z80bus.WAIT(LOW);
-    snprintf(buf, 32, "MEM %04X %02X", addr, data);
-    lcdt.print(0,0,buf);
-    z80bus.WAIT(HIGH);
-    */
   } else if ( !z80bus.IORQ() ) {
     if ( ! z80bus.RD() ) {
       // in operation
@@ -202,6 +243,7 @@ void loop() {
       z80bus.clock_wait_rising_edge(1);
       z80bus.clock_wait_rising_edge(1);
       z80bus.data_bus_mode_input();
+      busmode = 'i';
     } else if ( ! z80bus.WR() ) {
       // out operation
       z80bus.data_bus_mode_input();
@@ -209,14 +251,15 @@ void loop() {
       z80bus.clock_wait_rising_edge(2);
       data = z80bus.data_bus_get();
       z80bus.z80io(addr, data, OUTPUT);
+      busmode = 'o';
     } 
-    /*
-    z80bus.WAIT(LOW);
-    snprintf(buf, 32, "I/O %04X %02X", addr, data);
-    lcdt.print(0,0,buf);
-    z80bus.WAIT(HIGH);
-    */
   }
+  snprintf(buf, 9, "%04X %c%02X", addr, busmode, data );
+  digitalWrite(SPI_CS, LOW);
+  for (int i = 8; i > 0; ) {
+    SPI.transfer(ascii7seg(buf[--i]));
+  }
+  digitalWrite(SPI_CS, HIGH);
   if ( z80bus.DMA_requested() ) {
     Serial.println("DMA requested!");
     z80bus.DMA_exec(dma_buff);
