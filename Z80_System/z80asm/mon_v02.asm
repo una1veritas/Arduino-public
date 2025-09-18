@@ -25,7 +25,15 @@ read_line:
 		call	getln
 		call 	print_endl
 		ld 		hl, lbuf
-		call 	print_str_hl
+		ld 		c, 4
+		call 	hexstr_de
+		xor 	a
+		and 	c
+		jr 		z, noinput
+		ld 		(ix), de
+noinput:
+		ld 		hl, (ix)
+		call 	dump
 		call 	print_endl
 		jr 		read_line
 ; バッファ方式にしてるから最大4ニブルを一気に読んだ方がかんたんでは？
@@ -127,7 +135,7 @@ hexstr_de:
     ld      de, 0000h
 hexstr_de_lp:
     ld      a, (hl)
-	call 	hex2nibble
+	call 	hex2nib
 	cp 		$ff
 	ret 	z
 	and 	a		; clear Carry bit
