@@ -1,7 +1,7 @@
 ;
 	    org 	0000h
 rst:
-	    ld 		sp, 0800h
+	    ld 		sp, 0200h
 	    jp  	mon
 ;
 ;;
@@ -15,7 +15,7 @@ rst:
 addr:	dw		$0
 valu:	dw 		$0
 status:	db 		0, 0
-lbuf:	ds 		20, 0
+lbuf:	ds 		16, 0
 
         org     0040h
 mon:            ;entry point
@@ -23,19 +23,39 @@ mon:            ;entry point
 		ld 		iy, status
 read_line:
 		call	getln
-		call 	print_endl
+		;call 	print_endl  
+		;
 		ld 		hl, lbuf
+		ld 		a, (hl)
+		cp 		$0
+		jr 		z, no_input
+		cp 		'H'
+		jr 		z, mon_halt
+		cp 		'.'
+		jr 		nz, __skip1
+		ld 		(iy), 1
+		inc 	hl
+__skip1:
+		cp 		':'
+		jr 		nz, __skip2
+		ld 		(iy), 2
+		inc 	hl
+__skip2:
+		;
+read_hexstr:
 		ld 		c, 4
 		call 	hexstr_de
-		xor 	a
-		and 	c
-		jr 		z, noinput
 		ld 		(ix), de
-noinput:
+no_input:
 		ld 		hl, (ix)
 		call 	dump
-		call 	print_endl
+		ld 		(ix), hl
+		; call 	print_endl
 		jr 		read_line
+; 
+mon_halt:
+		halt
+
 ; バッファ方式にしてるから最大4ニブルを一気に読んだ方がかんたんでは？
 
 
@@ -93,9 +113,9 @@ getln_echo_proceed:
 		inc 	hl
 		ld 		(hl), $0	; *ptr = NULL
 		inc 	b
-;		ld 		a, b
-;		cp 		30
-;		jr 		nc, getln_end  ; force terminate line
+		ld 		a, b
+		cp 		15
+		jr 		nc, getln_end  ; force terminate line
 		jr 		getln_wait
 
 getln_end:	; parse lbuf
@@ -150,6 +170,7 @@ hexstr_de_rl4:
 	dec 	c
     jr      nz, hexstr_de_lp
 	ret
+
 
 ;
 ;
@@ -215,7 +236,6 @@ dump_16:
 	inc 	hl
 ;
 	djnz 	dump_16
-;	jr 		dump_header
 
 dump_exit:
 	ret
