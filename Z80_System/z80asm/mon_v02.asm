@@ -11,72 +11,34 @@ rst:
 ; de ... address
 ; ix ...  mon_curr_addr, curr_addr + 2 == end_addr
 ;
-		org 	0020h
+		org 	0180h
 addr:	dw		$0
-valu:	dw 		$0
+value:	dw 		$0
 status:	db 		0, 0
 lbuf:	ds 		16, 0
 
-        org     0040h
+        org     0010h
 mon:            ;entry point
 		ld 		ix, addr
-		ld 		iy, status
 read_line:
 		call	getln
+		;ld 	hl, lbuf ; debug print
+		;call 	print_str_hl
+
 		ld 		hl, lbuf
-		; item 0
-		ld 		(iy), 0
 		ld 		a, (hl)
 		cp 		$0
 		jr 		z, default_dump
 		;
 		cp 		'H'
 		jr 		z, mon_halt
-		cp 		'.'
-		jr 		nz, __skip1
 
-		; dump with the end address after '.'
-		inc 	hl
-		ld 		c, 4
-		call 	hexstr_de
-		ld 		(ix+2), de
-		ld 		hl, (ix)
-loop_dump:
-		call 	dump
-		ld 		a, h
-		cp 		(ix+2)
-		jp 		s, ___skip
-		jr 		z, ___low_8
-		jr 		___skip
-___low_8:
-		ld 		a, l
-		cp 		(ix+1)
-		jp 		s, ___skip
-		jr 		z, ___skip
-		; loop dump
-		jr 		loop_dump
-___skip:
-		jr 		read_line
-
-__skip1:
-		cp 		':'
-		jr 		nz, __skip2
-		ld 		(iy), 3 ; write bytes loop
-		inc 	hl
-		ld 		c, 2
-		call 	hexstr_de
-		ld 		(ix), e
-		ld 		hl, addr
-		ld 		(hl), e
-		; loop dump
-		jr 		read_line
-
-__skip2:
-		;
-read_hexstr:
 		ld 		c, 4
 		call 	hexstr_de
 		ld 		(ix), de
+		cp 		$ff
+		jr 		z, error
+
 default_dump:
 		ld 		hl, (ix)
 		call 	dump
@@ -84,6 +46,15 @@ default_dump:
 		; call 	print_endl
 		jr 		read_line
 ; 
+error:
+		ld 		hl, msg
+		call 	print_str_hl
+		jr 		read_line
+
+msg:	db $0a, $0d
+		db "error?"
+		db $0a, $0d, 0
+
 mon_halt:
 		halt
 
