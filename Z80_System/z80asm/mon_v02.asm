@@ -29,18 +29,33 @@ read_line:
 		ld 		a, (hl)
 		cp 		$0
 		jr 		z, default_dump
+		;
 		cp 		'H'
 		jr 		z, mon_halt
 		cp 		'.'
 		jr 		nz, __skip1
-		ld 		(iy), 2 ; second addr for dump
+
+		; dump with the end address after '.'
 		inc 	hl
 		ld 		c, 4
 		call 	hexstr_de
 		ld 		(ix+2), de
 		ld 		hl, (ix)
+loop_dump:
 		call 	dump
+		ld 		a, h
+		cp 		(ix+2)
+		jp 		s, ___skip
+		jr 		z, ___low_8
+		jr 		___skip
+___low_8:
+		ld 		a, l
+		cp 		(ix+1)
+		jp 		s, ___skip
+		jr 		z, ___skip
 		; loop dump
+		jr 		loop_dump
+___skip:
 		jr 		read_line
 
 __skip1:
