@@ -23,30 +23,46 @@ mon:            ;entry point
 		ld 		iy, status
 read_line:
 		call	getln
-		;call 	print_endl  
-		;
 		ld 		hl, lbuf
+		; item 0
+		ld 		(iy), 0
 		ld 		a, (hl)
 		cp 		$0
-		jr 		z, no_input
+		jr 		z, default_dump
 		cp 		'H'
 		jr 		z, mon_halt
 		cp 		'.'
 		jr 		nz, __skip1
-		ld 		(iy), 1
+		ld 		(iy), 2 ; second addr for dump
 		inc 	hl
+		ld 		c, 4
+		call 	hexstr_de
+		ld 		(ix+2), de
+		ld 		hl, (ix)
+		call 	dump
+		; loop dump
+		jr 		read_line
+
 __skip1:
 		cp 		':'
 		jr 		nz, __skip2
-		ld 		(iy), 2
+		ld 		(iy), 3 ; write bytes loop
 		inc 	hl
+		ld 		c, 2
+		call 	hexstr_de
+		ld 		(ix), e
+		ld 		hl, addr
+		ld 		(hl), e
+		; loop dump
+		jr 		read_line
+
 __skip2:
 		;
 read_hexstr:
 		ld 		c, 4
 		call 	hexstr_de
 		ld 		(ix), de
-no_input:
+default_dump:
 		ld 		hl, (ix)
 		call 	dump
 		ld 		(ix), hl
