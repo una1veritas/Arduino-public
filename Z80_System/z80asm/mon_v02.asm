@@ -11,20 +11,18 @@ rst:
 ; de ... address
 ; ix ...  mon_curr_addr, curr_addr + 2 == end_addr
 ;
-		org 	0180h
-addr:	dw		$0
-value:	dw 		$0
-status:	db 		0, 0
-lbuf:	ds 		16, 0
 
-        org     0010h
+
+		org 	0010h
+addr:	dw		$0
+addr2:	dw 		$0
+status:	db 		0, 0
+lbuf:	ds 		$10, 0
+
+        org     0030h
 mon:            ;entry point
-		ld 		ix, addr
 read_line:
 		call	getln
-		;ld 	hl, lbuf ; debug print
-		;call 	print_str_hl
-
 		ld 		hl, lbuf
 		ld 		a, (hl)
 		cp 		$0
@@ -32,31 +30,77 @@ read_line:
 		;
 		cp 		'H'
 		jr 		z, mon_halt
-
+		;
+		cp 		'.'
+		jr 		z, specify_end
+		cp 		':'
+		jr 		z, error
+		;
 		ld 		c, 4
 		call 	hexstr_de
-		ld 		(ix), de
-		cp 		$ff
-		jr 		z, error
-
+		ld 		(addr), de
+		;ld 		a, d
+		;call 	print_byte
+		;ld 		a, e
+		;call 	print_byte
+		;
+		cp 		$0
+		jr 		z, default_dump
+		cp		'.'
+		jr 		z, specify_end
+		jr 		error
+		;
+specify_end:
+		inc 	hl 		; next to '.'
+		ld 		c, 4
+		call 	hexstr_de
+		ld 		(addr2), de
+		cp 		0
+		jr 		nz, error
+		;
 default_dump:
-		ld 		hl, (ix)
+		ld 		hl, (addr)
+		ld 		de, (addr2)
+		ld 		a, H
+		cp 		d
+		jr 		nz, cp_hl_de_end
+		ld 		a, l
+		cp 		e
+cp_hl_de_end:
+		jr 		z, cp_equal
+		jr 		c, cp_less
+		jr 		nc, cp_greater
+cp_equal:	ld 	a, '='
+		out 	(2), A
+		jr 		do_dump
+cp_less:	ld 	a, '<'
+		out 	(2), A
+		jr 		do_dump
+cp_greater:	ld 	a, '>'
+		out 	(2), A
+		ld 		hl, (addr)
+		ld 		de, $10
+		add 	hl, de
+		ld 		(addr2), hl
+		jr 		do_dump
+do_dump:
 		call 	dump
-		ld 		(ix), hl
-		; call 	print_endl
 		jr 		read_line
 ; 
 error:
 		ld 		hl, msg
 		call 	print_str_hl
+		ld 		hl, lbuf
+		call 	print_str_hl
 		jr 		read_line
 
 msg:	db $0a, $0d
-		db "error?"
+		db "error? "
 		db $0a, $0d, 0
 
 mon_halt:
 		halt
+
 
 ; バッファ方式にしてるから最大4ニブルを一気に読んだ方がかんたんでは？
 
@@ -67,8 +111,6 @@ getln:
 		ld 		hl, lbuf 	; buf ptr
 		ld 		(hl), 0
 		ld 		b, 0		; char count
-		ld 		de, (ix)
-
 		call 	print_endl
 		ld 		a, '*'
 		out 	(2), a
@@ -126,40 +168,52 @@ getln_end:	; parse lbuf
 
 ; convert one char expressing a hexadecimal digit 
 ; in A reg. to nibble in A
+; bit 7 is set to A if A is not hex-dec char
 ;
 hex2nib:
-		cp      'a'     ; check whether a lower case
-		jr      c, hex2nib_alnum  ; a digit or an upper case if carry set
-		and     $df     ; lower case to upper case
-hex2nib_alnum:
-		cp      '9' + 1 ; check whether a digit
-		jr      nc, hex2nib_alpha  ; possibly an upper case letter if carry not set
-		sub     a, '0'  ; digit to int value
-		jr      c, hex2nib_err     ; it was not '0' - '9' 
+		cp 		'0'
+		jr 		c, hex2nib.err
+		cp 		'9' + 1
+		jr 		nc, hex2nib.toupper
+		sub 	'0'
 		ret
-hex2nib_alpha:
-		cp      'F'+1   ; check the digit whether less than 'F'
-		jr      nc, hex2nib_err      ; error if it is larger than 'F'
-		sub     'A'  	; A - F to integer 0 - 5
-		jr      c, hex2nib_err       ; it was not 'A' - 'F'
-		add     a, 10   ; A - F to 10 - 15 by +5
+		;
+hex2nib.toupper:
+		cp 		'a'
+		jr	 	c, hex2nib.alpha
+		cp 		'f' + 1
+		jr	 	nc, hex2nib.alpha
+		and 	$df
+hex2nib.alpha:
+		cp     'A' 
+		jr      c, hex2nib.err  
+		cp      'F' + 1 
+		jr      nc, hex2nib.err      ; error if it is larger than 'F'
+		sub 	'A' - 10
+		ret
+		;
+hex2nib.err:
+		ld 		a, $ff 	; error code
 		ret
 
-hex2nib_err:
-		or 		$ff
-		ret
 
-
-; read hexadecimal string char upto 2 or 4 (set in c) 
-; bytes from (hl) and return int val in de
+; read hexadecimal string char upto 2 or 4 (set in C) 
+; bytes from (HL) and return int val in DE
+; if non hexdec char is encountered at (HL), returns with current de value without inc hl.
+; if C upper-limit bytes has been read, returns with current de value with increment hl.
+; A reg. hold the last char read from (HL).
 ;
 hexstr_de:
     ld      de, 0000h
 hexstr_de_lp:
     ld      a, (hl)
+	ld 		b, a
 	call 	hex2nib
 	cp 		$ff
-	ret 	z
+	jr 		nz, hexstr_de.hex2nib_succ
+	ld 		a, b 	; recover original value of A
+	ret 	 		; encountered non-hexdec char.
+hexstr_de.hex2nib_succ:
 	and 	a		; clear Carry bit
 	ld 		b, 4
 hexstr_de_rl4:
@@ -168,10 +222,10 @@ hexstr_de_rl4:
     djnz    hexstr_de_rl4
 	add 	e
 	ld 		e, a
-    inc     hl
+	inc 	hl 		; 
 	dec 	c
     jr      nz, hexstr_de_lp
-	ret
+	ret 			; return after c bytes read
 
 
 ;
@@ -187,6 +241,7 @@ print_str_hl:
 ; print a nibble in A
 print_nibble:
 		and 	$0f
+		cp 		$a
 		add 	'0'
 		cp 		':'
 		jr 		c, print_nibble_out
@@ -214,8 +269,11 @@ print_endl:
 		out 	(2), A
 		ret
 
-; dump memory b bytes from address in hl
+; dump memory from addr to addr+2 (value)
+;
 dump:
+	ld 		hl, (addr)
+	ld 		de, (addr2)
 dump_header:
 	call 	print_endl
 	ld 		a, h
@@ -229,15 +287,28 @@ dump_header:
 	ld 		a, ' '
 	out 	(2), a
 ;
-	ld 		b, 16
+	ld 		b, 16 	; up to 16 bytes
 dump_16:
 	ld 		a, (hl)
+	inc 	hl
+	ld 		(addr), hl
 	call 	print_byte
 	ld 		a, ' '
 	out 	(2), a
-	inc 	hl
+cp_de_hl:
+	ld 		a, d
+	cp 		h
+	jr 		nz, cp_de_hl.comp_end
+	ld 		a, e
+	cp 		l
+cp_de_hl.comp_end:
+	jr 		z, dump_exit
+	jr 		c, dump_exit
 ;
 	djnz 	dump_16
+	jr 		dump_header
 
 dump_exit:
+	ld 		de, 0
+	ld 		(addr2), de
 	ret
