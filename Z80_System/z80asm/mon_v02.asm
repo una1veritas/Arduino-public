@@ -1,6 +1,6 @@
 ;
 	    org 	0000h
-rst:
+RST_00:
 	    ld 		sp, 0200h
 	    jp  	mon
 ;
@@ -13,13 +13,13 @@ rst:
 ;
 
 
-		org 	0010h
+		org 	0020h
 addr:	dw		$0
 addr2:	dw 		$0
 status:	db 		0, 0
 lbuf:	ds 		$10, 0
 
-        org     0030h
+        org     0040h
 mon:            ;entry point
 read_line:
 		call	getln
@@ -29,7 +29,7 @@ read_line:
 		jr 		z, default_dump
 		;
 		cp 		'H'
-		jr 		z, mon_halt
+		jp 		z, mon_halt
 		;
 		cp 		'.'
 		jr 		z, specify_end
@@ -39,11 +39,8 @@ read_line:
 		ld 		c, 4
 		call 	hexstr_de
 		ld 		(addr), de
-		;ld 		a, d
-		;call 	print_byte
-		;ld 		a, e
-		;call 	print_byte
 		;
+		ld 		a, (hl)
 		cp 		$0
 		jr 		z, default_dump
 		cp		'.'
@@ -55,6 +52,7 @@ specify_end:
 		ld 		c, 4
 		call 	hexstr_de
 		ld 		(addr2), de
+		ld 		a, (hl)
 		cp 		0
 		jr 		nz, error
 		;
@@ -67,9 +65,9 @@ default_dump:
 		ld 		a, l
 		cp 		e
 cp_hl_de_end:
-		jr 		z, cp_equal
-		jr 		c, cp_less
-		jr 		nc, cp_greater
+		jr 		z, do_dump; cp_equal
+		jr 		c, do_dump; cp_less
+		jr 		nc, cp_gt ; cp_greater
 cp_equal:	ld 	a, '='
 		out 	(2), A
 		jr 		do_dump
@@ -78,6 +76,7 @@ cp_less:	ld 	a, '<'
 		jr 		do_dump
 cp_greater:	ld 	a, '>'
 		out 	(2), A
+cp_gt:
 		ld 		hl, (addr)
 		ld 		de, $10
 		add 	hl, de
@@ -88,14 +87,15 @@ do_dump:
 		jr 		read_line
 ; 
 error:
-		ld 		hl, msg
+		call 	print_byte
+		ld 		hl, err_msg
 		call 	print_str_hl
 		ld 		hl, lbuf
 		call 	print_str_hl
-		jr 		read_line
+		jp 		read_line
 
-msg:	db $0a, $0d
-		db "error? "
+err_msg:	db $0a, $0d
+		db " error? "
 		db $0a, $0d, 0
 
 mon_halt:
@@ -309,6 +309,7 @@ cp_de_hl.comp_end:
 	jr 		dump_header
 
 dump_exit:
+	;call 	print_endl
 	ld 		de, 0
 	ld 		(addr2), de
 	ret

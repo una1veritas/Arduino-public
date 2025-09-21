@@ -37,6 +37,7 @@ Z80Bus z80bus(
   _RD, _WR, _BUSACK, _WAIT, _BUSREQ, _RESET, _M1, _RFSH,
   SRAMEN);
 
+/*
 const int LCD_RS = 14, LCD_EN = 15, LCD_D4 = 16, LCD_D5 = 17, LCD_D6 = 18, LCD_D7 = 19;
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
@@ -53,11 +54,7 @@ struct Terminal {
   }
 
   void print(uint8 r, uint8 c, const char * str) {
-    /*
-    for(int i = 0; (c%20)+i < 20; ++i) {
-      line_buf[r%4][(c%20)+i] = str[i];
-    }
-    */
+
     row = r % 4;
     snprintf(line_buf[row], 21, "%-20s", str);
     //line_buf[row][20] = '\0';
@@ -71,6 +68,7 @@ struct Terminal {
     col = 0;
   }
 } lcdt(lcd);
+*/
 
 const int SPI_CS = 53;//latchPin = 53; --- must be controlled by user
 const int SPI_CLK = 52; //clockPin = 52; --- controlled by SPI module.
@@ -169,7 +167,7 @@ void dump(uint8 mem_buff[], const uint16 size = 0x0100, const uint16 offset_addr
 
 void setup() {
   // put your setup code here, to run once:
-  lcdt.print(0,0, "System Starting.");
+  //lcdt.print(0,0, "System Starting.");
 
   Serial.begin(38400);
   while (! Serial) {}
@@ -184,16 +182,16 @@ void setup() {
 
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_start(4, 50);
+  z80bus.clock_start(3, 100);
   Serial.println("Reset Z80.");
   z80bus.cpu_reset();
 
   if (!z80bus.DMA_mode() ) {
-    lcdt.print(0,0,"DMA mode failed.");
+    //lcdt.print(0,0,"DMA mode failed.");
     while (true) ;
   } else {
     Serial.println("Entered DMA mode.");
-    lcdt.print(0,0,"DMA mode.");
+    //lcdt.print(0,0,"DMA mode.");
 
     Serial.println("Memory check...");
     ram_check(0x0000, 0x1000);
@@ -202,21 +200,21 @@ void setup() {
     if (res != 0) {
       Serial.println("Something going wrong w/ sram read & write!");
     }
-
+    
     z80bus.DMA_address(0);
     z80bus.DMA_read(dma_buff);
     dump(dma_buff, 0x100, 0);
     z80bus.DMA_address(0x100);
     z80bus.DMA_read(dma_buff);
     dump(dma_buff, 0x100, 0x100);
-
+    
     Serial.println("Exit to Z80 mode.");
     z80bus.Z80_mode();
   }
   Serial.println("_RESET goes HIGH.");
   z80bus.RESET(HIGH);
-  lcdt.clear();
-  lcdt.print(0,0,"Z80 starts.");
+  //lcdt.clear();
+  //lcdt.print(0,0,"Z80 starts.");
 }
 
 void loop() {
@@ -270,7 +268,7 @@ void loop() {
     Serial.println("Halted.");
     if ( z80bus.DMA_mode() ) {
       Serial.println("Entered DMA mode.");
-      lcdt.print(0,0,"DMA mode.");
+      //lcdt.print(0,0,"DMA mode.");
       Serial.println("Memory dump...");
       z80bus.DMA_address(0);
       z80bus.DMA_read(dma_buff);
