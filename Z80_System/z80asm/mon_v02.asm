@@ -34,7 +34,8 @@ read_line:
 		cp 		'.'
 		jr 		z, specify_end
 		cp 		':'
-		jr 		z, error
+		jr 		z, write_mode
+		jr		error
 		;
 		ld 		c, 4
 		call 	hexstr_de
@@ -45,6 +46,8 @@ read_line:
 		jr 		z, default_dump
 		cp		'.'
 		jr 		z, specify_end
+		cp		':'
+		jr 		z, write_mode
 		jr 		error
 		;
 specify_end:
@@ -84,6 +87,9 @@ cp_gt:
 		jr 		do_dump
 do_dump:
 		call 	dump
+		jr 		read_line
+;
+write_mode:
 		jr 		read_line
 ; 
 error:
