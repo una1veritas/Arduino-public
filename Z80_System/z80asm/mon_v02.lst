@@ -1,13 +1,13 @@
                         ; --------------------------------------
                         ; zasm: assemble "mon_v02.asm"
-                        ; date: 2025-09-21 16:33:20
+                        ; date: 2025-09-22 18:48:07
                         ; --------------------------------------
 
 
                         ;
 0000:                   	    org 	0000h
 0000:                   RST_00:
-0000: 310002   [10]     	    ld 		sp, 0200h
+0000: 3100E0   [10]     	    ld 		sp, $e000
 0003: C34000   [20]     	    jp  	mon
                         ;
                         ;;
@@ -19,18 +19,18 @@
                         ;
                         
                         
-                        		org 	0020h
-0020: 0000              addr:	dw		$0
-0022: 0000              addr2:	dw 		$0
-0024: 0000              status:	db 		0, 0
-0026: 00000000          lbuf:	ds 		$10, 0
-002A: 00...             
+                        		org 	0200h
+0200: 0000              addr:	dw		$0
+0202: 0000              addr2:	dw 		$0
+0204: 0000              status:	db 		0, 0
+0206: 00000000          lbuf:	ds 		$10, 0
+020A: 00...             
                         
                                 org     0040h
 0040:                   mon:            ;entry point
 0040:                   read_line:
 0040: CDCF00   [17]     		call	getln
-0043: 212600   [27]     		ld 		hl, lbuf
+0043: 210602   [27]     		ld 		hl, lbuf
 0046: 7E       [34]     		ld 		a, (hl)
 0047: FE00     [41]     		cp 		$0
 0049: 2830     [48|53]  		jr 		z, default_dump
@@ -45,7 +45,7 @@
                         		;
 0058: 0E04     [100]    		ld 		c, 4
 005A: CD4201   [117]    		call 	hexstr_de
-005D: ED532000 [137]    		ld 		(addr), de
+005D: ED530002 [137]    		ld 		(addr), de
                         		;
 0061: 7E       [144]    		ld 		a, (hl)
 0062: FE00     [151]    		cp 		$0
@@ -58,14 +58,14 @@
 006C: 23       [ 6]     		inc 	hl 		; next to '.'
 006D: 0E04     [13]     		ld 		c, 4
 006F: CD4201   [30]     		call 	hexstr_de
-0072: ED532200 [50]     		ld 		(addr2), de
+0072: ED530202 [50]     		ld 		(addr2), de
 0076: 7E       [57]     		ld 		a, (hl)
 0077: FE00     [64]     		cp 		0
 0079: 2034     [71|76]  		jr 		nz, error
                         		;
 007B:                   default_dump:
-007B: 2A2000   [16]     		ld 		hl, (addr)
-007E: ED5B2200 [36]     		ld 		de, (addr2)
+007B: 2A0002   [16]     		ld 		hl, (addr)
+007E: ED5B0202 [36]     		ld 		de, (addr2)
 0082: 7C       [40]     		ld 		a, H
 0083: BA       [44]     		cp 		d
 0084: 2002     [51|56]  		jr 		nz, cp_hl_de_end
@@ -84,10 +84,10 @@
 009A: 3E3E     [ 7]     cp_greater:	ld 	a, '>'
 009C: D302     [18]     		out 	(2), A
 009E:                   cp_gt:
-009E: 2A2000   [16]     		ld 		hl, (addr)
+009E: 2A0002   [16]     		ld 		hl, (addr)
 00A1: 111000   [26]     		ld 		de, $10
 00A4: 19       [37]     		add 	hl, de
-00A5: 222200   [53]     		ld 		(addr2), hl
+00A5: 220202   [53]     		ld 		(addr2), hl
 00A8: 1800     [65]     		jr 		do_dump
 00AA:                   do_dump:
 00AA: CD8D01   [17]     		call 	dump
@@ -97,7 +97,7 @@
 00AF: CD7701   [17]     		call 	print_byte
 00B2: 21C100   [27]     		ld 		hl, err_msg
 00B5: CD6001   [44]     		call 	print_str_hl
-00B8: 212600   [54]     		ld 		hl, lbuf
+00B8: 210602   [54]     		ld 		hl, lbuf
 00BB: CD6001   [71]     		call 	print_str_hl
 00BE: C34000   [81]     		jp 		read_line
                         
@@ -116,7 +116,7 @@
                         ; subroutines
                         
 00CF:                   getln:
-00CF: 212600   [10]     		ld 		hl, lbuf 	; buf ptr
+00CF: 210602   [10]     		ld 		hl, lbuf 	; buf ptr
 00D2: 3600     [20]     		ld 		(hl), 0
 00D4: 0600     [27]     		ld 		b, 0		; char count
 00D6: CD8401   [44]     		call 	print_endl
@@ -280,8 +280,8 @@
                         ; dump memory from addr to addr+2 (value)
                         ;
 018D:                   dump:
-018D: 2A2000   [16]     	ld 		hl, (addr)
-0190: ED5B2200 [36]     	ld 		de, (addr2)
+018D: 2A0002   [16]     	ld 		hl, (addr)
+0190: ED5B0202 [36]     	ld 		de, (addr2)
 0194:                   dump_header:
 0194: CD8401   [17]     	call 	print_endl
 0197: 7C       [21]     	ld 		a, h
@@ -299,7 +299,7 @@
 01AD:                   dump_16:
 01AD: 7E       [ 7]     	ld 		a, (hl)
 01AE: 23       [13]     	inc 	hl
-01AF: 222000   [29]     	ld 		(addr), hl
+01AF: 220002   [29]     	ld 		(addr), hl
 01B2: CD7701   [46]     	call 	print_byte
 01B5: 3E20     [53]     	ld 		a, ' '
 01B7: D302     [64]     	out 	(2), a
@@ -319,21 +319,21 @@
 01C7:                   dump_exit:
                         	;call 	print_endl
 01C7: 110000   [10]     	ld 		de, 0
-01CA: ED532200 [30]     	ld 		(addr2), de
+01CA: ED530202 [30]     	ld 		(addr2), de
 01CE: C9       [40]     	ret
 
 
 ; +++ segments +++
 
-#CODE          = $0000 =     0,  size = $01CF =   463
+#CODE          = $0000 =     0,  size = $0216 =   534
 
 ; +++ global symbols +++
 
 RST_00            = $0000 =     0          mon_v02.asm:3 (unused)
-_end              = $01CF =   463          mon_v02.asm:2 (unused)
-_size             = $01CF =   463          mon_v02.asm:2 (unused)
-addr              = $0020 =    32          mon_v02.asm:17
-addr2             = $0022 =    34          mon_v02.asm:18
+_end              = $0216 =   534          mon_v02.asm:2 (unused)
+_size             = $0216 =   534          mon_v02.asm:2 (unused)
+addr              = $0200 =   512          mon_v02.asm:17
+addr2             = $0202 =   514          mon_v02.asm:18
 cp_de_hl          = $01B9 =   441          mon_v02.asm:298 (unused)
 cp_de_hl.comp_end = $01BF =   447          mon_v02.asm:304
 cp_equal          = $008E =   142          mon_v02.asm:71 (unused)
@@ -362,7 +362,7 @@ hexstr_de         = $0142 =   322          mon_v02.asm:206
 hexstr_de.hex2nib_succ = $0150 =   336          mon_v02.asm:216
 hexstr_de_lp      = $0145 =   325          mon_v02.asm:208
 hexstr_de_rl4     = $0153 =   339          mon_v02.asm:219
-lbuf              = $0026 =    38          mon_v02.asm:20
+lbuf              = $0206 =   518          mon_v02.asm:20
 mon               = $0040 =    64          mon_v02.asm:23
 mon_halt          = $00CE =   206          mon_v02.asm:101
 print_byte        = $0177 =   375          mon_v02.asm:254
@@ -372,8 +372,8 @@ print_nibble_out  = $0174 =   372          mon_v02.asm:249
 print_str_hl      = $0160 =   352          mon_v02.asm:233
 read_line         = $0040 =    64          mon_v02.asm:24
 specify_end       = $006C =   108          mon_v02.asm:50
-status            = $0024 =    36          mon_v02.asm:19 (unused)
+status            = $0204 =   516          mon_v02.asm:19 (unused)
 
 
-total time: 0.0015 sec.
+total time: 0.0014 sec.
 no errors

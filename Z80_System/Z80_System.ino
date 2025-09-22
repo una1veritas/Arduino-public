@@ -7,10 +7,6 @@
 
 //#define BUS_DEBUG
 
-typedef uint8_t uint8;
-typedef uint16_t uint16;
-typedef uint32_t uint32;
-
 enum Mega_pin_assign {
   // z80
   CLK     = 13, // input on Z80
@@ -109,49 +105,16 @@ byte ascii7seg(byte ch) {
 }
 
 
-uint16 addr;
-uint8 data;
+//uint16_t addr;
+//uint8_t data;
 char busmode = ' ';
 char buf[32];
-uint8 dma_buff[256];
+uint8_t dma_buff[256];
 
-uint16 ram_check(uint32 start_addr = 0x0000, uint32 end_addr = 0x20000, uint32 skip = 0x0100) {
-  uint8 buf[256];
-  uint16 errcount = 0;
-  randomSeed(analogRead(0));
-  for(uint32 addr = start_addr; addr < end_addr; addr += skip) {
-    uint8 t = random(256);
-    Serial.print(addr, HEX);
-    Serial.print(" -- ");
-    Serial.print(addr + 0x100, HEX);
-    Serial.print(" ");
-    for(uint32 ix = 0; ix < 0x100; ++ix) {
-      buf[ix] = z80bus.ram_read(addr + ix);
-      buf[ix] ^= t;
-      z80bus.ram_write(addr+ix, buf[ix]);
-    }
-    for(uint32 ix = 0; ix < 0x100; ++ix) {
-      if (buf[ix] != z80bus.ram_read(addr+ix)) {
-        Serial.println(addr+ix, HEX);
-        errcount++;
-      }
-    }
-    if ( errcount > 0 ) {
-      Serial.println();
-      Serial.print("Errors = ");
-      Serial.println(errcount, DEC);
-    } else {
-      Serial.print("Ok, ");
-    }
-  }
-  Serial.println();
-  return errcount;
-}
-
-void dump(uint8 mem_buff[], const uint16 size = 0x0100, const uint16 offset_addr = 0x0000) {
+void dump(uint8_t mem_buff[], const uint16_t size = 0x0100, const uint16_t offset_addr = 0x0000) {
   //char buf[16];
-  uint8 data;
-  for(uint32 ix = 0; ix < size; ++ix) {
+  uint8_t data;
+  for(uint32_t ix = 0; ix < size; ++ix) {
     if ( (ix & 0x0f) == 0 ) {
       snprintf(buf, 16, "%04X : ", offset_addr+ix);
       Serial.print(buf);
@@ -182,7 +145,7 @@ void setup() {
 
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_start(3, 100);
+  z80bus.clock_start(4, 100);
   Serial.println("Reset Z80.");
   z80bus.cpu_reset();
 
@@ -193,23 +156,36 @@ void setup() {
     Serial.println("Entered DMA mode.");
     //lcdt.print(0,0,"DMA mode.");
 
-    Serial.println("Memory check...");
-    ram_check(0x0000, 0x1000);
+    
+    Serial.print("Memory check...");
+    uint16_t errcount = z80bus.ram_check(0x0000, 0x1000);
+    if ( errcount > 0 ) {
+      Serial.println();
+      Serial.print("Warning!!! Mem check encountered ");
+      Serial.print(errcount);
+      Serial.println(" errors.");
+    } else {
+      Serial.println(" Ok.");
+    }
 
-    uint8 res = z80bus.DMA_progmem_load(mem, MEM_MAX, 0x0000);
+    // test DMA, arduino to ram 
+    /*
+    uint8_t res = z80bus.DMA_progmem_load(mon02, 512, 0x0000);
     if (res != 0) {
       Serial.println("Something going wrong w/ sram read & write!");
     }
-    
+    */
+    // test DMA, ram to arduino 
+    /*
     z80bus.DMA_address(0);
     z80bus.DMA_read(dma_buff);
     dump(dma_buff, 0x100, 0);
     z80bus.DMA_address(0x100);
     z80bus.DMA_read(dma_buff);
     dump(dma_buff, 0x100, 0x100);
-    
+    */
     Serial.println("Exit to Z80 mode.");
-    z80bus.Z80_mode();
+    z80bus.Controller_mode();
   }
   Serial.println("_RESET goes HIGH.");
   z80bus.RESET(HIGH);
@@ -218,25 +194,38 @@ void setup() {
 }
 
 void loop() {
+  uint8_t data;
+  uint16_t addr;
+  uint32_t val;
   z80bus.clock_wait_rising_edge();
    if ( !z80bus.MREQ() ) {
     if ( ! z80bus.RD() ) {
+      /*
       addr = z80bus.address_bus16_get();
       z80bus.clock_wait_rising_edge();
       data = z80bus.data_bus_get();
-      busmode = 'r';
+      */
+      val = z80bus.mem_rw();
+      addr = val>>16;
+      data = val & 0xff;
+      busmode = 'r';      
     } else if ( ! z80bus.WR() ) {
+      /*
       addr = z80bus.address_bus16_get();
       z80bus.clock_wait_rising_edge();
       data = z80bus.data_bus_get();
+      */
+      val = z80bus.mem_rw();
+      addr = val>>16;
+      data = val & 0xff;
       busmode = 'u';
-    }
+    } // else RFSH
   } else if ( !z80bus.IORQ() ) {
     if ( ! z80bus.RD() ) {
       // in operation
       addr = z80bus.address_bus16_get();
       z80bus.data_bus_mode_output();
-      data = z80bus.z80io(addr, data, INPUT);
+      data = z80bus.io_rw(addr, data, INPUT);
       z80bus.data_bus_set(data);
       z80bus.clock_wait_rising_edge(1);
       z80bus.clock_wait_rising_edge(1);
@@ -248,7 +237,7 @@ void loop() {
       addr = z80bus.address_bus16_get();
       z80bus.clock_wait_rising_edge(2);
       data = z80bus.data_bus_get();
-      z80bus.z80io(addr, data, OUTPUT);
+      z80bus.io_rw(addr, data, OUTPUT);
       busmode = 'o';
     } 
   }

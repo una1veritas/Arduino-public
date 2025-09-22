@@ -2,18 +2,15 @@
 //This is a automatic generated file
 //Please do not modify this file
 //If you touch this file your change will be overwritten during the next build
-//This file has been generated on 2025-08-21 21:38:59
+//This file has been generated on 2025-09-22 16:54:06
 
 #include "Arduino.h"
-#include "SRAM1Mbit.h"
-#include "Z80_Controller.h"
+#include <SPI.h>
+#include <LiquidCrystal.h>
+#include "Z80Bus.h"
+#include "progmem_rom.h"
 
-void start_OC1C_clock(uint8_t presc, uint16_t top) ;
-void stop_OC1C_clock(uint8_t presc, uint16_t top) ;
-void port_out(const uint8 & port, const uint8 & val) ;
-void dump_mem() ;
-uint8 control_pin_status();
-void dump_control_pins(uint8 s) ;
+byte ascii7seg(byte ch) ;
 void setup() ;
 void loop() ;
 

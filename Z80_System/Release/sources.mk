@@ -46,4 +46,6 @@ CPP_DEPS :=
 SUBDIRS := \
 . \
 core/core \
+libraries/LiquidCrystal/src \
+z80asm \
 

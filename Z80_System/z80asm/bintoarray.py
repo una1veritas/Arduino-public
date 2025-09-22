@@ -7,5 +7,7 @@ with open(file_name, 'rb') as f:
         print('0x{:02x}, '.format(int.from_bytes(b, "big")), end='')
         count += 1
         if count % 16 == 0 :
+            print() 
+        if count % 256 == 0 :
             print()
 print()

@@ -1,7 +1,7 @@
 ;
 	    org 	0000h
 RST_00:
-	    ld 		sp, 0200h
+	    ld 		sp, $e000
 	    jp  	mon
 ;
 ;;
@@ -13,7 +13,7 @@ RST_00:
 ;
 
 
-		org 	0020h
+		org 	0200h
 addr:	dw		$0
 addr2:	dw 		$0
 status:	db 		0, 0

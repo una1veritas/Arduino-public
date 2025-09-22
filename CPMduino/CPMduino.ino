@@ -1,7 +1,7 @@
 #include "globals.h"
 
 #include <SPI.h>
-#include <SdFat.h>
+#include <SD.h>
 
 SdFat SD;
 SdFile dir;
