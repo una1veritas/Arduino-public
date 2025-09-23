@@ -101,14 +101,19 @@ write_mode:
 		call 	hexstr_de
 		ld 		a,c 
 		cp 		a, 2
-		jr 		z, error	; no arg or illegal char
-		call 	print_endl
-		ld 		a, e
-		call print_byte
+		jr 		z, write_mode.exit	; no arg or illegal char
+		;call 	print_endl
+		;ld 		a, e
+		;call print_byte
 		ld 		ix, (addr)
 		ld 		(ix), e
 		inc 	ix
 		ld 		(addr), ix
+		ld 		a, (hl)
+		cp 		0
+		jr 		z, write_mode.exit
+		jr 		write_mode
+write_mode.exit
 		jp 		read_line
 ; 
 error:
@@ -135,6 +140,7 @@ mon_halt:
 getln:
 		ld 		hl, lbuf 	; buf ptr
 		ld 		(hl), 0
+		ld 		c, 31 		; limit length
 		ld 		b, 0		; char count
 		call 	print_endl
 		ld 		a, '*'
@@ -183,7 +189,7 @@ getln_echo_proceed:
 		ld 		(hl), $0	; *ptr = NULL
 		inc 	b
 		ld 		a, b
-		cp 		15
+		cp 		c
 		jr 		nc, getln_end  ; force terminate line
 		jr 		getln_wait
 
