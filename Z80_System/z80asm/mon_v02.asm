@@ -25,20 +25,21 @@ mon:            ;entry point
 		ld 		(addr2), de
 		ld 		(lbuf), de
 read_line:
+		ld 		c, 31
 		call	getln
 		ld 		hl, lbuf
 		ld 		a, (hl)
-		cp 		$0
+		cp 		$0 		; line is empty
 		jr 		z, default_dump
 		;
-		cp 		'H'
+		cp 		'H' 	; begins with H
 		jp 		z, mon_halt
 		;
-		cp 		'.'
+		cp 		'.'		; begins with .
 		jr 		z, specify_end
-		cp 		':'
+		cp 		':'		; begins with :
 		jr 		z, write_mode
-		;
+; specify start
 		ld 		c, 4
 		call 	hexstr_de
 		ld 		(addr), de
@@ -50,6 +51,8 @@ read_line:
 		jr 		z, specify_end
 		cp		':'
 		jr 		z, write_mode
+		cp		'R'
+		jr 		z, run_mode
 		jr 		error
 		;
 specify_end:
@@ -64,29 +67,21 @@ specify_end:
 default_dump:
 		ld 		hl, (addr)
 		ld 		de, (addr2)
-		ld 		a, H
+		ld 		a, h
 		cp 		d
 		jr 		nz, cp_hl_de_end
 		ld 		a, l
 		cp 		e
 cp_hl_de_end:
-		jr 		z, do_dump; cp_equal
-		jr 		c, do_dump; cp_less
-		jr 		nc, cp_gt ; cp_greater
-cp_equal:	ld 	a, '='
-		out 	(2), A
-		jr 		do_dump
-cp_less:	ld 	a, '<'
-		out 	(2), A
-		jr 		do_dump
-cp_greater:	ld 	a, '>'
-		out 	(2), A
-cp_gt:
+		jr 		z, do_dump 	; =
+		jr 		c, do_dump	; <
+		;jr 		nc, cp_gt 	; >
+;cp_gt:
 		ld 		hl, (addr)
 		ld 		de, $10
 		add 	hl, de
 		ld 		(addr2), hl
-		jr 		do_dump
+		;
 do_dump:
 		call 	dump
 		jr 		read_line
@@ -115,8 +110,13 @@ write_mode:
 		jr 		write_mode
 write_mode.exit
 		jp 		read_line
-; 
+;
+run_mode:
+		ld 		hl, (addr)
+		jp 		(hl)
+;
 error:
+		call 	print_endl
 		call 	print_byte
 		ld 		hl, err_msg
 		call 	print_str_hl
@@ -124,9 +124,8 @@ error:
 		call 	print_str_hl
 		jp 		read_line
 
-err_msg:	db $0a, $0d
-		db " error? "
-		db $0a, $0d, 0
+err_msg:
+		db 	" error", $0a, $0d, 0
 
 mon_halt:
 		halt
@@ -136,11 +135,10 @@ mon_halt:
 
 
 ; subroutines
-
+; read up to c bytes into buffer pointed by hl, end with 0
 getln:
 		ld 		hl, lbuf 	; buf ptr
 		ld 		(hl), 0
-		ld 		c, 31 		; limit length
 		ld 		b, 0		; char count
 		call 	print_endl
 		ld 		a, '*'
@@ -213,14 +211,14 @@ hex2nib.toupper:
 		cp 		'a'
 		jr	 	c, hex2nib.alpha
 		cp 		'f' + 1
-		jr	 	nc, hex2nib.alpha
-		and 	$df
+		jr	 	nc, hex2nib.err
+		sub 	$20 	; to upper char
 hex2nib.alpha:
-		cp     'A' 
+		sub     'A' 
 		jr      c, hex2nib.err  
-		cp      'F' + 1 
+		cp      6
 		jr      nc, hex2nib.err      ; error if it is larger than 'F'
-		sub 	'A' - 10
+		add 	10
 		ret
 		;
 hex2nib.err:
@@ -235,28 +233,28 @@ hex2nib.err:
 ; A reg. hold the last char read from (HL).
 ;
 hexstr_de:
-    ld      de, 0000h
-hexstr_de_lp:
-    ld      a, (hl)
-	ld 		b, a
-	call 	hex2nib
-	cp 		$ff
-	jr 		nz, hexstr_de.hex2nib_succ
-	ld 		a, b 	; recover original value of A
-	ret 	 		; encountered non-hexdec char.
+		ld      de, 0000h
+hexstr_de.loop:
+		ld      a, (hl)
+		ld 		b, a
+		call 	hex2nib
+		cp 		$ff
+		jr 		nz, hexstr_de.hex2nib_succ
+		ld 		a, b 	; recover original value of A
+		ret 	 		; encountered non-hexdec char.
 hexstr_de.hex2nib_succ:
-	and 	a		; clear Carry bit
-	ld 		b, 4
-hexstr_de_rl4:
-    rl      e		 ;rotate left entire de
-    rl      d
-    djnz    hexstr_de_rl4
-	add 	e
-	ld 		e, a
-	inc 	hl 		; 
-	dec 	c
-    jr      nz, hexstr_de_lp
-	ret 			; return after c bytes read
+		and 	a		; clear Carry bit
+		ld 		b, 4
+hexstr_de.rl4:
+		rl      e		 ;rotate left entire de
+		rl      d
+		djnz    hexstr_de.rl4
+		add 	e
+		ld 		e, a
+		inc 	hl 		; 
+		dec 	c
+		jr      nz, hexstr_de.loop
+		ret 			; return after c bytes read
 
 
 ;
