@@ -1,7 +1,7 @@
 ;
 	    org 	0000h
 RST_00:
-	    ld 		sp, $e000
+	    ld 		sp, $2000
 	    jp  	mon
 ;
 ;;
@@ -13,14 +13,17 @@ RST_00:
 ;
 
 
-		org 	0200h
-addr:	dw		$0
-addr2:	dw 		$0
-status:	db 		0, 0
-lbuf:	ds 		$10, 0
+; work space
+addr	equ		$2000
+addr2	equ 	addr+2
+lbuf	equ 	addr2+2
 
         org     0040h
 mon:            ;entry point
+		ld 		de, 0
+		ld 		(addr), de
+		ld 		(addr2), de
+		ld 		(lbuf), de
 read_line:
 		call	getln
 		ld 		hl, lbuf
@@ -35,7 +38,6 @@ read_line:
 		jr 		z, specify_end
 		cp 		':'
 		jr 		z, write_mode
-		jr		error
 		;
 		ld 		c, 4
 		call 	hexstr_de
@@ -90,7 +92,24 @@ do_dump:
 		jr 		read_line
 ;
 write_mode:
-		jr 		read_line
+		inc 	hl 		; next to ':'
+		ld 		a, (hl)
+		cp 		' '
+		jr 		z, write_mode
+		;
+		ld 		c, 2
+		call 	hexstr_de
+		ld 		a,c 
+		cp 		a, 2
+		jr 		z, error	; no arg or illegal char
+		call 	print_endl
+		ld 		a, e
+		call print_byte
+		ld 		ix, (addr)
+		ld 		(ix), e
+		inc 	ix
+		ld 		(addr), ix
+		jp 		read_line
 ; 
 error:
 		call 	print_byte

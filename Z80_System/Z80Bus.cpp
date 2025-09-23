@@ -100,11 +100,11 @@ uint32_t Z80Bus::mem_rw() {
     } else
     	return;
 
-	page = (addr >> 9) & 0x7f;
+	page = (addr >> 10) & 0x3f;
 	switch(page) {
 	case 0x00:
 		if (rw_mode == READ) {
-		      data = pgm_read_byte_near(mon02 + (addr & 0x1ff));
+		      data = pgm_read_byte_near(mon02 + (addr & 0x3ff));
 		      data_bus_set(data);
 		      while (RD() == LOW);
           //Serial.print(" put data ");

@@ -145,7 +145,7 @@ void setup() {
 
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_start(4, 100);
+  z80bus.clock_start(3, 100);
   Serial.println("Reset Z80.");
   z80bus.cpu_reset();
 
