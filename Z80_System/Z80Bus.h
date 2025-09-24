@@ -103,6 +103,30 @@ public:
 	  return (TCCR1A & (B11 << COM1C0)) == (B01 << COM1C0);
   }
 
+  void clock_select_mode(const uint8_t & mode) {
+	  switch(mode) {
+	  case 0 : // stop
+		  clock_start(0, 16000);
+		  break;
+	  case 1 : // 1 Hz
+		  clock_start(5, 8000);
+		  break;
+	  case 3 :
+		  clock_start(3, 100);
+		  break;
+	  case 4 :
+		  clock_start(2, 1600);
+		  break;
+	  case 5 :
+		  clock_start(1, 1600);
+		  break;
+	  case 2 :
+	  default:
+		  clock_start(4, 400);
+		  break;
+	  }
+  }
+
   uint8_t clock() {
     return digitalRead(CLK_OUT);
   }
@@ -396,8 +420,9 @@ public:
     return digitalRead(_RFSH);
   }
   
-  uint8_t io_rw(const uint8_t & port, const uint8_t & val, const uint8_t & inout);
-  uint32_t mem_rw();
+//  uint8_t io_rw(const uint8_t & port, const uint8_t & val, const uint8_t & inout);
+  uint32_t io_rw(void);
+  uint32_t mem_rw(void);
 
 };
 

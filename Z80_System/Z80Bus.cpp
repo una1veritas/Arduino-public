@@ -29,22 +29,50 @@ void Z80Bus::clock_stop() {
 	pinMode(CLK_OUT, INPUT_PULLUP);
 }
 
-uint8_t Z80Bus::io_rw(const uint8_t &port, const uint8_t &val, const uint8_t &inout) {
-	switch (port) {
+//uint8_t Z80Bus::io_rw(const uint8_t &port, const uint8_t &val, const uint8_t &inout) {
+uint32_t Z80Bus::io_rw() {
+	uint16_t port;
+	uint8_t data;
+	uint8_t dma_buff[256];
+	enum IO_MODE {
+		IN = 0, OUT = 1,
+	};
+	// from Z80 side
+	uint8_t io_mode = IN;
+
+	if (IORQ() == HIGH)
+		return 0;
+	port = address_bus16_get();
+	//Serial.print("port: ");
+	//Serial.print(port, HEX);
+	if (RD() == LOW) {
+		io_mode = IN;
+		data_bus_mode_output();
+	} else if (WR() == LOW) {
+		io_mode = OUT;
+		data_bus_mode_input();
+	} else
+		return 0;
+
+
+	switch ( uint8_t(port & 0xff) ) {
 	case 0:  //CON_STS
-		if (inout == INPUT) {
-			return (Serial.available() ? 0xff : 0x00);
+		if (io_mode == IN ) {
+			data = (Serial.available() ? 0xff : 0x00);
+			data_bus_set(data);
 		}
 		break;
 	case 1:  // CON_IN
-		if (inout == INPUT) {
-			return Serial.read();
+		if (io_mode == IN ) {
+			data = Serial.read();
+			data_bus_set(data);
 		}
 		break;
 	case 2:  // CON_OUT
-		if (inout == OUTPUT)
-			Serial.print((char) val);
-		return 0;
+		if (io_mode == OUT ) {
+			data = data_bus_get();
+			Serial.print((char) data);
+		}
 		break;
 	case 16: // track_sel_h
 		break;
@@ -53,79 +81,129 @@ uint8_t Z80Bus::io_rw(const uint8_t &port, const uint8_t &val, const uint8_t &in
 	case 18: // sector_sel
 		break;
 	case 20: // dma adr_L
-		if (inout == OUTPUT) {
-			dma_address = (dma_address & 0xff00) | val;
+		if (io_mode == OUT) {
+			data = data_bus_get();
+			dma_address = (dma_address & 0xff00) | data;
 		}
 		break;
 	case 21: // dma adr_H
-		if (inout == OUTPUT) {
-			dma_address = (dma_address & 0x00ff) | (val << 8);
+		if (io_mode == OUT) {
+			data = data_bus_get();
+			dma_address = (dma_address & 0x00ff) | (data << 8);
 		}
 		break;
 	case 22: // exec_dma
-		if (inout == INPUT) {
+		if (io_mode == IN) {
+			WAIT(LOW);
+			if (BUSACK() == HIGH) {
+				BUSREQ(LOW);
+				while (BUSACK() == HIGH)
+					clock_wait_rising_edge();
+			}
+			address_bus16_mode(OUTPUT);
+			pinMode(_MREQ, OUTPUT);
+			pinMode(_RD, OUTPUT);
+			pinMode(_WR, OUTPUT);
+			MREQ(HIGH);
+			ram_enable();
 			dma_mode = READ_RAM;
-			return 1; // the number of blocks
-		} else if (inout == OUTPUT) {
+			DMA_exec(dma_buff);
+		    if (BUSREQ() == LOW)
+		      BUSREQ(HIGH);
+			WAIT(HIGH);
+		    while ( BUSACK() == LOW ) ;
+			data_bus_set(1);
+		} else if (io_mode == OUT) {
+			// a lot of things to do, like done above.
 			dma_mode = WRITE_RAM;
 		}
 		break;
-	default: // dma_rs
-		if (inout == INPUT) {
-			return dma_result;
+	case 23: // dma_rs
+		if (io_mode == IN) {
+			data = dma_result;
+			data_bus_set(data);
 		}
 		break;
+	case 128: // set/change clock mode
+		if ( io_mode == OUT ) {
+			data = data_bus_get();
+			clock_select_mode(data);
+		}
+		break;
+	default:
+		data = 0;
 	}
-	return 0;
+	while (IORQ() == LOW) {}
+	return (uint32_t(port) << 16) | data;
 }
 
 uint32_t Z80Bus::mem_rw() {
 	uint16_t addr;
 	uint8_t data;
-	enum RW_MODE { READ = 0, WRITE, };  //Z80's mode
+	enum RW_MODE {
+		READ = 0, WRITE,
+	};
+	//Z80's mode
 	uint8_t rw_mode = READ;
 	uint8_t page = 0;
 
-	if ( MREQ() == HIGH or ram_is_enabled() )
+	if (MREQ() == HIGH or ram_is_enabled())
 		return;
-  addr = address_bus16_get();
-  //Serial.print("addr: ");
-  //Serial.print(addr, HEX);
-	if ( RD() == LOW ) {
+	addr = address_bus16_get();
+	//Serial.print("addr: ");
+	//Serial.print(addr, HEX);
+	if (RD() == LOW) {
 		rw_mode = READ;
 		data_bus_mode_output();
-    } else if ( WR() == LOW ) {
-    	rw_mode = WRITE;
-    	data_bus_mode_input(); // for observation
-    } else
-    	return;
+	} else if (WR() == LOW) {
+		rw_mode = WRITE;
+		data_bus_mode_input(); // for observation
+	} else
+		return;
 
-	page = (addr >> 10) & 0x3f;
-	switch(page) {
-	case 0x00:
+	page = (addr >> 12) & 0x0f;
+	switch (page) {
+	/*
+	 case 0x00:
+	 if (rw_mode == READ) {
+	 data = pgm_read_byte_near(rom_0000 + (addr & 0x0fff));
+	 data_bus_set(data);
+	 while (RD() == LOW);
+	 //Serial.print(" put data ");
+	 //Serial.println(data, HEX);
+	 } else if (rw_mode == WRITE ) {
+	 data_bus_mode_input();
+	 while (WR() == LOW);
+	 data = data_bus_get();
+	 Serial.println("write rom area error.");
+	 }
+	 break;
+	 */
+	case 0x0f:
 		if (rw_mode == READ) {
-		      data = pgm_read_byte_near(mon02 + (addr & 0x3ff));
-		      data_bus_set(data);
-		      while (RD() == LOW);
-          //Serial.print(" put data ");
-          //Serial.println(data, HEX);
-		} else if (rw_mode == WRITE ) {
+			data = pgm_read_byte_near(rom_f000 + (addr & 0x0fff));
+			data_bus_set(data);
+			while (RD() == LOW)
+				;
+		} else if (rw_mode == WRITE) {
 			data_bus_mode_input();
-			while (WR() == LOW);
+			while (WR() == LOW)
+				;
 			data = data_bus_get();
-      Serial.println("write rom area error.");
+			Serial.println("write rom area error.");
 		}
 		break;
 	default:
 		ram_enable();
 		data_bus_mode_input();
 		data = data_bus_get();
-    //Serial.print("addr ");
-    //Serial.print(addr, HEX);
-    //Serial.print(" data ");
-    //Serial.println(data, HEX);
+		//Serial.print("addr ");
+		//Serial.print(addr, HEX);
+		//Serial.print(" data ");
+		//Serial.println(data, HEX);
 	}
-	while( MREQ() == LOW );
+	while (MREQ() == LOW)
+		;
 	ram_disable();
 	return (uint32_t(addr) << 16) | data;
 }

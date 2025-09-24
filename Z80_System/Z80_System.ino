@@ -169,12 +169,12 @@ void setup() {
     }
 
     // test DMA, arduino to ram 
-    /*
-    uint8_t res = z80bus.DMA_progmem_load(mon02, 512, 0x0000);
+    
+    uint8_t res = z80bus.DMA_progmem_load(rom_0000, 1024, 0x0000);
     if (res != 0) {
       Serial.println("Something going wrong w/ sram read & write!");
     }
-    */
+    
     // test DMA, ram to arduino 
     /*
     z80bus.DMA_address(0);
@@ -223,21 +223,31 @@ void loop() {
   } else if ( !z80bus.IORQ() ) {
     if ( ! z80bus.RD() ) {
       // in operation
+      /*
       addr = z80bus.address_bus16_get();
       z80bus.data_bus_mode_output();
-      data = z80bus.io_rw(addr, data, INPUT);
+      */
+      val = z80bus.io_rw();
+      /*
       z80bus.data_bus_set(data);
       z80bus.clock_wait_rising_edge(1);
       z80bus.clock_wait_rising_edge(1);
       z80bus.data_bus_mode_input();
+      */
+      addr = val>>16;
+      data = val & 0xff;
       busmode = 'i';
     } else if ( ! z80bus.WR() ) {
       // out operation
+      /*
       z80bus.data_bus_mode_input();
       addr = z80bus.address_bus16_get();
       z80bus.clock_wait_rising_edge(2);
       data = z80bus.data_bus_get();
-      z80bus.io_rw(addr, data, OUTPUT);
+      */
+      z80bus.io_rw();
+      addr = val>>16;
+      data = val & 0xff;
       busmode = 'o';
     } 
   }
@@ -247,12 +257,6 @@ void loop() {
     SPI.transfer(ascii7seg(buf[--i]));
   }
   digitalWrite(SPI_CS, HIGH);
-  if ( z80bus.DMA_requested() ) {
-    Serial.println("DMA requested!");
-    z80bus.DMA_exec(dma_buff);
-    //dump(dma_buff, 0x100);
-    z80bus.Z80_mode();
-  } 
   if ( ! z80bus.HALT() ) {
     Serial.println("Halted.");
     if ( z80bus.DMA_mode() ) {

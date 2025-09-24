@@ -1,0 +1,254 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "rom_f000.asm"
+                        ; date: 2025-09-24 01:22:50
+                        ; --------------------------------------
+
+
+                        ;
+F000:                   	    org 	$F000
+                        ; subroutines
+                        
+                        ; getlin
+                        ; read up to c bytes into buffer pointed by hl, end with 0
+                        ; hl ... line buffer pointer
+                        ; c  .... buffer limit length
+F000:                   getln:
+F000: 3600     [10]     		ld 		(hl), 0
+F002: 0600     [17]     		ld 		b, 0		; char count
+F004: CDB1F0   [34]     		call 	print_endl
+F007: 3E2A     [41]     		ld 		a, '*'
+F009: D302     [52]     		out 	(2), a
+                                ;
+F00B:                   getln_wait:
+F00B: DB00     [11]     		in 		a, (0)
+F00D: A7       [15]     		and 	a
+F00E: 28FB     [22|27]  		jr 		z, getln_wait
+                        ;
+                        ; no echo back
+F010: DB01     [33]     		in 		a, (1)
+F012: FE08     [40]     		cp 		$08 	;backspace
+F014: 2812     [47|52]  		jr 		z, getln_bkspc
+F016: FE7F     [54]     		cp 		$7f		; del
+F018: 280E     [61|66]  		jr 		z, getln_bkspc
+F01A: FE0A     [68]     		cp 		$0a
+F01C: 282D     [75|80]  		jr 		z, getln_end
+F01E: FE0D     [82]     		cp 		$0d
+F020: 2829     [89|94]  		jr 		z, getln_end
+                        ; other ctrl codes
+F022: FE20     [96]     		cp 		$20
+F024: 3018     [103|108]		jr 		nc, getln_echo_proceed
+F026: 18E3     [115]    		jr 		getln_wait
+                        
+F028:                   getln_bkspc:
+F028: 78       [ 4]     		ld 		a, b
+F029: A7       [ 8]     		and 	a
+F02A: 28DF     [15|20]  		jr 		z, getln_wait
+F02C: 3E08     [22]     		ld 		a, $08
+F02E: D302     [33]     		out 	(2), a
+F030: 3E20     [40]     		ld 		a, ' '
+F032: D302     [51]     		out 	(2), a
+F034: 3E08     [58]     		ld 		a, $08
+F036: D302     [69]     		out 	(2), a
+F038: 2B       [75]     		dec 	hl
+F039: 3600     [85]     		ld 		(hl), $0
+F03B: 05       [89]     		dec 	b
+F03C: 18CD     [101]    		jr 		getln_wait
+                        
+F03E:                   getln_echo_proceed:
+F03E: D302     [11]     		out 	(2), a 		; echo back
+                        		;
+F040: 77       [18]     		ld 		(hl),a		; *ptr++ = a
+F041: 23       [24]     		inc 	hl
+F042: 3600     [34]     		ld 		(hl), $0	; *ptr = NULL
+F044: 04       [38]     		inc 	b
+F045: 78       [42]     		ld 		a, b
+F046: B9       [46]     		cp 		c
+F047: 3002     [53|58]  		jr 		nc, getln_end  ; force terminate line
+F049: 18C0     [65]     		jr 		getln_wait
+                        
+F04B:                   getln_end:	; parse lbuf
+F04B: C9       [10]     		ret
+                        
+                        
+                        ; convert one char expressing a hexadecimal digit 
+                        ; in A reg. to nibble in A
+                        ; bit 7 is set to A if A is not hex-dec char
+                        ;
+F04C:                   hex2nib:
+F04C: FE30     [ 7]     		cp 		'0'
+F04E: 381C     [14|19]  		jr 		c, hex2nib.err
+F050: FE3A     [21]     		cp 		'9' + 1
+F052: 3003     [28|33]  		jr 		nc, hex2nib.toupper
+F054: D630     [35]     		sub 	'0'
+F056: C9       [45]     		ret
+                        		;
+F057:                   hex2nib.toupper:
+F057: FE61     [ 7]     		cp 		'a'
+F059: 3806     [14|19]  		jr	 	c, hex2nib.alpha
+F05B: FE67     [21]     		cp 		'f' + 1
+F05D: 300D     [28|33]  		jr	 	nc, hex2nib.err
+F05F: D620     [35]     		sub 	$20 	; to upper char
+F061:                   hex2nib.alpha:
+F061: D641     [ 7]     		sub     'A' 
+F063: 3807     [14|19]  		jr      c, hex2nib.err  
+F065: FE06     [21]     		cp      6
+F067: 3003     [28|33]  		jr      nc, hex2nib.err      ; error if it is larger than 'F'
+F069: C60A     [35]     		add 	10
+F06B: C9       [45]     		ret
+                        		;
+F06C:                   hex2nib.err:
+F06C: 3EFF     [ 7]     		ld 		a, $ff 	; error code
+F06E: C9       [17]     		ret
+                        
+                        
+                        ; read hexadecimal string char upto 2 or 4 (set in C) 
+                        ; bytes from (HL) and return int val in DE
+                        ; if non hexdec char is encountered at (HL), returns with current de value without inc hl.
+                        ; if C upper-limit bytes has been read, returns with current de value with increment hl.
+                        ; A reg. hold the last char read from (HL).
+                        ;
+F06F:                   hexstr_de:
+F06F: 110000   [10]     		ld      de, 0000h
+F072:                   hexstr_de.loop:
+F072: 7E       [ 7]     		ld      a, (hl)
+F073: 47       [11]     		ld 		b, a
+F074: CD4CF0   [28]     		call 	hex2nib
+F077: FEFF     [35]     		cp 		$ff
+F079: 2002     [42|47]  		jr 		nz, hexstr_de.hex2nib_succ
+F07B: 78       [46]     		ld 		a, b 	; recover original value of A
+F07C: C9       [56]     		ret 	 		; encountered non-hexdec char.
+F07D:                   hexstr_de.hex2nib_succ:
+F07D: A7       [ 4]     		and 	a		; clear Carry bit
+F07E: 0604     [11]     		ld 		b, 4
+F080:                   hexstr_de.rl4:
+F080: CB13     [ 8]     		rl      e		 ;rotate left entire de
+F082: CB12     [16]     		rl      d
+F084: 10FA     [24|29]  		djnz    hexstr_de.rl4
+F086: 83       [28]     		add 	e
+F087: 5F       [32]     		ld 		e, a
+F088: 23       [38]     		inc 	hl 		; 
+F089: 0D       [42]     		dec 	c
+F08A: 20E6     [49|54]  		jr      nz, hexstr_de.loop
+F08C: C9       [59]     		ret 			; return after c bytes read
+                        
+                        
+                        ;
+                        ;
+F08D:                   print_str_hl:
+F08D: 7E       [ 7]     		ld 		a,(hl)
+F08E: A7       [11]     		and 	A
+F08F: C8       [16|22]  		ret 	z
+F090: D302     [27]     		out 	(2), a
+F092: 23       [33]     		inc 	hl
+F093: 18F8     [45]     		jr 		print_str_hl
+                        
+                        ; print a nibble in A
+F095:                   print_nibble:
+F095: E60F     [ 7]     		and 	$0f
+F097: FE0A     [14]     		cp 		$a
+F099: C630     [21]     		add 	'0'
+F09B: FE3A     [28]     		cp 		':'
+F09D: 3802     [35|40]  		jr 		c, print_nibble_out
+F09F: C607     [42]     		add 	7
+F0A1:                   print_nibble_out:
+F0A1: D302     [11]     		out 	(2), a
+F0A3: C9       [21]     		ret
+                        
+                        ; print a byte in A
+F0A4:                   print_byte:
+F0A4: F5       [11]     		push 	af
+F0A5: 07       [15]     		rlca
+F0A6: 07       [19]     		rlca
+F0A7: 07       [23]     		rlca
+F0A8: 07       [27]     		rlca
+F0A9: CD95F0   [44]     		call 	print_nibble
+F0AC: F1       [54]     		pop 	af
+F0AD: CD95F0   [71]     		call 	print_nibble
+F0B0: C9       [81]     		ret
+                        
+F0B1:                   print_endl:
+F0B1: 3E0A     [ 7]     		ld 		a, $0a
+F0B3: D302     [18]     		out 	(2), A
+F0B5: 3E0D     [25]     		ld 		a, $0d
+F0B7: D302     [36]     		out 	(2), A
+F0B9: C9       [46]     		ret
+                        
+                        ; dump : dump memory from addr to addr+2 (value)
+                        ; hl ... start address
+                        ; de ... end address
+                        ;
+F0BA:                   dump:
+F0BA:                   dump_header:
+F0BA: CDB1F0   [17]     	call 	print_endl
+F0BD: 7C       [21]     	ld 		a, h
+F0BE: CDA4F0   [38]     	call 	print_byte
+F0C1: 7D       [42]     	ld 		a, l
+F0C2: CDA4F0   [59]     	call 	print_byte
+F0C5: 3E20     [66]     	ld 		a, ' '
+F0C7: D302     [77]     	out 	(2), a
+F0C9: 3E3A     [84]     	ld 		a, ':'
+F0CB: D302     [95]     	out 	(2), a
+F0CD: 3E20     [102]    	ld 		a, ' '
+F0CF: D302     [113]    	out 	(2), a
+                            ;
+F0D1: 0610     [120]    	ld 		b, 16 	; up to 16 bytes
+F0D3:                   dump_16:
+F0D3: 7E       [ 7]     	ld 		a, (hl)
+F0D4: 23       [13]     	inc 	hl
+F0D5: CDA4F0   [30]     	call 	print_byte
+F0D8: 3E20     [37]     	ld 		a, ' '
+F0DA: D302     [48]     	out 	(2), a
+F0DC:                   cp_de_hl:
+F0DC: 7A       [ 4]     	ld 		a, d
+F0DD: BC       [ 8]     	cp 		h
+F0DE: 2002     [15|20]  	jr 		nz, cp_de_hl.comp_end
+F0E0: 7B       [19]     	ld 		a, e
+F0E1: BD       [23]     	cp 		l
+F0E2:                   cp_de_hl.comp_end:
+F0E2: 2806     [ 7|12]  	jr 		z, dump_exit
+F0E4: 3804     [14|19]  	jr 		c, dump_exit
+                        ;
+F0E6: 10EB     [22|27]  	djnz 	dump_16
+F0E8: 18D0     [34]     	jr 		dump_header
+                            ;
+F0EA:                   dump_exit:
+F0EA: 110000   [10]     	ld 		de, 0
+F0ED: C9       [20]     	ret
+
+
+; +++ segments +++
+
+#CODE          = $F000 = 61440,  size = $00EE =   238
+
+; +++ global symbols +++
+
+_end               = $F0EE = 61678          rom_f000.asm:2 (unused)
+_size              = $00EE =   238          rom_f000.asm:2 (unused)
+cp_de_hl           = $F0DC = 61660          rom_f000.asm:195 (unused)
+cp_de_hl.comp_end  = $F0E2 = 61666          rom_f000.asm:201
+dump               = $F0BA = 61626          rom_f000.asm:174 (unused)
+dump_16            = $F0D3 = 61651          rom_f000.asm:189
+dump_exit          = $F0EA = 61674          rom_f000.asm:208
+dump_header        = $F0BA = 61626          rom_f000.asm:175
+getln              = $F000 = 61440          rom_f000.asm:9 (unused)
+getln_bkspc        = $F028 = 61480          rom_f000.asm:36
+getln_echo_proceed = $F03E = 61502          rom_f000.asm:51
+getln_end          = $F04B = 61515          rom_f000.asm:63
+getln_wait         = $F00B = 61451          rom_f000.asm:16
+hex2nib            = $F04C = 61516          rom_f000.asm:71
+hex2nib.alpha      = $F061 = 61537          rom_f000.asm:85
+hex2nib.err        = $F06C = 61548          rom_f000.asm:93
+hex2nib.toupper    = $F057 = 61527          rom_f000.asm:79
+hexstr_de          = $F06F = 61551          rom_f000.asm:104 (unused)
+hexstr_de.hex2nib_succ = $F07D = 61565          rom_f000.asm:114
+hexstr_de.loop     = $F072 = 61554          rom_f000.asm:106
+hexstr_de.rl4      = $F080 = 61568          rom_f000.asm:117
+print_byte         = $F0A4 = 61604          rom_f000.asm:152
+print_endl         = $F0B1 = 61617          rom_f000.asm:163
+print_nibble       = $F095 = 61589          rom_f000.asm:140
+print_nibble_out   = $F0A1 = 61601          rom_f000.asm:147
+print_str_hl       = $F08D = 61581          rom_f000.asm:131
+
+
+total time: 0.0011 sec.
+no errors
