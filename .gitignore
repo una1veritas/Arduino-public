@@ -1,7 +1,7 @@
 *.o
 *~
 *.a
-
+.cproject
 .metadata
 .settings
 .DS_Store
