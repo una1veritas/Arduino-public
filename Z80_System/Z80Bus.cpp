@@ -5,6 +5,17 @@ void Z80Bus::clock_start(uint8_t presc, uint16_t top) {
 	const uint8_t WGM_CTC_OCR1A = B0100;
 	const uint8_t COM_TOGGLE = B01;
 	presc = (presc > 5 ? 5 : presc);
+	/*
+	 * prescaler factors
+	 *
+	 * 0 -- no clk source
+	 * 1 -- clk/1
+	 * 2 -- clk/8
+	 * 3 -- clk/64
+	 * 4 -- clk/256
+	 * 5 -- clk/1024
+	 *
+	 */
 	cli();
 	TCCR1A = 0;
 	TCCR1B = 0;
@@ -27,6 +38,35 @@ void Z80Bus::clock_stop() {
 	sei();
 
 	pinMode(CLK_OUT, INPUT_PULLUP);
+}
+
+void Z80Bus::clock_mode_select(const uint8_t & mode) {
+// stop clock
+	TCCR1B &= 0xf8; // once clear bits from CS12 to CS10 to stop (prescaler = No clk source)
+	switch(mode) {
+	case 0 : // stop
+	  clock_start(0, 8000);
+	  break;
+	case 1 : // 1 Hz
+	  clock_start(5, 8000); //
+	  break;
+	case 3 :
+	  clock_start(3, 2000);
+	  break;
+	case 4 :
+	  clock_start(2, 2000);
+	  break;
+	case 5 :
+	  clock_start(1, 2000);
+	  break;
+	case 6 :
+	  clock_start(1, 250);
+	  break;
+	case 2 :
+	default:
+	  clock_start(4, 4000);
+	  break;
+	}
 }
 
 //uint8_t Z80Bus::io_rw(const uint8_t &port, const uint8_t &val, const uint8_t &inout) {
@@ -93,30 +133,19 @@ uint32_t Z80Bus::io_rw() {
 		}
 		break;
 	case 22: // exec_dma
+		DMA_mode();
 		if (io_mode == IN) {
-			WAIT(LOW);
-			if (BUSACK() == HIGH) {
-				BUSREQ(LOW);
-				while (BUSACK() == HIGH)
-					clock_wait_rising_edge();
-			}
-			address_bus16_mode(OUTPUT);
-			pinMode(_MREQ, OUTPUT);
-			pinMode(_RD, OUTPUT);
-			pinMode(_WR, OUTPUT);
-			MREQ(HIGH);
+			dma_transfer_mode = READ_RAM;
 			ram_enable();
-			dma_mode = READ_RAM;
 			DMA_exec(dma_buff);
-		    if (BUSREQ() == LOW)
-		      BUSREQ(HIGH);
-			WAIT(HIGH);
-		    while ( BUSACK() == LOW ) ;
+
 			data_bus_set(1);
 		} else if (io_mode == OUT) {
-			// a lot of things to do, like done above.
-			dma_mode = WRITE_RAM;
+			dma_transfer_mode = WRITE_RAM;
+			ram_enable();
+			DMA_exec(dma_buff);
 		}
+		MM_mode();
 		break;
 	case 23: // dma_rs
 		if (io_mode == IN) {
@@ -127,7 +156,7 @@ uint32_t Z80Bus::io_rw() {
 	case 128: // set/change clock mode
 		if ( io_mode == OUT ) {
 			data = data_bus_get();
-			clock_select_mode(data);
+			clock_mode_select(data);
 		}
 		break;
 	default:

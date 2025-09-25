@@ -42,7 +42,7 @@ public:
 
   uint16_t dma_address;
   const uint16_t dma_block_size = 0x100;
-  DMA_mode dma_mode;
+  DMA_mode dma_transfer_mode;
   uint8_t dma_result;
 
 public:
@@ -85,7 +85,7 @@ public:
 
     dma_address = 0;
     dma_result = 0;
-    dma_mode = NO_REQUEST;
+    dma_transfer_mode = NO_REQUEST;
   }
 
   void clock_start(uint8_t presc, uint16_t top) ;
@@ -103,29 +103,7 @@ public:
 	  return (TCCR1A & (B11 << COM1C0)) == (B01 << COM1C0);
   }
 
-  void clock_select_mode(const uint8_t & mode) {
-	  switch(mode) {
-	  case 0 : // stop
-		  clock_start(0, 16000);
-		  break;
-	  case 1 : // 1 Hz
-		  clock_start(5, 8000);
-		  break;
-	  case 3 :
-		  clock_start(3, 100);
-		  break;
-	  case 4 :
-		  clock_start(2, 1600);
-		  break;
-	  case 5 :
-		  clock_start(1, 1600);
-		  break;
-	  case 2 :
-	  default:
-		  clock_start(4, 400);
-		  break;
-	  }
-  }
+  void clock_mode_select(const uint8_t & mode);
 
   uint8_t clock() {
     return digitalRead(CLK_OUT);
@@ -171,7 +149,8 @@ public:
     while ( BUSACK() == LOW ) ;
   }
 
-  bool Controller_mode() {
+  // Memory Manager mode
+  bool MM_mode() {
 	ram_disable();   // ram/rom is controlled by atmega100
     address_bus16_mode(INPUT);
     pinMode(_MREQ, INPUT);
@@ -285,20 +264,20 @@ public:
   }
 
   uint8_t DMA_requested() {
-    return dma_mode != NO_REQUEST;
+    return dma_transfer_mode != NO_REQUEST;
   }
 
   uint8_t DMA_direction() {
-    return (dma_mode == WRITE_RAM ? OUTPUT : INPUT);
+    return (dma_transfer_mode == WRITE_RAM ? OUTPUT : INPUT);
   }
 
   void DMA_read(uint8_t mem[]) {
-    dma_mode = READ_RAM; // issue request internaly
+	  dma_transfer_mode = READ_RAM; // issue request internaly
     DMA_exec(mem);
   }
 
   void DMA_write(uint8_t mem[]) {
-    dma_mode = WRITE_RAM; // issue request internaly
+	  dma_transfer_mode = WRITE_RAM; // issue request internaly
     DMA_exec(mem);
   }
 
@@ -311,23 +290,25 @@ public:
   }
 
   void DMA_exec(uint8_t mem[]) {
-    if ( dma_mode == NO_REQUEST )
+    if ( dma_transfer_mode == NO_REQUEST )
       return 0x00;
     if ( BUSACK() == HIGH and RESET() == HIGH ) {
-      dma_mode = NO_REQUEST;
+    	dma_transfer_mode = NO_REQUEST;
       dma_result = 0xff;
       return;
     }
-    if ( dma_mode == WRITE_RAM ) {
+    ram_enable();
+    if ( dma_transfer_mode == WRITE_RAM ) {
       for(uint16_t ix = 0; ix < dma_block_size; ++ix) {
         ram_write(dma_address + ix, mem[ix]);
       }
-    } else if ( dma_mode == READ_RAM ) {
+    } else if ( dma_transfer_mode == READ_RAM ) {
       for(uint16_t ix = 0; ix < dma_block_size; ++ix) {
         mem[ix] = ram_read(dma_address + ix);
       }
     }
-    dma_mode = NO_REQUEST;
+    ram_disable();
+    dma_transfer_mode = NO_REQUEST;
     dma_result = 0x00;
   }
 

@@ -185,7 +185,7 @@ void setup() {
     dump(dma_buff, 0x100, 0x100);
     */
     Serial.println("Exit to Z80 mode.");
-    z80bus.Controller_mode();
+    z80bus.MM_mode();
   }
   Serial.println("_RESET goes HIGH.");
   z80bus.RESET(HIGH);
