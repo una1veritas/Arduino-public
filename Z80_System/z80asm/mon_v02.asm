@@ -40,6 +40,7 @@ read_line:
 		call	getln
 		ld 		hl, lbuf
 		ld 		a, (hl)
+; no arity commands
 		cp 		$0 		; line is empty
 		jr 		z, default_dump
 		;
@@ -50,7 +51,8 @@ read_line:
 		jr 		z, specify_end
 		cp 		':'		; begins with :
 		jr 		z, write_mode
-; specify start
+		;
+; specify start address and function
 		ld 		c, 4
 		call 	hexstr_de
 		ld 		(addr), de
@@ -64,6 +66,8 @@ read_line:
 		jr 		z, write_mode
 		cp		'R'
 		jr 		z, run_mode
+		cp		'S'
+		jr 		z, clk_spd_chg
 		jr 		error
 		;
 specify_end:
@@ -110,12 +114,9 @@ write_mode:
 		;
 		ld 		c, 2
 		call 	hexstr_de
-		ld 		a,c 
+		ld 		a, c 
 		cp 		a, 2
 		jr 		z, write_mode.exit	; no arg or illegal char
-		;call 	print_endl
-		;ld 		a, e
-		;call print_byte
 		ld 		ix, (addr)
 		ld 		(ix), e
 		inc 	ix
@@ -130,6 +131,13 @@ write_mode.exit
 run_mode:
 		ld 		hl, (addr)
 		jp 		(hl)
+;
+;  clockspeed change by output number to port 128
+clk_spd_chg:
+		ld 		a, e
+		and 	$07
+		out		(128), a
+		jp 		read_line
 ;
 error:
 		call 	print_endl

@@ -44,27 +44,24 @@ void Z80Bus::clock_mode_select(const uint8_t & mode) {
 // stop clock
 	TCCR1B &= 0xf8; // once clear bits from CS12 to CS10 to stop (prescaler = No clk source)
 	switch(mode) {
-	case 0 : // stop
-	  clock_start(0, 8000);
+	case 0 : // 4 Hz
+	  clock_start(5, 2000);
 	  break;
-	case 1 : // 1 Hz
-	  clock_start(5, 8000); //
+	case 1 : // 10 Hz
+	  clock_start(4, 3125); //
 	  break;
-	case 3 :
-	  clock_start(3, 2000);
+	case 3 : // 1 kHz
+	  clock_start(2, 1000);
 	  break;
-	case 4 :
-	  clock_start(2, 2000);
+	case 4 : // 4 kHz
+	  clock_start(2, 250);
 	  break;
 	case 5 :
-	  clock_start(1, 2000);
-	  break;
-	case 6 :
-	  clock_start(1, 250);
+	  clock_start(1, 1000);
 	  break;
 	case 2 :
-	default:
-	  clock_start(4, 4000);
+	default: // 100Hz
+	  clock_start(3, 1250);
 	  break;
 	}
 }

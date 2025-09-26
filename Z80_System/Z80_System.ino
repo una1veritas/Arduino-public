@@ -145,7 +145,7 @@ void setup() {
 
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_start(3, 100);
+  z80bus.clock_start(2, 1000);  // 1kHz
   Serial.println("Reset Z80.");
   z80bus.cpu_reset();
 
@@ -206,8 +206,6 @@ void loop() {
       data = z80bus.data_bus_get();
       */
       val = z80bus.mem_rw();
-      addr = val>>16;
-      data = val & 0xff;
       busmode = 'r';      
     } else if ( ! z80bus.WR() ) {
       /*
@@ -216,8 +214,6 @@ void loop() {
       data = z80bus.data_bus_get();
       */
       val = z80bus.mem_rw();
-      addr = val>>16;
-      data = val & 0xff;
       busmode = 'u';
     } // else RFSH
   } else if ( !z80bus.IORQ() ) {
@@ -234,8 +230,6 @@ void loop() {
       z80bus.clock_wait_rising_edge(1);
       z80bus.data_bus_mode_input();
       */
-      addr = val>>16;
-      data = val & 0xff;
       busmode = 'i';
     } else if ( ! z80bus.WR() ) {
       // out operation
@@ -243,15 +237,20 @@ void loop() {
       z80bus.data_bus_mode_input();
       addr = z80bus.address_bus16_get();
       z80bus.clock_wait_rising_edge(2);
-      data = z80bus.data_bus_get();
+      data =   z80bus.data_bus_get();
       */
-      z80bus.io_rw();
-      addr = val>>16;
-      data = val & 0xff;
+      val = z80bus.io_rw();
       busmode = 'o';
     } 
   }
-  snprintf(buf, 9, "%04X %c%02X", addr, busmode, data );
+  addr = val>>16;
+  data = val & 0xff;
+  if ( busmode == 'o' or busmode == 'i') {
+    addr &= 0xff;
+    snprintf(buf, 9, "  %02X%c %02X", addr, busmode, data );
+  } else {
+    snprintf(buf, 9, "%04X%c %02X", addr, busmode, data );
+  }
   digitalWrite(SPI_CS, LOW);
   for (int i = 8; i > 0; ) {
     SPI.transfer(ascii7seg(buf[--i]));
