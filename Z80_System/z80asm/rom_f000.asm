@@ -168,15 +168,22 @@ print_endl:
 		ret
 
 ; dump : dump memory from addr to addr+2 (value)
-; hl ... start address
+; hl ... start address (will be trucated)
 ; de ... end address
 ;
+; bc ... the original start address
+
 dump:
-dump_header:
+	ld 		b, h
+	ld 		c, l
+	ld 		a, $F0
+	and 	l
+	ld 		l, a
+dump.print_header:
 	call 	print_endl
-	ld 		a, h
+	ld 		a, b
 	call 	print_byte
-	ld 		a, l
+	ld 		a, c
 	call 	print_byte
 	ld 		a, ' '
 	out 	(2), a
@@ -185,26 +192,43 @@ dump_header:
 	ld 		a, ' '
 	out 	(2), a
     ;
-	ld 		b, 16 	; up to 16 bytes
-dump_16:
-	ld 		a, (hl)
-	inc 	hl
-	call 	print_byte
+dump.bytes:
+	;cp 	bc, hl
+	ld 		a, b
+	cp 		h
+	jr 		nz, $+4
+	ld 		a, c
+	cp 		l
+	;
+	jr 		c, dump.print_byte
+	jr 		z, dump.print_byte
+; print two-spaces
 	ld 		a, ' '
 	out 	(2), a
-cp_de_hl:
+	out 	(2), a
+	jr 		dump.print_spc
+dump.print_byte
+	ld 		a, (hl)
+	call 	print_byte
+dump.print_spc:
+	ld 		a, ' '
+	out 	(2), a
+	inc 	hl
+	; cp 	de, hl
 	ld 		a, d
 	cp 		h
-	jr 		nz, cp_de_hl.comp_end
+	jr 		nz, $+4; dump.cp_de_hl_end
 	ld 		a, e
 	cp 		l
-cp_de_hl.comp_end:
-	jr 		z, dump_exit
-	jr 		c, dump_exit
-;
-	djnz 	dump_16
-	jr 		dump_header
+	; cp 	de, hl end
+	ret 	z ; de == hl, then exit dump
+	ret 	c ; de < hl, then exit dump
+	ld 		a, l 	; test whether the least 4 bits of address is zero
+	and 	$0f
+	jr 		nz, dump.bytes
+	ld 		b, h 
+	ld 		c, l
+	jr 		dump.print_header  ; if so print address header
     ;
-dump_exit:
-	ld 		de, 0
-	ret
+;dump_exit:
+	;ret

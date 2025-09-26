@@ -40,10 +40,10 @@ public:
     WRITE_RAM = 0xff,
   };
 
-  uint16_t dma_address;
   const uint16_t dma_block_size = 0x100;
-  DMA_mode dma_transfer_mode;
-  uint8_t dma_result;
+  volatile uint16_t dma_address;
+  volatile DMA_mode dma_transfer_mode;
+  volatile uint8_t dma_result;
 
 public:
   Z80Bus(const uint8_t& intr, const uint8_t& nmi, const uint8_t& halt,
@@ -117,6 +117,12 @@ public:
     }
   }
 
+	/*
+	 * In this mode atmegaXXX00 controls all the bus
+	 * with MREQ/EN, IORQ/IO, RD/OE, WR/WE by stopping Z80
+	 * in BUSREQ/BUSACK state, or RESET and clock stop.
+	 * ATMega controls all the devices.
+	 */
 	bool DMA_mode() {
 		if (RESET() == HIGH) {
 			if (BUSACK() == HIGH) {
@@ -135,33 +141,46 @@ public:
 		return true;
 	}
 
-  bool Z80_mode() {
-    ram_disable();
-    address_bus16_mode(INPUT);
-    pinMode(_MREQ, INPUT);
-    pinMode(_RD, INPUT);
-    pinMode(_WR, INPUT);
-    ram_enable();  // IO/mem is controlled by Z80
-    if (BUSREQ() == LOW)
-      BUSREQ(HIGH);
-    if (RESET() == LOW)
-      RESET(HIGH);
-    while ( BUSACK() == LOW ) ;
-  }
+	/*
+	 * I/O Controller mode.
+	 * Responses and handles only IORQ R/W requests.
+	 * Issues BUSREQ only if DMA access is requested.
+	 * Performs possible monitoring of cpu/bus/memory.
+	 */
+	bool IOC_mode() {
+		ram_disable();
+		address_bus16_mode(INPUT);
+		pinMode(_MREQ, INPUT);
+		pinMode(_RD, INPUT);
+		pinMode(_WR, INPUT);
+		ram_enable();  // IO/mem is controlled by Z80
+		if (BUSREQ() == LOW)
+			BUSREQ(HIGH);
+		if (RESET() == LOW)
+			RESET(HIGH);
+		while (BUSACK() == LOW)
+			;
+	}
 
-  // Memory Manager mode
-  bool MM_mode() {
-	ram_disable();   // ram/rom is controlled by atmega100
-    address_bus16_mode(INPUT);
-    pinMode(_MREQ, INPUT);
-    pinMode(_RD, INPUT);
-    pinMode(_WR, INPUT);
-    if (BUSREQ() == LOW)
-      BUSREQ(HIGH);
-    if (RESET() == LOW)
-      RESET(HIGH);
-    while ( BUSACK() == LOW ) ;
-  }
+	/*
+	 * Memory Manager/Controller mode.
+	 * ATmega does MMU function and
+	 * controls SRAM access, ROM emulation,
+	 * as well as the memory page control.
+	 */
+	bool MMC_mode() {
+		ram_disable();   // ram/rom is controlled by atmega100
+		address_bus16_mode(INPUT);
+		pinMode(_MREQ, INPUT);
+		pinMode(_RD, INPUT);
+		pinMode(_WR, INPUT);
+		if (BUSREQ() == LOW)
+			BUSREQ(HIGH);
+		if (RESET() == LOW)
+			RESET(HIGH);
+		while (BUSACK() == LOW)
+			;
+	}
 
   void address_bus16_mode(uint8_t in_out) {
     if (in_out == INPUT) {

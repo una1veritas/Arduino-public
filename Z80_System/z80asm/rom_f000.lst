@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "rom_f000.asm"
-                        ; date: 2025-09-26 02:42:48
+                        ; date: 2025-09-26 17:34:45
                         ; --------------------------------------
 
 
@@ -174,62 +174,85 @@ F0B7: D302     [36]     		out 	(2), A
 F0B9: C9       [46]     		ret
                         
                         ; dump : dump memory from addr to addr+2 (value)
-                        ; hl ... start address
+                        ; hl ... start address (will be trucated)
                         ; de ... end address
                         ;
+                        ; bc ... the original start address
+                        
 F0BA:                   dump:
-F0BA:                   dump_header:
-F0BA: CDB1F0   [17]     	call 	print_endl
-F0BD: 7C       [21]     	ld 		a, h
-F0BE: CDA4F0   [38]     	call 	print_byte
-F0C1: 7D       [42]     	ld 		a, l
-F0C2: CDA4F0   [59]     	call 	print_byte
-F0C5: 3E20     [66]     	ld 		a, ' '
-F0C7: D302     [77]     	out 	(2), a
-F0C9: 3E3A     [84]     	ld 		a, ':'
-F0CB: D302     [95]     	out 	(2), a
-F0CD: 3E20     [102]    	ld 		a, ' '
-F0CF: D302     [113]    	out 	(2), a
+F0BA: 44       [ 4]     	ld 		b, h
+F0BB: 4D       [ 8]     	ld 		c, l
+F0BC: 3EF0     [15]     	ld 		a, $F0
+F0BE: A5       [19]     	and 	l
+F0BF: 6F       [23]     	ld 		l, a
+F0C0:                   dump.print_header:
+F0C0: CDB1F0   [17]     	call 	print_endl
+F0C3: 78       [21]     	ld 		a, b
+F0C4: CDA4F0   [38]     	call 	print_byte
+F0C7: 79       [42]     	ld 		a, c
+F0C8: CDA4F0   [59]     	call 	print_byte
+F0CB: 3E20     [66]     	ld 		a, ' '
+F0CD: D302     [77]     	out 	(2), a
+F0CF: 3E3A     [84]     	ld 		a, ':'
+F0D1: D302     [95]     	out 	(2), a
+F0D3: 3E20     [102]    	ld 		a, ' '
+F0D5: D302     [113]    	out 	(2), a
                             ;
-F0D1: 0610     [120]    	ld 		b, 16 	; up to 16 bytes
-F0D3:                   dump_16:
-F0D3: 7E       [ 7]     	ld 		a, (hl)
-F0D4: 23       [13]     	inc 	hl
-F0D5: CDA4F0   [30]     	call 	print_byte
-F0D8: 3E20     [37]     	ld 		a, ' '
-F0DA: D302     [48]     	out 	(2), a
-F0DC:                   cp_de_hl:
-F0DC: 7A       [ 4]     	ld 		a, d
-F0DD: BC       [ 8]     	cp 		h
-F0DE: 2002     [15|20]  	jr 		nz, cp_de_hl.comp_end
-F0E0: 7B       [19]     	ld 		a, e
-F0E1: BD       [23]     	cp 		l
-F0E2:                   cp_de_hl.comp_end:
-F0E2: 2806     [ 7|12]  	jr 		z, dump_exit
-F0E4: 3804     [14|19]  	jr 		c, dump_exit
-                        ;
-F0E6: 10EB     [22|27]  	djnz 	dump_16
-F0E8: 18D0     [34]     	jr 		dump_header
+F0D7:                   dump.bytes:
+                        	;cp 	bc, hl
+F0D7: 78       [ 4]     	ld 		a, b
+F0D8: BC       [ 8]     	cp 		h
+F0D9: 2002     [15|20]  	jr 		nz, $+4
+F0DB: 79       [19]     	ld 		a, c
+F0DC: BD       [23]     	cp 		l
+                        	;
+F0DD: 380A     [30|35]  	jr 		c, dump.print_byte
+F0DF: 2808     [37|42]  	jr 		z, dump.print_byte
+                        ; print two-spaces
+F0E1: 3E20     [44]     	ld 		a, ' '
+F0E3: D302     [55]     	out 	(2), a
+F0E5: D302     [66]     	out 	(2), a
+F0E7: 1804     [78]     	jr 		dump.print_spc
+F0E9:                   dump.print_byte
+F0E9: 7E       [ 7]     	ld 		a, (hl)
+F0EA: CDA4F0   [24]     	call 	print_byte
+F0ED:                   dump.print_spc:
+F0ED: 3E20     [ 7]     	ld 		a, ' '
+F0EF: D302     [18]     	out 	(2), a
+F0F1: 23       [24]     	inc 	hl
+                        	; cp 	de, hl
+F0F2: 7A       [28]     	ld 		a, d
+F0F3: BC       [32]     	cp 		h
+F0F4: 2002     [39|44]  	jr 		nz, $+4; dump.cp_de_hl_end
+F0F6: 7B       [43]     	ld 		a, e
+F0F7: BD       [47]     	cp 		l
+                        	; cp 	de, hl end
+F0F8: C8       [52|58]  	ret 	z ; de == hl, then exit dump
+F0F9: D8       [57|63]  	ret 	c ; de < hl, then exit dump
+F0FA: 7D       [61]     	ld 		a, l 	; test whether the least 4 bits of address is zero
+F0FB: E60F     [68]     	and 	$0f
+F0FD: 20D8     [75|80]  	jr 		nz, dump.bytes
+F0FF: 44       [79]     	ld 		b, h 
+F100: 4D       [83]     	ld 		c, l
+F101: 18BD     [95]     	jr 		dump.print_header  ; if so print address header
                             ;
-F0EA:                   dump_exit:
-F0EA: 110000   [10]     	ld 		de, 0
-F0ED: C9       [20]     	ret
+                        ;dump_exit:
+                        	;ret
 
 
 ; +++ segments +++
 
-#CODE          = $F000 = 61440,  size = $00EE =   238
+#CODE          = $F000 = 61440,  size = $0103 =   259
 
 ; +++ global symbols +++
 
-_end               = $F0EE = 61678          rom_f000.asm:2 (unused)
-_size              = $00EE =   238          rom_f000.asm:2 (unused)
-cp_de_hl           = $F0DC = 61660          rom_f000.asm:195 (unused)
-cp_de_hl.comp_end  = $F0E2 = 61666          rom_f000.asm:201
-dump               = $F0BA = 61626          rom_f000.asm:174 (unused)
-dump_16            = $F0D3 = 61651          rom_f000.asm:189
-dump_exit          = $F0EA = 61674          rom_f000.asm:208
-dump_header        = $F0BA = 61626          rom_f000.asm:175
+_end               = $F103 = 61699          rom_f000.asm:2 (unused)
+_size              = $0103 =   259          rom_f000.asm:2 (unused)
+dump               = $F0BA = 61626          rom_f000.asm:176 (unused)
+dump.bytes         = $F0D7 = 61655          rom_f000.asm:195
+dump.print_byte    = $F0E9 = 61673          rom_f000.asm:210
+dump.print_header  = $F0C0 = 61632          rom_f000.asm:182
+dump.print_spc     = $F0ED = 61677          rom_f000.asm:213
 getln              = $F000 = 61440          rom_f000.asm:9 (unused)
 getln_bkspc        = $F028 = 61480          rom_f000.asm:36
 getln_echo_proceed = $F03E = 61502          rom_f000.asm:51
@@ -250,5 +273,5 @@ print_nibble_out   = $F0A1 = 61601          rom_f000.asm:147
 print_str_hl       = $F08D = 61581          rom_f000.asm:131
 
 
-total time: 0.0013 sec.
+total time: 0.0010 sec.
 no errors

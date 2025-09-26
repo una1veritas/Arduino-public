@@ -1,3 +1,12 @@
+; macros
+clrf:	macro
+		and 	a
+		endm
+;
+clra: 	macro
+		xor 	a
+		endm
+;
 ;
 	    org 	0000h
 RST_00:
@@ -83,16 +92,12 @@ default_dump:
 		ld 		hl, (addr)
 		ld 		de, (addr2)
 		ld 		a, h
-		cp 		d
-		jr 		nz, cp_hl_de_end
-		ld 		a, l
-		cp 		e
-cp_hl_de_end:
-		jr 		z, do_dump 	; =
-		jr 		c, do_dump	; <
-		;jr 		nc, cp_gt 	; >
-;cp_gt:
-		ld 		hl, (addr)
+		cp 		d 
+		jr 		nz, $+4 
+		ld 		a, l 
+		cp 		e 
+		jr 		c, do_dump  ; start < end
+		jr 		z, do_dump  ; start == end
 		ld 		de, $10
 		add 	hl, de
 		ld 		(addr2), hl

@@ -142,7 +142,7 @@ uint32_t Z80Bus::io_rw() {
 			ram_enable();
 			DMA_exec(dma_buff);
 		}
-		MM_mode();
+		MMC_mode();
 		break;
 	case 23: // dma_rs
 		if (io_mode == IN) {

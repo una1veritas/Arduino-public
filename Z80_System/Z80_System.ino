@@ -170,7 +170,7 @@ void setup() {
 
     // test DMA, arduino to ram 
     
-    uint8_t res = z80bus.DMA_progmem_load(rom_0000, 1024, 0x0000);
+    uint8_t res = z80bus.DMA_progmem_load(boot_0000, 512, 0x0000);
     if (res != 0) {
       Serial.println("Something going wrong w/ sram read & write!");
     }
@@ -185,7 +185,7 @@ void setup() {
     dump(dma_buff, 0x100, 0x100);
     */
     Serial.println("Exit to Z80 mode.");
-    z80bus.MM_mode();
+    z80bus.MMC_mode();
   }
   Serial.println("_RESET goes HIGH.");
   z80bus.RESET(HIGH);
@@ -269,8 +269,8 @@ void loop() {
       z80bus.DMA_read(dma_buff);
       dump(dma_buff, 0x100, 0x100);
 
-      Serial.println("Exit to Z80 mode.");
-      z80bus.Z80_mode();
+      Serial.println("Exit to I/O Controller mode.");
+      z80bus.IOC_mode();
     }
     z80bus.clock_stop();
     while (true);
