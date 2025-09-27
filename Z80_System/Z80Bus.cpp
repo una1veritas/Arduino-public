@@ -1,5 +1,4 @@
 #include "Z80Bus.h"
-#include "progmem_rom.h"
 
 void Z80Bus::clock_start(uint8_t presc, uint16_t top) {
 	const uint8_t WGM_CTC_OCR1A = B0100;
@@ -66,6 +65,24 @@ void Z80Bus::clock_mode_select(const uint8_t & mode) {
 	}
 }
 
+/*
+  enum IO_port {
+    CONSTA = 0,  //console status port
+    CONDAT,      //console data port
+    PRTSTA,
+    PRTDAT,
+    AUXDAT = 5,
+    FDCDAT = 8,  //fdc-port: # of drive
+    DRIVE = 10,  //fdc-port: # of drive
+    TRACK,       //fdc-port: # of track
+    SECTOR,      //fdc-port: # of sector
+    FDCOP,       //fdc-port: command
+    FDCST,       //fdc-port: status
+    DMAL = 15,   //dma-port: dma address low
+    DMAH,        //dma-port: dma address high
+  };
+*/
+
 //uint8_t Z80Bus::io_rw(const uint8_t &port, const uint8_t &val, const uint8_t &inout) {
 uint32_t Z80Bus::io_rw() {
 	uint16_t port;
@@ -93,16 +110,19 @@ uint32_t Z80Bus::io_rw() {
 
 
 	switch ( uint8_t(port & 0xff) ) {
-	case 0:  //CON_STS
+	case 0:  //CONSTA
 		if (io_mode == IN ) {
 			data = (Serial.available() ? 0xff : 0x00);
 			data_bus_set(data);
 		}
 		break;
-	case 1:  // CON_IN
+	case 1:  // CONDAT/CON_IN
 		if (io_mode == IN ) {
 			data = Serial.read();
 			data_bus_set(data);
+		} else { // io_mode == OUT 
+			data = data_bus_get();
+			Serial.print((char) data);
 		}
 		break;
 	case 2:  // CON_OUT
@@ -174,40 +194,26 @@ uint32_t Z80Bus::mem_rw() {
 	uint8_t page = 0;
 
 	if (MREQ() == HIGH or ram_is_enabled())
-		return;
+		return 0;
 	addr = address_bus16_get();
-	//Serial.print("addr: ");
-	//Serial.print(addr, HEX);
-	if (RD() == LOW) {
-		rw_mode = READ;
-		data_bus_mode_output();
-	} else if (WR() == LOW) {
-		rw_mode = WRITE;
-		data_bus_mode_input(); // for observation
-	} else
-		return;
-
 	page = (addr >> 12) & 0x0f;
-	switch (page) {
-	/*
-	 case 0x00:
-	 if (rw_mode == READ) {
-	 data = pgm_read_byte_near(rom_0000 + (addr & 0x0fff));
-	 data_bus_set(data);
-	 while (RD() == LOW);
-	 //Serial.print(" put data ");
-	 //Serial.println(data, HEX);
-	 } else if (rw_mode == WRITE ) {
-	 data_bus_mode_input();
-	 while (WR() == LOW);
-	 data = data_bus_get();
-	 Serial.println("write rom area error.");
-	 }
-	 break;
-	 */
-	case 0x0f:
+	if ( pages[page] == NULL ) {
+		// sram
+		ram_enable();
+		data_bus_mode_input();
+		clock_wait_rising_edge();
+		data = data_bus_get();
+	} else {
+		// rom area
+		if (RD() == LOW) {
+			rw_mode = READ;
+			data_bus_mode_output();
+		} else if (WR() == LOW) {
+			rw_mode = WRITE;
+			data_bus_mode_input(); // for observation
+		}
 		if (rw_mode == READ) {
-			data = pgm_read_byte_near(rom_f000 + (addr & 0x0fff));
+			data = pgm_read_byte_near(pages[page] + (addr & 0x0fff));
 			data_bus_set(data);
 			while (RD() == LOW)
 				;
@@ -218,15 +224,6 @@ uint32_t Z80Bus::mem_rw() {
 			data = data_bus_get();
 			Serial.println("write rom area error.");
 		}
-		break;
-	default:
-		ram_enable();
-		data_bus_mode_input();
-		data = data_bus_get();
-		//Serial.print("addr ");
-		//Serial.print(addr, HEX);
-		//Serial.print(" data ");
-		//Serial.println(data, HEX);
 	}
 	while (MREQ() == LOW)
 		;

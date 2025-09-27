@@ -145,8 +145,9 @@ void setup() {
 
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_start(2, 1000);  // 1kHz
-  Serial.println("Reset Z80.");
+  z80bus.clock_start(2, 1000); 
+  z80bus.set_rom_page(rom_f000, 0x0f);
+  Serial.println("Reseting Z80...");
   z80bus.cpu_reset();
 
   if (!z80bus.DMA_mode() ) {
@@ -173,6 +174,8 @@ void setup() {
     uint8_t res = z80bus.DMA_progmem_load(boot_0000, 512, 0x0000);
     if (res != 0) {
       Serial.println("Something going wrong w/ sram read & write!");
+    } else {
+      Serial.println("Transfer completed.");
     }
     
     // test DMA, ram to arduino 
