@@ -232,3 +232,25 @@ dump.print_spc:
     ;
 ;dump_exit:
 	;ret
+
+;
+; print_err_msg
+;
+print_err_msg:
+		push 	hl
+		push 	af
+		call 	print_endl
+		ld 		hl, err_msg
+		call 	print_str_hl
+		pop 	af
+		call 	print_byte
+		call 	print_endl
+		pop 	hl
+		ld 		a, h
+		call 	print_byte
+		ld 		a, l
+		call 	print_byte
+		ret
+		;
+err_msg:
+		db 	$0a, $0d, "error", $0a, $0d, 0

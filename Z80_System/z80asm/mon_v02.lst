@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "mon_v02.asm"
-                        ; date: 2025-09-26 17:31:39
+                        ; date: 2025-09-27 13:55:58
                         ; --------------------------------------
 
 
@@ -35,6 +35,8 @@ F095:                   print_nibble 	equ 	$F095
 F0A4:                   print_byte 		equ 	$F0A4
 F0B1:                   print_endl 		equ 	$F0B1
 F0BA:                   dump 			equ 	$F0BA
+F103:                   print_err_msg	= $F103
+                        
                         ;
                         ;
                         
@@ -57,15 +59,15 @@ E004:                   lbuf	equ 	addr2+2
 005A: 7E       [51]     		ld 		a, (hl)
                         ; no arity commands
 005B: FE00     [58]     		cp 		$0 		; line is empty
-005D: 283C     [65|70]  		jr 		z, default_dump
+005D: 2844     [65|70]  		jr 		z, default_dump
                         		;
 005F: FE48     [72]     		cp 		'H' 	; begins with H
-0061: CA1A01   [82|82]  		jp 		z, mon_halt
+0061: CA0501   [82|82]  		jp 		z, mon_halt
                         		;
 0064: FE2E     [89]     		cp 		'.'		; begins with .
-0066: 2824     [96|101] 		jr 		z, specify_end
+0066: 2827     [96|101] 		jr 		z, specify_end
 0068: FE3A     [103]    		cp 		':'		; begins with :
-006A: 285D     [110|115]		jr 		z, write_mode
+006A: 2866     [110|115]		jr 		z, write_mode
                         		;
                         ; specify start address and function
 006C: 0E04     [117]    		ld 		c, 4
@@ -74,133 +76,121 @@ E004:                   lbuf	equ 	addr2+2
                         		;
 0075: 7E       [161]    		ld 		a, (hl)
 0076: FE00     [168]    		cp 		$0
-0078: 2821     [175|180]		jr 		z, default_dump
+0078: 2829     [175|180]		jr 		z, default_dump
 007A: FE2E     [182]    		cp		'.'
-007C: 280E     [189|194]		jr 		z, specify_end
+007C: 2811     [189|194]		jr 		z, specify_end
 007E: FE3A     [196]    		cp		':'
-0080: 2847     [203|208]		jr 		z, write_mode
+0080: 2850     [203|208]		jr 		z, write_mode
 0082: FE52     [210]    		cp		'R'
-0084: 286A     [217|222]		jr 		z, run_mode
+0084: 2873     [217|222]		jr 		z, run_mode
 0086: FE53     [224]    		cp		'S'
-0088: 286A     [231|236]		jr 		z, clk_spd_chg
-008A: 1870     [243]    		jr 		error
+0088: 2873     [231|236]		jr 		z, clk_spd_chg
+008A: CD03F1   [248]    		call 	print_err_msg
+008D: 18B1     [260]    		jr 		mon
                         		;
-008C:                   specify_end:
-008C: 23       [ 6]     		inc 	hl 		; next to '.'
-008D: 0E04     [13]     		ld 		c, 4
-008F: CD6FF0   [30]     		call 	hexstr_de
-0092: ED5302E0 [50]     		ld 		(addr2), de
-0096: 7E       [57]     		ld 		a, (hl)
-0097: FE00     [64]     		cp 		0
-0099: 2061     [71|76]  		jr 		nz, error
+008F:                   specify_end:
+008F: 23       [ 6]     		inc 	hl 		; next to '.'
+0090: 0E04     [13]     		ld 		c, 4
+0092: CD6FF0   [30]     		call 	hexstr_de
+0095: ED5302E0 [50]     		ld 		(addr2), de
+0099: 7E       [57]     		ld 		a, (hl)
+009A: FE00     [64]     		cp 		0
+009C: 2805     [71|76]  		jr 		z, default_dump
+009E: CD03F1   [88]     		call 	print_err_msg
+00A1: 189D     [100]    		jr 		mon
                         		;
-009B:                   default_dump:
-009B: 2A00E0   [16]     		ld 		hl, (addr)
-009E: ED5B02E0 [36]     		ld 		de, (addr2)
-00A2: 7C       [40]     		ld 		a, h
-00A3: BA       [44]     		cp 		d 
-00A4: 2002     [51|56]  		jr 		nz, $+4 
-00A6: 7D       [55]     		ld 		a, l 
-00A7: BB       [59]     		cp 		e 
-00A8: 3809     [66|71]  		jr 		c, do_dump  ; start < end
-00AA: 2807     [73|78]  		jr 		z, do_dump  ; start == end
-00AC: 111000   [83]     		ld 		de, $10
-00AF: 19       [94]     		add 	hl, de
-00B0: 2202E0   [110]    		ld 		(addr2), hl
+00A3:                   default_dump:
+00A3: 2A00E0   [16]     		ld 		hl, (addr)
+00A6: ED5B02E0 [36]     		ld 		de, (addr2)
+00AA: 7C       [40]     		ld 		a, h
+00AB: BA       [44]     		cp 		d 
+00AC: 2002     [51|56]  		jr 		nz, $+4 
+00AE: 7D       [55]     		ld 		a, l 
+00AF: BB       [59]     		cp 		e 
+00B0: 3809     [66|71]  		jr 		c, do_dump  ; start < end
+00B2: 2807     [73|78]  		jr 		z, do_dump  ; start == end
+00B4: 111000   [83]     		ld 		de, $10
+00B7: 19       [94]     		add 	hl, de
+00B8: 2202E0   [110]    		ld 		(addr2), hl
                         		;
-00B3:                   do_dump:
-00B3: 2A00E0   [16]     		ld 		hl, (addr)
-00B6: ED5B02E0 [36]     		ld 		de, (addr2)
-00BA: CDBAF0   [53]     		call 	dump
-00BD: 2200E0   [69]     		ld 		(addr), hl
-00C0: 110000   [79]     		ld 		de, 0
-00C3: ED5302E0 [99]     		ld 		(addr2), de
-00C7: 1886     [111]    		jr 		read_line
+00BB:                   do_dump:
+00BB: 2A00E0   [16]     		ld 		hl, (addr)
+00BE: ED5B02E0 [36]     		ld 		de, (addr2)
+00C2: CDBAF0   [53]     		call 	dump
+00C5: 2200E0   [69]     		ld 		(addr), hl
+00C8: 110000   [79]     		ld 		de, 0
+00CB: ED5302E0 [99]     		ld 		(addr2), de
+00CF: C34F00   [109]    		jp 		read_line
                         ;
-00C9:                   write_mode:
-00C9: 23       [ 6]     		inc 	hl 		; next to ':'
-00CA: 7E       [13]     		ld 		a, (hl)
-00CB: FE20     [20]     		cp 		' '
-00CD: 28FA     [27|32]  		jr 		z, write_mode
+00D2:                   write_mode:
+00D2: 23       [ 6]     		inc 	hl 		; next to ':'
+00D3: 7E       [13]     		ld 		a, (hl)
+00D4: FE20     [20]     		cp 		' '
+00D6: 28FA     [27|32]  		jr 		z, write_mode
                         		;
-00CF: 0E02     [34]     		ld 		c, 2
-00D1: CD6FF0   [51]     		call 	hexstr_de
-00D4: 79       [55]     		ld 		a, c 
-00D5: FE02     [62]     		cp 		a, 2
-00D7: 2814     [69|74]  		jr 		z, write_mode.exit	; no arg or illegal char
-00D9: DD2A00E0 [89]     		ld 		ix, (addr)
-00DD: DD7300   [108]    		ld 		(ix), e
-00E0: DD23     [118]    		inc 	ix
-00E2: DD2200E0 [138]    		ld 		(addr), ix
-00E6: 7E       [145]    		ld 		a, (hl)
-00E7: FE00     [152]    		cp 		0
-00E9: 2802     [159|164]		jr 		z, write_mode.exit
-00EB: 18DC     [171]    		jr 		write_mode
-00ED:                   write_mode.exit
-00ED: C34F00   [10]     		jp 		read_line
+00D8: 0E02     [34]     		ld 		c, 2
+00DA: CD6FF0   [51]     		call 	hexstr_de
+00DD: 79       [55]     		ld 		a, c 
+00DE: FE02     [62]     		cp 		a, 2
+00E0: 2814     [69|74]  		jr 		z, write_mode.exit	; no arg or illegal char
+00E2: DD2A00E0 [89]     		ld 		ix, (addr)
+00E6: DD7300   [108]    		ld 		(ix), e
+00E9: DD23     [118]    		inc 	ix
+00EB: DD2200E0 [138]    		ld 		(addr), ix
+00EF: 7E       [145]    		ld 		a, (hl)
+00F0: FE00     [152]    		cp 		0
+00F2: 2802     [159|164]		jr 		z, write_mode.exit
+00F4: 18DC     [171]    		jr 		write_mode
+00F6:                   write_mode.exit
+00F6: C34F00   [10]     		jp 		read_line
                         ;
-00F0:                   run_mode:
-00F0: 2A00E0   [16]     		ld 		hl, (addr)
-00F3: E9       [20]     		jp 		(hl)
+00F9:                   run_mode:
+00F9: 2A00E0   [16]     		ld 		hl, (addr)
+00FC: E9       [20]     		jp 		(hl)
                         ;
                         ;  clockspeed change by output number to port 128
-00F4:                   clk_spd_chg:
-00F4: 7B       [ 4]     		ld 		a, e
-00F5: E607     [11]     		and 	$07
-00F7: D380     [22]     		out		(128), a
-00F9: C34F00   [32]     		jp 		read_line
+00FD:                   clk_spd_chg:
+00FD: 7B       [ 4]     		ld 		a, e
+00FE: E607     [11]     		and 	$07
+0100: D380     [22]     		out		(128), a
+0102: C34F00   [32]     		jp 		read_line
                         ;
-00FC:                   error:
-00FC: CDB1F0   [17]     		call 	print_endl
-00FF: CDA4F0   [34]     		call 	print_byte
-0102: 211101   [44]     		ld 		hl, err_msg
-0105: CD8DF0   [61]     		call 	print_str_hl
-0108: 2104E0   [71]     		ld 		hl, lbuf
-010B: CD8DF0   [88]     		call 	print_str_hl
-010E: C34F00   [98]     		jp 		read_line
-                        
-0111:                   err_msg:
-0111: 20657272          		db 	" error", $0a, $0d, 0
-0115: 6F720A0D          
-0119: 00                
-                        
-011A:                   mon_halt:
-011A: 76       [ 4]     		halt
+0105:                   mon_halt:
+0105: 76       [ 4]     		halt
                         
                         ; subroutines
 
 
 ; +++ segments +++
 
-#CODE          = $0000 =     0,  size = $011B =   283
+#CODE          = $0000 =     0,  size = $0106 =   262
 
 ; +++ global symbols +++
 
 RST_00          = $0000 =     0          mon_v02.asm:12 (unused)
-_end            = $011B =   283          mon_v02.asm:11 (unused)
-_size           = $011B =   283          mon_v02.asm:11 (unused)
-addr            = $E000 = 57344          mon_v02.asm:36
-addr2           = $E002 = 57346          mon_v02.asm:37
-clk_spd_chg     = $00F4 =   244          mon_v02.asm:141
-default_dump    = $009B =   155          mon_v02.asm:91
-do_dump         = $00B3 =   179          mon_v02.asm:105
+_end            = $0106 =   262          mon_v02.asm:11 (unused)
+_size           = $0106 =   262          mon_v02.asm:11 (unused)
+addr            = $E000 = 57344          mon_v02.asm:38
+addr2           = $E002 = 57346          mon_v02.asm:39
+clk_spd_chg     = $00FD =   253          mon_v02.asm:146
+default_dump    = $00A3 =   163          mon_v02.asm:96
+do_dump         = $00BB =   187          mon_v02.asm:110
 dump            = $F0BA = 61626          mon_v02.asm:31
-err_msg         = $0111 =   273          mon_v02.asm:156
-error           = $00FC =   252          mon_v02.asm:147
 getln           = $F000 = 61440          mon_v02.asm:25
 hexstr_de       = $F06F = 61551          mon_v02.asm:26
-lbuf            = $E004 = 57348          mon_v02.asm:38
-mon             = $0040 =    64          mon_v02.asm:41
-mon_halt        = $011A =   282          mon_v02.asm:159
-print_byte      = $F0A4 = 61604          mon_v02.asm:29
-print_endl      = $F0B1 = 61617          mon_v02.asm:30
+lbuf            = $E004 = 57348          mon_v02.asm:40
+mon             = $0040 =    64          mon_v02.asm:43
+mon_halt        = $0105 =   261          mon_v02.asm:152
+print_byte      = $F0A4 = 61604          mon_v02.asm:29 (unused)
+print_endl      = $F0B1 = 61617          mon_v02.asm:30 (unused)
+print_err_msg   = $F103 = 61699          mon_v02.asm:32
 print_nibble    = $F095 = 61589          mon_v02.asm:28 (unused)
-print_str_hl    = $F08D = 61581          mon_v02.asm:27
-read_line       = $004F =    79          mon_v02.asm:46
-run_mode        = $00F0 =   240          mon_v02.asm:136
-specify_end     = $008C =   140          mon_v02.asm:82
-write_mode      = $00C9 =   201          mon_v02.asm:114
-write_mode.exit = $00ED =   237          mon_v02.asm:133
+print_str_hl    = $F08D = 61581          mon_v02.asm:27 (unused)
+read_line       = $004F =    79          mon_v02.asm:48
+run_mode        = $00F9 =   249          mon_v02.asm:141
+specify_end     = $008F =   143          mon_v02.asm:85
+write_mode      = $00D2 =   210          mon_v02.asm:119
+write_mode.exit = $00F6 =   246          mon_v02.asm:138
 
 
 total time: 0.0009 sec.

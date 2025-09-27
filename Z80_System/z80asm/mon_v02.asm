@@ -29,6 +29,8 @@ print_nibble 	equ 	$F095
 print_byte 		equ 	$F0A4
 print_endl 		equ 	$F0B1
 dump 			equ 	$F0BA
+print_err_msg	= $F103
+
 ;
 ;
 
@@ -77,7 +79,8 @@ read_line:
 		jr 		z, run_mode
 		cp		'S'
 		jr 		z, clk_spd_chg
-		jr 		error
+		call 	print_err_msg
+		jr 		mon		; addr and addr2 are possibly corrupted
 		;
 specify_end:
 		inc 	hl 		; next to '.'
@@ -86,7 +89,9 @@ specify_end:
 		ld 		(addr2), de
 		ld 		a, (hl)
 		cp 		0
-		jr 		nz, error
+		jr 		z, default_dump
+		call 	print_err_msg
+		jr 		mon		; addr and addr2 are possibly corrupted
 		;
 default_dump:
 		ld 		hl, (addr)
@@ -109,7 +114,7 @@ do_dump:
 		ld 		(addr), hl
 		ld 		de, 0
 		ld 		(addr2), de
-		jr 		read_line
+		jp 		read_line
 ;
 write_mode:
 		inc 	hl 		; next to ':'
@@ -144,18 +149,6 @@ clk_spd_chg:
 		out		(128), a
 		jp 		read_line
 ;
-error:
-		call 	print_endl
-		call 	print_byte
-		ld 		hl, err_msg
-		call 	print_str_hl
-		ld 		hl, lbuf
-		call 	print_str_hl
-		jp 		read_line
-
-err_msg:
-		db 	" error", $0a, $0d, 0
-
 mon_halt:
 		halt
 

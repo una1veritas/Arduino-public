@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "rom_f000.asm"
-                        ; date: 2025-09-26 17:34:45
+                        ; date: 2025-09-27 13:48:08
                         ; --------------------------------------
 
 
@@ -238,21 +238,46 @@ F101: 18BD     [95]     	jr 		dump.print_header  ; if so print address header
                             ;
                         ;dump_exit:
                         	;ret
+                        
+                        ;
+                        ; print_err_msg
+                        ;
+F103:                   print_err_msg:
+F103: E5       [11]     		push 	hl
+F104: F5       [22]     		push 	af
+F105: CDB1F0   [39]     		call 	print_endl
+F108: 211FF1   [49]     		ld 		hl, err_msg
+F10B: CD8DF0   [66]     		call 	print_str_hl
+F10E: F1       [76]     		pop 	af
+F10F: CDA4F0   [93]     		call 	print_byte
+F112: CDB1F0   [110]    		call 	print_endl
+F115: E1       [120]    		pop 	hl
+F116: 7C       [124]    		ld 		a, h
+F117: CDA4F0   [141]    		call 	print_byte
+F11A: 7D       [145]    		ld 		a, l
+F11B: CDA4F0   [162]    		call 	print_byte
+F11E: C9       [172]    		ret
+                        		;
+F11F:                   err_msg:
+F11F: 0A0D6572          		db 	$0a, $0d, "error", $0a, $0d, 0
+F123: 726F720A          
+F127: 0D00              
 
 
 ; +++ segments +++
 
-#CODE          = $F000 = 61440,  size = $0103 =   259
+#CODE          = $F000 = 61440,  size = $0129 =   297
 
 ; +++ global symbols +++
 
-_end               = $F103 = 61699          rom_f000.asm:2 (unused)
-_size              = $0103 =   259          rom_f000.asm:2 (unused)
+_end               = $F129 = 61737          rom_f000.asm:2 (unused)
+_size              = $0129 =   297          rom_f000.asm:2 (unused)
 dump               = $F0BA = 61626          rom_f000.asm:176 (unused)
 dump.bytes         = $F0D7 = 61655          rom_f000.asm:195
 dump.print_byte    = $F0E9 = 61673          rom_f000.asm:210
 dump.print_header  = $F0C0 = 61632          rom_f000.asm:182
 dump.print_spc     = $F0ED = 61677          rom_f000.asm:213
+err_msg            = $F11F = 61727          rom_f000.asm:255
 getln              = $F000 = 61440          rom_f000.asm:9 (unused)
 getln_bkspc        = $F028 = 61480          rom_f000.asm:36
 getln_echo_proceed = $F03E = 61502          rom_f000.asm:51
@@ -268,10 +293,11 @@ hexstr_de.loop     = $F072 = 61554          rom_f000.asm:106
 hexstr_de.rl4      = $F080 = 61568          rom_f000.asm:117
 print_byte         = $F0A4 = 61604          rom_f000.asm:152
 print_endl         = $F0B1 = 61617          rom_f000.asm:163
+print_err_msg      = $F103 = 61699          rom_f000.asm:239 (unused)
 print_nibble       = $F095 = 61589          rom_f000.asm:140
 print_nibble_out   = $F0A1 = 61601          rom_f000.asm:147
 print_str_hl       = $F08D = 61581          rom_f000.asm:131
 
 
-total time: 0.0010 sec.
+total time: 0.0014 sec.
 no errors
