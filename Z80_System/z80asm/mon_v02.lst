@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "mon_v02.asm"
-                        ; date: 2025-09-27 13:55:58
+                        ; date: 2025-09-28 01:03:15
                         ; --------------------------------------
 
 
@@ -29,13 +29,13 @@
                         
                         ; rom subroutines;
 F000:                   getln 			equ 	$F000
-F06F:                   hexstr_de		equ 	$F06F
-F08D:                   print_str_hl 	equ 	$F08D
-F095:                   print_nibble 	equ 	$F095                 
-F0A4:                   print_byte 		equ 	$F0A4
-F0B1:                   print_endl 		equ 	$F0B1
-F0BA:                   dump 			equ 	$F0BA
-F103:                   print_err_msg	= $F103
+F065:                   hexstr_de		equ 	$F065
+F080:                   print_str_hl 	equ 	$F080
+F088:                   print_nibble 	equ 	$F088                 
+F097:                   print_byte 		equ 	$F097
+F0A4:                   print_endl 		equ 	$F0A4
+F0AD:                   dump 			equ 	$F0AD
+F0F6:                   print_err_msg	equ		$F0F6
                         
                         ;
                         ;
@@ -71,7 +71,7 @@ E004:                   lbuf	equ 	addr2+2
                         		;
                         ; specify start address and function
 006C: 0E04     [117]    		ld 		c, 4
-006E: CD6FF0   [134]    		call 	hexstr_de
+006E: CD65F0   [134]    		call 	hexstr_de
 0071: ED5300E0 [154]    		ld 		(addr), de
                         		;
 0075: 7E       [161]    		ld 		a, (hl)
@@ -85,19 +85,19 @@ E004:                   lbuf	equ 	addr2+2
 0084: 2873     [217|222]		jr 		z, run_mode
 0086: FE53     [224]    		cp		'S'
 0088: 2873     [231|236]		jr 		z, clk_spd_chg
-008A: CD03F1   [248]    		call 	print_err_msg
-008D: 18B1     [260]    		jr 		mon
+008A: CDF6F0   [248]    		call 	print_err_msg
+008D: 18B1     [260]    		jr 		mon		; addr and addr2 are possibly corrupted
                         		;
 008F:                   specify_end:
 008F: 23       [ 6]     		inc 	hl 		; next to '.'
 0090: 0E04     [13]     		ld 		c, 4
-0092: CD6FF0   [30]     		call 	hexstr_de
+0092: CD65F0   [30]     		call 	hexstr_de
 0095: ED5302E0 [50]     		ld 		(addr2), de
 0099: 7E       [57]     		ld 		a, (hl)
 009A: FE00     [64]     		cp 		0
 009C: 2805     [71|76]  		jr 		z, default_dump
-009E: CD03F1   [88]     		call 	print_err_msg
-00A1: 189D     [100]    		jr 		mon
+009E: CDF6F0   [88]     		call 	print_err_msg
+00A1: 189D     [100]    		jr 		mon		; addr and addr2 are possibly corrupted
                         		;
 00A3:                   default_dump:
 00A3: 2A00E0   [16]     		ld 		hl, (addr)
@@ -116,7 +116,7 @@ E004:                   lbuf	equ 	addr2+2
 00BB:                   do_dump:
 00BB: 2A00E0   [16]     		ld 		hl, (addr)
 00BE: ED5B02E0 [36]     		ld 		de, (addr2)
-00C2: CDBAF0   [53]     		call 	dump
+00C2: CDADF0   [53]     		call 	dump
 00C5: 2200E0   [69]     		ld 		(addr), hl
 00C8: 110000   [79]     		ld 		de, 0
 00CB: ED5302E0 [99]     		ld 		(addr2), de
@@ -129,7 +129,7 @@ E004:                   lbuf	equ 	addr2+2
 00D6: 28FA     [27|32]  		jr 		z, write_mode
                         		;
 00D8: 0E02     [34]     		ld 		c, 2
-00DA: CD6FF0   [51]     		call 	hexstr_de
+00DA: CD65F0   [51]     		call 	hexstr_de
 00DD: 79       [55]     		ld 		a, c 
 00DE: FE02     [62]     		cp 		a, 2
 00E0: 2814     [69|74]  		jr 		z, write_mode.exit	; no arg or illegal char
@@ -175,17 +175,17 @@ addr2           = $E002 = 57346          mon_v02.asm:39
 clk_spd_chg     = $00FD =   253          mon_v02.asm:146
 default_dump    = $00A3 =   163          mon_v02.asm:96
 do_dump         = $00BB =   187          mon_v02.asm:110
-dump            = $F0BA = 61626          mon_v02.asm:31
+dump            = $F0AD = 61613          mon_v02.asm:31
 getln           = $F000 = 61440          mon_v02.asm:25
-hexstr_de       = $F06F = 61551          mon_v02.asm:26
+hexstr_de       = $F065 = 61541          mon_v02.asm:26
 lbuf            = $E004 = 57348          mon_v02.asm:40
 mon             = $0040 =    64          mon_v02.asm:43
 mon_halt        = $0105 =   261          mon_v02.asm:152
-print_byte      = $F0A4 = 61604          mon_v02.asm:29 (unused)
-print_endl      = $F0B1 = 61617          mon_v02.asm:30 (unused)
-print_err_msg   = $F103 = 61699          mon_v02.asm:32
-print_nibble    = $F095 = 61589          mon_v02.asm:28 (unused)
-print_str_hl    = $F08D = 61581          mon_v02.asm:27 (unused)
+print_byte      = $F097 = 61591          mon_v02.asm:29 (unused)
+print_endl      = $F0A4 = 61604          mon_v02.asm:30 (unused)
+print_err_msg   = $F0F6 = 61686          mon_v02.asm:32
+print_nibble    = $F088 = 61576          mon_v02.asm:28 (unused)
+print_str_hl    = $F080 = 61568          mon_v02.asm:27 (unused)
 read_line       = $004F =    79          mon_v02.asm:48
 run_mode        = $00F9 =   249          mon_v02.asm:141
 specify_end     = $008F =   143          mon_v02.asm:85
@@ -193,5 +193,5 @@ write_mode      = $00D2 =   210          mon_v02.asm:119
 write_mode.exit = $00F6 =   246          mon_v02.asm:138
 
 
-total time: 0.0009 sec.
+total time: 0.0010 sec.
 no errors

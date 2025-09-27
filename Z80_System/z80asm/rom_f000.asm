@@ -1,4 +1,14 @@
 ;
+; macros
+clrf:	macro
+		and 	a
+		endm
+;
+clra: 	macro
+		xor 	a
+		endm
+;
+;
 	    org 	$F000
 ; subroutines
 
@@ -66,32 +76,25 @@ getln_end:	; parse lbuf
 
 ; convert one char expressing a hexadecimal digit 
 ; in A reg. to nibble in A
-; bit 7 is set to A if A is not hex-dec char
+; set carry flag if got a wrong char
 ;
 hex2nib:
 		cp 		'0'
-		jr 		c, hex2nib.err
+		ret 	c		; error, return with carry flag set
 		cp 		'9' + 1
 		jr 		nc, hex2nib.toupper
-		sub 	'0'
-		ret
-		;
+		sub 	'0' 	; never sets carry flag
+		ret				; no error, retuen the value without carry flag
 hex2nib.toupper:
-		cp 		'a'
-		jr	 	c, hex2nib.alpha
-		cp 		'f' + 1
-		jr	 	nc, hex2nib.err
-		sub 	$20 	; to upper char
-hex2nib.alpha:
+		and 	$df
 		sub     'A' 
-		jr      c, hex2nib.err  
-		cp      6
+		ret      c		; error, return with carry flag set
+		cp      'F' + 1
 		jr      nc, hex2nib.err      ; error if it is larger than 'F'
-		add 	10
-		ret
-		;
+		add 	10		;  never sets carry flag
+		ret				; no error, return the value without carry
 hex2nib.err:
-		ld 		a, $ff 	; error code
+		sub 	$ff 	; 	always sets carry flag
 		ret
 
 
@@ -105,14 +108,12 @@ hexstr_de:
 		ld      de, 0000h
 hexstr_de.loop:
 		ld      a, (hl)
-		ld 		b, a
 		call 	hex2nib
-		cp 		$ff
-		jr 		nz, hexstr_de.hex2nib_succ
-		ld 		a, b 	; recover original value of A
-		ret 	 		; encountered non-hexdec char.
+		jr 		nc, hexstr_de.hex2nib_succ
+		ld 		a, (hl) 	; recover original value of A
+		ret 	 			; encountered non-hexdec char.
 hexstr_de.hex2nib_succ:
-		and 	a		; clear Carry bit
+		clrf			; clear Carry bit
 		ld 		b, 4
 hexstr_de.rl4:
 		rl      e		 ;rotate left entire de

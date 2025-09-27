@@ -23,13 +23,13 @@ RST_00:
 
 ; rom subroutines;
 getln 			equ 	$F000
-hexstr_de		equ 	$F06F
-print_str_hl 	equ 	$F08D
-print_nibble 	equ 	$F095                 
-print_byte 		equ 	$F0A4
-print_endl 		equ 	$F0B1
-dump 			equ 	$F0BA
-print_err_msg	= $F103
+hexstr_de		equ 	$F065
+print_str_hl 	equ 	$F080
+print_nibble 	equ 	$F088                 
+print_byte 		equ 	$F097
+print_endl 		equ 	$F0A4
+dump 			equ 	$F0AD
+print_err_msg	equ		$F0F6
 
 ;
 ;
