@@ -65,24 +65,6 @@ void Z80Bus::clock_mode_select(const uint8_t & mode) {
 	}
 }
 
-/*
-  enum IO_port {
-    CONSTA = 0,  //console status port
-    CONDAT,      //console data port
-    PRTSTA,
-    PRTDAT,
-    AUXDAT = 5,
-    FDCDAT = 8,  //fdc-port: # of drive
-    DRIVE = 10,  //fdc-port: # of drive
-    TRACK,       //fdc-port: # of track
-    SECTOR,      //fdc-port: # of sector
-    FDCOP,       //fdc-port: command
-    FDCST,       //fdc-port: status
-    DMAL = 15,   //dma-port: dma address low
-    DMAH,        //dma-port: dma address high
-  };
-*/
-
 //uint8_t Z80Bus::io_rw(const uint8_t &port, const uint8_t &val, const uint8_t &inout) {
 uint32_t Z80Bus::io_rw() {
 	uint16_t port;

@@ -13,6 +13,24 @@
 #define DATA_IN PINL
 #define DATA_OUT PORTL
 
+
+enum IO_Ports {
+    CONSTA = 0,  //console status port
+    CONDAT,      //console data in/out port
+    PRTSTA,
+    PRTDAT,
+    AUXDAT = 5,		// aux data port
+    // FDCD = 8,  	//fdc-port:
+    FDCDRIVE = 10,  //fdc-port: # of drive
+    FDCTRACK,       //fdc-port: # of track
+    FDCSECTOR,      //fdc-port: # of sector
+    FDCOP,       //fdc-port: command
+    FDCST,       //fdc-port: status
+    DMAL = 15,   //dma-port: dma address low
+    DMAH,        //dma-port: dma address high
+  };
+
+
 struct Z80Bus {
 public:
   static const uint8_t IOADDR_BUS_WIDTH = 8;
