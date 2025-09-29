@@ -3,7 +3,6 @@
 #include <LiquidCrystal.h>
 
 #include "Z80Bus.h"
-#include "progmem_rom.h"
 
 //#define BUS_DEBUG
 
@@ -145,8 +144,7 @@ void setup() {
 
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_start(2, 1000); 
-  z80bus.set_rom_page(rom_f000, 0x0f);
+  z80bus.clock_start(2, 250); 
   Serial.println("Reseting Z80...");
   z80bus.cpu_reset();
 
@@ -169,9 +167,8 @@ void setup() {
       Serial.println(" Ok.");
     }
 
-    // test DMA, arduino to ram 
-    
-    uint8_t res = z80bus.DMA_progmem_load(boot_0000, 512, 0x0000);
+    // Load bootloader from 0x0000 by  DMA, arduino to ram 
+    uint8_t res = z80bus.DMA_progmem_load(Z80Bus::mon_0000, 0x0000, 512);
     if (res != 0) {
       Serial.println("Something going wrong w/ sram read & write!");
     } else {

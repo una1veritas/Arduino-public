@@ -8,6 +8,11 @@ clra: 	macro
 		xor 	a
 		endm
 ;
+; I/O port
+CONST 	equ 	$00
+CONIO 	equ 	$01
+;CONOUT equ 	$02
+CLKMODE	equ 	$80
 ;
 	    org 	$F000
 ; subroutines
@@ -21,15 +26,15 @@ getln:
 		ld 		b, 0		; char count
 		call 	print_endl
 		ld 		a, '*'
-		out 	(2), a
+		out 	(CONIO), a
         ;
 getln_wait:
-		in 		a, (0)
+		in 		a, (CONST)
 		and 	a
 		jr 		z, getln_wait
 ;
 ; no echo back
-		in 		a, (1)
+		in 		a, (CONIO)
 		cp 		$08 	;backspace
 		jr 		z, getln_bkspc
 		cp 		$7f		; del
@@ -48,18 +53,18 @@ getln_bkspc:
 		and 	a
 		jr 		z, getln_wait
 		ld 		a, $08
-		out 	(2), a
+		out 	(CONIO), a
 		ld 		a, ' '
-		out 	(2), a
+		out 	(CONIO), a
 		ld 		a, $08
-		out 	(2), a
+		out 	(CONIO), a
 		dec 	hl
 		ld 		(hl), $0
 		dec 	b
 		jr 		getln_wait
 
 getln_echo_proceed:
-		out 	(2), a 		; echo back
+		out 	(CONIO), a 		; echo back
 		;
 		ld 		(hl),a		; *ptr++ = a
 		inc 	hl
@@ -133,7 +138,7 @@ print_str_hl:
 		ld 		a,(hl)
 		and 	A
 		ret 	z
-		out 	(2), a
+		out 	(CONIO), a
 		inc 	hl
 		jr 		print_str_hl
 
@@ -146,7 +151,7 @@ print_nibble:
 		jr 		c, print_nibble_out
 		add 	7
 print_nibble_out:
-		out 	(2), a
+		out 	(CONIO), a
 		ret
 
 ; print a byte in A
@@ -163,9 +168,9 @@ print_byte:
 
 print_endl:
 		ld 		a, $0a
-		out 	(2), A
+		out 	(CONIO), A
 		ld 		a, $0d
-		out 	(2), A
+		out 	(CONIO), A
 		ret
 
 ; dump : dump memory from addr to addr+2 (value)
@@ -187,11 +192,11 @@ dump.print_header:
 	ld 		a, c
 	call 	print_byte
 	ld 		a, ' '
-	out 	(2), a
+	out 	(CONIO), a
 	ld 		a, ':'
-	out 	(2), a
+	out 	(CONIO), a
 	ld 		a, ' '
-	out 	(2), a
+	out 	(CONIO), a
     ;
 dump.bytes:
 	;cp 	bc, hl
@@ -205,15 +210,15 @@ dump.bytes:
 	jr 		z, dump.print_byte
 ; print two-spaces
 	ld 		a, ' '
-	out 	(2), a
-	out 	(2), a
+	out 	(CONIO), a
+	out 	(CONIO), a
 	jr 		dump.print_spc
 dump.print_byte
 	ld 		a, (hl)
 	call 	print_byte
 dump.print_spc:
 	ld 		a, ' '
-	out 	(2), a
+	out 	(CONIO), a
 	inc 	hl
 	; cp 	de, hl
 	ld 		a, d

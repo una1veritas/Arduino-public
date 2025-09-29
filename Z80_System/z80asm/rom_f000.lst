@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "rom_f000.asm"
-                        ; date: 2025-09-28 01:13:38
+                        ; date: 2025-09-28 15:42:48
                         ; --------------------------------------
 
 
@@ -14,6 +14,11 @@
                         		xor 	a
                         		endm
                         ;
+                        ; I/O port
+0000:                   CONST 	equ 	$00
+0001:                   CONIO 	equ 	$01
+                        ;CONOUT equ 	$02
+0080:                   CLKMODE	equ 	$80
                         ;
 F000:                   	    org 	$F000
                         ; subroutines
@@ -272,33 +277,36 @@ F11A: 0D00
 
 ; +++ global symbols +++
 
-_end               = $F11C = 61724          rom_f000.asm:12 (unused)
-_size              = $011C =   284          rom_f000.asm:12 (unused)
-dump               = $F0AD = 61613          rom_f000.asm:177 (unused)
-dump.bytes         = $F0CA = 61642          rom_f000.asm:196
-dump.print_byte    = $F0DC = 61660          rom_f000.asm:211
-dump.print_header  = $F0B3 = 61619          rom_f000.asm:183
-dump.print_spc     = $F0E0 = 61664          rom_f000.asm:214
-err_msg            = $F112 = 61714          rom_f000.asm:256
-getln              = $F000 = 61440          rom_f000.asm:19 (unused)
-getln_bkspc        = $F028 = 61480          rom_f000.asm:46
-getln_echo_proceed = $F03E = 61502          rom_f000.asm:61
-getln_end          = $F04B = 61515          rom_f000.asm:73
-getln_wait         = $F00B = 61451          rom_f000.asm:26
-hex2nib            = $F04C = 61516          rom_f000.asm:81
-hex2nib.err        = $F062 = 61538          rom_f000.asm:96
-hex2nib.toupper    = $F056 = 61526          rom_f000.asm:88
-hexstr_de          = $F065 = 61541          rom_f000.asm:107 (unused)
-hexstr_de.hex2nib_succ = $F070 = 61552          rom_f000.asm:115
-hexstr_de.loop     = $F068 = 61544          rom_f000.asm:109
-hexstr_de.rl4      = $F073 = 61555          rom_f000.asm:118
-print_byte         = $F097 = 61591          rom_f000.asm:153
-print_endl         = $F0A4 = 61604          rom_f000.asm:164
-print_err_msg      = $F0F6 = 61686          rom_f000.asm:240 (unused)
-print_nibble       = $F088 = 61576          rom_f000.asm:141
-print_nibble_out   = $F094 = 61588          rom_f000.asm:148
-print_str_hl       = $F080 = 61568          rom_f000.asm:132
+CLKMODE            = $0080 =   128          rom_f000.asm:15 (unused)
+CONIO              = $0001 =     1          rom_f000.asm:13 (unused)
+CONST              = $0000 =     0          rom_f000.asm:12 (unused)
+_end               = $F11C = 61724          rom_f000.asm:17 (unused)
+_size              = $011C =   284          rom_f000.asm:17 (unused)
+dump               = $F0AD = 61613          rom_f000.asm:182 (unused)
+dump.bytes         = $F0CA = 61642          rom_f000.asm:201
+dump.print_byte    = $F0DC = 61660          rom_f000.asm:216
+dump.print_header  = $F0B3 = 61619          rom_f000.asm:188
+dump.print_spc     = $F0E0 = 61664          rom_f000.asm:219
+err_msg            = $F112 = 61714          rom_f000.asm:261
+getln              = $F000 = 61440          rom_f000.asm:24 (unused)
+getln_bkspc        = $F028 = 61480          rom_f000.asm:51
+getln_echo_proceed = $F03E = 61502          rom_f000.asm:66
+getln_end          = $F04B = 61515          rom_f000.asm:78
+getln_wait         = $F00B = 61451          rom_f000.asm:31
+hex2nib            = $F04C = 61516          rom_f000.asm:86
+hex2nib.err        = $F062 = 61538          rom_f000.asm:101
+hex2nib.toupper    = $F056 = 61526          rom_f000.asm:93
+hexstr_de          = $F065 = 61541          rom_f000.asm:112 (unused)
+hexstr_de.hex2nib_succ = $F070 = 61552          rom_f000.asm:120
+hexstr_de.loop     = $F068 = 61544          rom_f000.asm:114
+hexstr_de.rl4      = $F073 = 61555          rom_f000.asm:123
+print_byte         = $F097 = 61591          rom_f000.asm:158
+print_endl         = $F0A4 = 61604          rom_f000.asm:169
+print_err_msg      = $F0F6 = 61686          rom_f000.asm:245 (unused)
+print_nibble       = $F088 = 61576          rom_f000.asm:146
+print_nibble_out   = $F094 = 61588          rom_f000.asm:153
+print_str_hl       = $F080 = 61568          rom_f000.asm:137
 
 
-total time: 0.0010 sec.
+total time: 0.0011 sec.
 no errors

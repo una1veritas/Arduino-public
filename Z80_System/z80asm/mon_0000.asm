@@ -20,6 +20,11 @@ RST_00:
 ; de ... address
 ; ix ...  mon_curr_addr, curr_addr + 2 == end_addr
 ;
+; I/O port
+CONST 	equ 	$00
+CONIO 	equ 	$01
+;CONOUT equ 	$02
+CLKMODE	equ 	$80
 
 ; rom subroutines;
 getln 			equ 	$F000
@@ -146,7 +151,7 @@ run_mode:
 clk_spd_chg:
 		ld 		a, e
 		and 	$07
-		out		(128), a
+		out		(CLKMODE), a
 		jp 		read_line
 ;
 mon_halt:

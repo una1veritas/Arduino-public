@@ -120,11 +120,8 @@ uint32_t Z80Bus::io_rw() {
 		if (io_mode == IN ) {
 			data = Serial.read();
 			data_bus_set(data);
-		} else { // io_mode == OUT 
-			data = data_bus_get();
-			Serial.print((char) data);
+			break;
 		}
-		break;
 	case 2:  // CON_OUT
 		if (io_mode == OUT ) {
 			data = data_bus_get();

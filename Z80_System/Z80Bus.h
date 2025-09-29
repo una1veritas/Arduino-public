@@ -18,7 +18,11 @@ public:
   static const uint8_t IOADDR_BUS_WIDTH = 8;
   static const uint8_t ADDR_BUS_WIDTH = 16;
   static const uint8_t DATA_BUS_WIDTH = 8;
+  static const uint8_t mon_0000[512] PROGMEM;
+  static const uint8_t rom_f000[512] PROGMEM;
+  static const uint8_t emuz80basic_0000[8192] PROGMEM;
 
+public:
   //const uint8_t_RD = 40; // PG1 (RD)
   //const uint8_t_WR = 41; // PG0 (WR)
   //const uint8_t_ALE = 39; // PG2 (ALE)
@@ -58,7 +62,7 @@ public:
   volatile DMA_mode dma_transfer_mode;
   volatile uint8_t dma_result;
 
-  uint8_t PROGMEM* pages[16]{
+  uint8_t PROGMEM * pages[16]{
     0,
     0,
     0,
@@ -117,6 +121,8 @@ public:
     dma_address = 0;
     dma_result = 0;
     dma_transfer_mode = NO_REQUEST;
+
+    set_rom_page(rom_f000, 0x0f);
   }
 
   void set_rom_page(const uint8_t* rom PROGMEM, const uint8_t pageindex) {
@@ -309,13 +315,13 @@ public:
     return val;
   }
 
-  uint8_t DMA_progmem_load(const uint8_t PROGMEM* mem, const uint16_t size, const uint16_t& dst_addr) {
+  uint8_t DMA_progmem_load(const uint8_t PROGMEM* mem, const uint16_t& dst_addr, const uint16_t size) {
     uint16_t addr;
     uint8_t data;
     uint16_t errcount = 0;
     for (uint16_t ix = 0; ix < size; ++ix) {
       addr = dst_addr + ix;
-      data = pgm_read_byte_near(mem + ix);
+      data = pgm_read_byte_far(mem + ix);
       ram_write(addr, data);
     }
     return (errcount > 0xff ? 0xff : (uint8_t)errcount);
