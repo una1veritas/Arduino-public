@@ -4,7 +4,7 @@
 ; Adapted for the freeware Zilog Macro Assembler 2.10 to produce
 ; the original ROM code (checksum A934H). PA
 
-#include 'nascom8k.inc'
+#include 'nascom8krombasic.inc'
 
         ORG     0E000H
 

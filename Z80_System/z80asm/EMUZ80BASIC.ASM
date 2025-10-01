@@ -41,7 +41,8 @@ CONIO	EQU 	$01
 RXA:
 	in 	a, (CONST)
 	;LD	A,(UARTCR)
-	BIT	0,A
+	; BIT	0,A
+	and a
 	JR	Z,RXA
 	in 	a, (CONIO)
 	;LD	A,(UARTDR)
@@ -49,14 +50,15 @@ RXA:
 	RET	C
 	CP	'z'+1
 	RET	NC
-	AND	0DFH
+	AND	0DFH  ; to upper case
 	RET
 ;
 ;	CHECK RECEIVE STATUS
 KBHIT:	
 	in 	a, (CONST)
 	;LD	A,(UARTCR)
-	BIT	0,A
+	; BIT	0,A --> set Z if the least sig bit is zero
+	and a 	; set Z if a == 0
 	RET
 ;
 ;	A -> UART
@@ -64,7 +66,8 @@ TXA:	PUSH	AF
 TXAST1:	
 	in 	a, (CONST)
 	;LD	A,(UARTCR)
-	BIT	1,A
+	; BIT	1,A
+	and a
 	JR	Z,TXAST1
 	POP	AF
 	out (CONIO), a

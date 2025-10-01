@@ -16,7 +16,9 @@
 
 enum IO_Ports {
     CONSTA = 0,  //console status port
-    CONDAT,      //console data in/out port
+    CONDAT = 1,      //console data in/out port
+	CONIO = 1,
+	CON_OUT = 2,
     PRTSTA,
     PRTDAT,
     AUXDAT = 5,		// aux data port

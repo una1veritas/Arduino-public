@@ -66,10 +66,12 @@ void Z80Bus::clock_mode_select(const uint8_t & mode) {
 }
 
 //uint8_t Z80Bus::io_rw(const uint8_t &port, const uint8_t &val, const uint8_t &inout) {
+
 uint32_t Z80Bus::io_rw() {
 	uint16_t port;
 	uint8_t data;
 	uint8_t dma_buff[256];
+
 	enum IO_MODE {
 		IN = 0, OUT = 1,
 	};
@@ -90,25 +92,30 @@ uint32_t Z80Bus::io_rw() {
 	} else
 		return 0;
 
-
 	switch ( uint8_t(port & 0xff) ) {
-	case 0:  //CONSTA
+	case CONSTA:  //CONSTA
 		if (io_mode == IN ) {
-			data = (Serial.available() ? 0xff : 0x00);
+			data = uint8_t(Serial.available()); //(Serial.available() ? 0xff : 0x00);
 			data_bus_set(data);
 		}
 		break;
-	case 1:  // CONDAT/CON_IN
+	case CONIO:  // CONDAT/CON_IN
 		if (io_mode == IN ) {
 			data = Serial.read();
 			data_bus_set(data);
-			break;
-		}
-	case 2:  // CON_OUT
+		} // else if io_mode = OUT then join together in the next case
+	case CON_OUT:  // CON_OUT
 		if (io_mode == OUT ) {
 			data = data_bus_get();
 			Serial.print((char) data);
 		}
+		break;
+	case FDCDRIVE:  //10, fdc-port: # of drive
+	case FDCTRACK:       //11, fdc-port: # of track
+	case FDCSECTOR:       //fdc-port: # of sector
+	case FDCOP:       //fdc-port: command
+	case FDCST:       //fdc-port: status
+		// not populated
 		break;
 	case 16: // track_sel_h
 		break;
