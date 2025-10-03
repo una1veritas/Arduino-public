@@ -1,5 +1,5 @@
 ; macros
-clrf:	macro
+clrcf:	macro		; clear carry flag
 		and 	a
 		endm
 ;
@@ -27,15 +27,16 @@ CONIO 	equ 	$01
 CLKMODE	equ 	$80
 
 ; rom subroutines;
-getln 			equ 	$F000
-hexstr_de		equ 	$F065
-print_str_hl 	equ 	$F080
-print_nibble 	equ 	$F088                 
-print_byte 		equ 	$F097
-print_endl 		equ 	$F0A4
-dump 			equ 	$F0AD
-print_err_msg	equ		$F0F6
-
+clk_spd_change     = $F11D
+dump               = $F09F
+getln              = $F000 
+hex2nib            = $F0E8 
+hexstr_de          = $F106 
+print_byte         = $F05B 
+print_endl         = $F068 
+print_err_msg      = $F079 
+print_nibble       = $F04C 
+print_str_hl       = $F071 
 ;
 ;
 
@@ -83,7 +84,7 @@ read_line:
 		cp		'R'
 		jr 		z, run_mode
 		cp		'S'
-		jr 		z, clk_spd_chg
+		jr 		z, clk_mode
 		call 	print_err_msg
 		jr 		mon		; addr and addr2 are possibly corrupted
 		;
@@ -146,12 +147,11 @@ write_mode.exit
 run_mode:
 		ld 		hl, (addr)
 		jp 		(hl)
-;
+;;
 ;  clockspeed change by output number to port 128
-clk_spd_chg:
+clk_mode:
 		ld 		a, e
-		and 	$07
-		out		(CLKMODE), a
+		call 	clk_spd_change
 		jp 		read_line
 ;
 mon_halt:

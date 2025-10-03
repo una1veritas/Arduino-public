@@ -40,7 +40,7 @@ public:
   static const uint8_t DATA_BUS_WIDTH = 8;
   static const uint8_t mon_0000[512] PROGMEM;
   static const uint8_t rom_f000[512] PROGMEM;
-  static const uint8_t emuz80basic_0000[8192] PROGMEM;
+  static const uint8_t basic_0000[8192] PROGMEM;
 
 public:
   //const uint8_t_RD = 40; // PG1 (RD)

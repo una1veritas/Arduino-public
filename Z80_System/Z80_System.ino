@@ -107,6 +107,7 @@ byte ascii7seg(byte ch) {
 //uint16_t addr;
 //uint8_t data;
 char busmode = ' ';
+long prev_millis;
 char buf[32];
 uint8_t dma_buff[256];
 
@@ -168,7 +169,7 @@ void setup() {
     }
 
     // Load bootloader from 0x0000 by  DMA, arduino to ram 
-    uint8_t res = z80bus.DMA_progmem_load(Z80Bus::mon_0000, 0x0000, 512);
+    uint8_t res = z80bus.DMA_progmem_load(Z80Bus::mon_0000, 0x0000, 8192);
     if (res != 0) {
       Serial.println("Something going wrong w/ sram read & write!");
     } else {
@@ -191,6 +192,7 @@ void setup() {
   z80bus.RESET(HIGH);
   //lcdt.clear();
   //lcdt.print(0,0,"Z80 starts.");
+  prev_millis = millis();
 }
 
 void loop() {
@@ -243,6 +245,8 @@ void loop() {
       busmode = 'o';
     } 
   }
+
+  if (false) {
   addr = val>>16;
   data = val & 0xff;
   if ( busmode == 'o' or busmode == 'i') {
@@ -256,6 +260,9 @@ void loop() {
     SPI.transfer(ascii7seg(buf[--i]));
   }
   digitalWrite(SPI_CS, HIGH);
+  prev_millis = millis();
+  }
+
   if ( ! z80bus.HALT() ) {
     Serial.println("Halted.");
     if ( z80bus.DMA_mode() ) {

@@ -1,12 +1,12 @@
                         ; --------------------------------------
                         ; zasm: assemble "rom_f000.asm"
-                        ; date: 2025-09-28 15:42:48
+                        ; date: 2025-10-03 22:24:25
                         ; --------------------------------------
 
 
                         ;
                         ; macros
-                        clrf:	macro
+                        clrcf:	macro		; clear carry flag
                         		and 	a
                         		endm
                         ;
@@ -15,7 +15,7 @@
                         		endm
                         ;
                         ; I/O port
-0000:                   CONST 	equ 	$00
+0000:                   CONSTA 	equ 	$00
 0001:                   CONIO 	equ 	$01
                         ;CONOUT equ 	$02
 0080:                   CLKMODE	equ 	$80
@@ -30,17 +30,17 @@ F000:                   	    org 	$F000
 F000:                   getln:
 F000: 3600     [10]     		ld 		(hl), 0
 F002: 0600     [17]     		ld 		b, 0		; char count
-F004: CDA4F0   [34]     		call 	print_endl
+F004: CD68F0   [34]     		call 	print_endl
 F007: 3E2A     [41]     		ld 		a, '*'
-F009: D302     [52]     		out 	(2), a
+F009: D301     [52]     		out 	(CONIO), a
                                 ;
 F00B:                   getln_wait:
-F00B: DB00     [11]     		in 		a, (0)
+F00B: DB00     [11]     		in 		a, (CONSTA)
 F00D: A7       [15]     		and 	a
 F00E: 28FB     [22|27]  		jr 		z, getln_wait
                         ;
                         ; no echo back
-F010: DB01     [33]     		in 		a, (1)
+F010: DB01     [33]     		in 		a, (CONIO)
 F012: FE08     [40]     		cp 		$08 	;backspace
 F014: 2812     [47|52]  		jr 		z, getln_bkspc
 F016: FE7F     [54]     		cp 		$7f		; del
@@ -59,18 +59,18 @@ F028: 78       [ 4]     		ld 		a, b
 F029: A7       [ 8]     		and 	a
 F02A: 28DF     [15|20]  		jr 		z, getln_wait
 F02C: 3E08     [22]     		ld 		a, $08
-F02E: D302     [33]     		out 	(2), a
+F02E: D301     [33]     		out 	(CONIO), a
 F030: 3E20     [40]     		ld 		a, ' '
-F032: D302     [51]     		out 	(2), a
+F032: D301     [51]     		out 	(CONIO), a
 F034: 3E08     [58]     		ld 		a, $08
-F036: D302     [69]     		out 	(2), a
+F036: D301     [69]     		out 	(CONIO), a
 F038: 2B       [75]     		dec 	hl
 F039: 3600     [85]     		ld 		(hl), $0
 F03B: 05       [89]     		dec 	b
 F03C: 18CD     [101]    		jr 		getln_wait
                         
 F03E:                   getln_echo_proceed:
-F03E: D302     [11]     		out 	(2), a 		; echo back
+F03E: D301     [11]     		out 	(CONIO), a 		; echo back
                         		;
 F040: 77       [18]     		ld 		(hl),a		; *ptr++ = a
 F041: 23       [24]     		inc 	hl
@@ -84,101 +84,69 @@ F049: 18C0     [65]     		jr 		getln_wait
 F04B:                   getln_end:	; parse lbuf
 F04B: C9       [10]     		ret
                         
-                        
-                        ; convert one char expressing a hexadecimal digit 
-                        ; in A reg. to nibble in A
-                        ; set carry flag if got a wrong char
                         ;
-F04C:                   hex2nib:
-F04C: FE30     [ 7]     		cp 		'0'
-F04E: D8       [12|18]  		ret 	c		; error, return with carry flag set
-F04F: FE3A     [19]     		cp 		'9' + 1
-F051: 3003     [26|31]  		jr 		nc, hex2nib.toupper
-F053: D630     [33]     		sub 	'0' 	; never sets carry flag
-F055: C9       [43]     		ret				; no error, retuen the value without carry flag
-F056:                   hex2nib.toupper:
-F056: E6DF     [ 7]     		and 	$df
-F058: D641     [14]     		sub     'A' 
-F05A: D8       [19|25]  		ret      c		; error, return with carry flag set
-F05B: FE47     [26]     		cp      'F' + 1
-F05D: 3003     [33|38]  		jr      nc, hex2nib.err      ; error if it is larger than 'F'
-F05F: C60A     [40]     		add 	10		;  never sets carry flag
-F061: C9       [50]     		ret				; no error, return the value without carry
-F062:                   hex2nib.err:
-F062: D6FF     [ 7]     		sub 	$ff 	; 	always sets carry flag
-F064: C9       [17]     		ret
-                        
-                        
-                        ; read hexadecimal string char upto 2 or 4 (set in C) 
-                        ; bytes from (HL) and return int val in DE
-                        ; if non hexdec char is encountered at (HL), returns with current de value without inc hl.
-                        ; if C upper-limit bytes has been read, returns with current de value with increment hl.
-                        ; A reg. hold the last char read from (HL).
-                        ;
-F065:                   hexstr_de:
-F065: 110000   [10]     		ld      de, 0000h
-F068:                   hexstr_de.loop:
-F068: 7E       [ 7]     		ld      a, (hl)
-F069: CD4CF0   [24]     		call 	hex2nib
-F06C: 3002     [31|36]  		jr 		nc, hexstr_de.hex2nib_succ
-F06E: 7E       [38]     		ld 		a, (hl) 	; recover original value of A
-F06F: C9       [48]     		ret 	 			; encountered non-hexdec char.
-F070:                   hexstr_de.hex2nib_succ:
-                        		clrf			; clear Carry bit
-F070: A7       [ 4]     		and 	a
-F071: 0604     [11]     		ld 		b, 4
-F073:                   hexstr_de.rl4:
-F073: CB13     [ 8]     		rl      e		 ;rotate left entire de
-F075: CB12     [16]     		rl      d
-F077: 10FA     [24|29]  		djnz    hexstr_de.rl4
-F079: 83       [28]     		add 	e
-F07A: 5F       [32]     		ld 		e, a
-F07B: 23       [38]     		inc 	hl 		; 
-F07C: 0D       [42]     		dec 	c
-F07D: 20E9     [49|54]  		jr      nz, hexstr_de.loop
-F07F: C9       [59]     		ret 			; return after c bytes read
-                        
-                        
-                        ;
-                        ;
-F080:                   print_str_hl:
-F080: 7E       [ 7]     		ld 		a,(hl)
-F081: A7       [11]     		and 	A
-F082: C8       [16|22]  		ret 	z
-F083: D302     [27]     		out 	(2), a
-F085: 23       [33]     		inc 	hl
-F086: 18F8     [45]     		jr 		print_str_hl
-                        
                         ; print a nibble in A
-F088:                   print_nibble:
-F088: E60F     [ 7]     		and 	$0f
-F08A: FE0A     [14]     		cp 		$a
-F08C: C630     [21]     		add 	'0'
-F08E: FE3A     [28]     		cp 		':'
-F090: 3802     [35|40]  		jr 		c, print_nibble_out
-F092: C607     [42]     		add 	7
-F094:                   print_nibble_out:
-F094: D302     [11]     		out 	(2), a
-F096: C9       [21]     		ret
+F04C:                   print_nibble:
+F04C: E60F     [ 7]     		and 	$0f
+F04E: FE0A     [14]     		cp 		$a
+F050: C630     [21]     		add 	'0'
+F052: FE3A     [28]     		cp 		':'
+F054: 3802     [35|40]  		jr 		c, print_nibble_out
+F056: C607     [42]     		add 	7
+F058:                   print_nibble_out:
+F058: D301     [11]     		out 	(CONIO), a
+F05A: C9       [21]     		ret
                         
                         ; print a byte in A
-F097:                   print_byte:
-F097: F5       [11]     		push 	af
-F098: 07       [15]     		rlca
-F099: 07       [19]     		rlca
-F09A: 07       [23]     		rlca
-F09B: 07       [27]     		rlca
-F09C: CD88F0   [44]     		call 	print_nibble
-F09F: F1       [54]     		pop 	af
-F0A0: CD88F0   [71]     		call 	print_nibble
-F0A3: C9       [81]     		ret
+F05B:                   print_byte:
+F05B: F5       [11]     		push 	af
+F05C: 07       [15]     		rlca
+F05D: 07       [19]     		rlca
+F05E: 07       [23]     		rlca
+F05F: 07       [27]     		rlca
+F060: CD4CF0   [44]     		call 	print_nibble
+F063: F1       [54]     		pop 	af
+F064: CD4CF0   [71]     		call 	print_nibble
+F067: C9       [81]     		ret
                         
-F0A4:                   print_endl:
-F0A4: 3E0A     [ 7]     		ld 		a, $0a
-F0A6: D302     [18]     		out 	(2), A
-F0A8: 3E0D     [25]     		ld 		a, $0d
-F0AA: D302     [36]     		out 	(2), A
-F0AC: C9       [46]     		ret
+F068:                   print_endl:
+F068: 3E0A     [ 7]     		ld 		a, $0a
+F06A: D301     [18]     		out 	(CONIO), A
+F06C: 3E0D     [25]     		ld 		a, $0d
+F06E: D301     [36]     		out 	(CONIO), A
+F070: C9       [46]     		ret
+                        ;
+F071:                   print_str_hl:
+F071: 7E       [ 7]     		ld 		a,(hl)
+F072: A7       [11]     		and 	A
+F073: C8       [16|22]  		ret 	z
+F074: D301     [27]     		out 	(CONIO), a
+F076: 23       [33]     		inc 	hl
+F077: 18F8     [45]     		jr 		print_str_hl
+                        ;
+                        ;
+F079:                   print_err_msg:
+F079: E5       [11]     		push 	hl
+F07A: F5       [22]     		push 	af
+F07B: CD68F0   [39]     		call 	print_endl
+F07E: 2195F0   [49]     		ld 		hl, str_err
+F081: CD71F0   [66]     		call 	print_str_hl
+F084: F1       [76]     		pop 	af
+F085: CD5BF0   [93]     		call 	print_byte
+F088: CD68F0   [110]    		call 	print_endl
+F08B: E1       [120]    		pop 	hl
+F08C: 7C       [124]    		ld 		a, h
+F08D: CD5BF0   [141]    		call 	print_byte
+F090: 7D       [145]    		ld 		a, l
+F091: CD5BF0   [162]    		call 	print_byte
+F094: C9       [172]    		ret
+                        		;
+F095:                   str_err:
+F095: 0A0D6572          		db 	$0a, $0d, "error"
+F099: 726F72            
+F09C:                   str_endl:
+F09C: 0A0D00            		db $0a, $0d, 0
+                        ;
                         
                         ; dump : dump memory from addr to addr+2 (value)
                         ; hl ... start address (will be trucated)
@@ -186,127 +154,161 @@ F0AC: C9       [46]     		ret
                         ;
                         ; bc ... the original start address
                         
-F0AD:                   dump:
-F0AD: 44       [ 4]     	ld 		b, h
-F0AE: 4D       [ 8]     	ld 		c, l
-F0AF: 3EF0     [15]     	ld 		a, $F0
-F0B1: A5       [19]     	and 	l
-F0B2: 6F       [23]     	ld 		l, a
-F0B3:                   dump.print_header:
-F0B3: CDA4F0   [17]     	call 	print_endl
-F0B6: 78       [21]     	ld 		a, b
-F0B7: CD97F0   [38]     	call 	print_byte
-F0BA: 79       [42]     	ld 		a, c
-F0BB: CD97F0   [59]     	call 	print_byte
-F0BE: 3E20     [66]     	ld 		a, ' '
-F0C0: D302     [77]     	out 	(2), a
-F0C2: 3E3A     [84]     	ld 		a, ':'
-F0C4: D302     [95]     	out 	(2), a
-F0C6: 3E20     [102]    	ld 		a, ' '
-F0C8: D302     [113]    	out 	(2), a
+F09F:                   dump:
+F09F: 44       [ 4]     	ld 		b, h
+F0A0: 4D       [ 8]     	ld 		c, l
+F0A1: 3EF0     [15]     	ld 		a, $F0
+F0A3: A5       [19]     	and 	l
+F0A4: 6F       [23]     	ld 		l, a
+F0A5:                   dump.print_header:
+F0A5: CD68F0   [17]     	call 	print_endl
+F0A8: 78       [21]     	ld 		a, b
+F0A9: CD5BF0   [38]     	call 	print_byte
+F0AC: 79       [42]     	ld 		a, c
+F0AD: CD5BF0   [59]     	call 	print_byte
+F0B0: 3E20     [66]     	ld 		a, ' '
+F0B2: D301     [77]     	out 	(CONIO), a
+F0B4: 3E3A     [84]     	ld 		a, ':'
+F0B6: D301     [95]     	out 	(CONIO), a
+F0B8: 3E20     [102]    	ld 		a, ' '
+F0BA: D301     [113]    	out 	(CONIO), a
                             ;
-F0CA:                   dump.bytes:
+F0BC:                   dump.bytes:
                         	;cp 	bc, hl
-F0CA: 78       [ 4]     	ld 		a, b
-F0CB: BC       [ 8]     	cp 		h
-F0CC: 2002     [15|20]  	jr 		nz, $+4
-F0CE: 79       [19]     	ld 		a, c
-F0CF: BD       [23]     	cp 		l
+F0BC: 78       [ 4]     	ld 		a, b
+F0BD: BC       [ 8]     	cp 		h
+F0BE: 2002     [15|20]  	jr 		nz, $+4
+F0C0: 79       [19]     	ld 		a, c
+F0C1: BD       [23]     	cp 		l
                         	;
-F0D0: 380A     [30|35]  	jr 		c, dump.print_byte
-F0D2: 2808     [37|42]  	jr 		z, dump.print_byte
+F0C2: 380A     [30|35]  	jr 		c, dump.print_byte
+F0C4: 2808     [37|42]  	jr 		z, dump.print_byte
                         ; print two-spaces
-F0D4: 3E20     [44]     	ld 		a, ' '
-F0D6: D302     [55]     	out 	(2), a
-F0D8: D302     [66]     	out 	(2), a
-F0DA: 1804     [78]     	jr 		dump.print_spc
-F0DC:                   dump.print_byte
-F0DC: 7E       [ 7]     	ld 		a, (hl)
-F0DD: CD97F0   [24]     	call 	print_byte
-F0E0:                   dump.print_spc:
-F0E0: 3E20     [ 7]     	ld 		a, ' '
-F0E2: D302     [18]     	out 	(2), a
-F0E4: 23       [24]     	inc 	hl
+F0C6: 3E20     [44]     	ld 		a, ' '
+F0C8: D301     [55]     	out 	(CONIO), a
+F0CA: D301     [66]     	out 	(CONIO), a
+F0CC: 1804     [78]     	jr 		dump.print_spc
+F0CE:                   dump.print_byte
+F0CE: 7E       [ 7]     	ld 		a, (hl)
+F0CF: CD5BF0   [24]     	call 	print_byte
+F0D2:                   dump.print_spc:
+F0D2: 3E20     [ 7]     	ld 		a, ' '
+F0D4: D301     [18]     	out 	(CONIO), a
+F0D6: 23       [24]     	inc 	hl
                         	; cp 	de, hl
-F0E5: 7A       [28]     	ld 		a, d
-F0E6: BC       [32]     	cp 		h
-F0E7: 2002     [39|44]  	jr 		nz, $+4; dump.cp_de_hl_end
-F0E9: 7B       [43]     	ld 		a, e
-F0EA: BD       [47]     	cp 		l
+F0D7: 7A       [28]     	ld 		a, d
+F0D8: BC       [32]     	cp 		h
+F0D9: 2002     [39|44]  	jr 		nz, $+4; dump.cp_de_hl_end
+F0DB: 7B       [43]     	ld 		a, e
+F0DC: BD       [47]     	cp 		l
                         	; cp 	de, hl end
-F0EB: C8       [52|58]  	ret 	z ; de == hl, then exit dump
-F0EC: D8       [57|63]  	ret 	c ; de < hl, then exit dump
-F0ED: 7D       [61]     	ld 		a, l 	; test whether the least 4 bits of address is zero
-F0EE: E60F     [68]     	and 	$0f
-F0F0: 20D8     [75|80]  	jr 		nz, dump.bytes
-F0F2: 44       [79]     	ld 		b, h 
-F0F3: 4D       [83]     	ld 		c, l
-F0F4: 18BD     [95]     	jr 		dump.print_header  ; if so print address header
+F0DD: C8       [52|58]  	ret 	z ; de == hl, then exit dump
+F0DE: D8       [57|63]  	ret 	c ; de < hl, then exit dump
+F0DF: 7D       [61]     	ld 		a, l 	; test whether the least 4 bits of address is zero
+F0E0: E60F     [68]     	and 	$0f
+F0E2: 20D8     [75|80]  	jr 		nz, dump.bytes
+F0E4: 44       [79]     	ld 		b, h 
+F0E5: 4D       [83]     	ld 		c, l
+F0E6: 18BD     [95]     	jr 		dump.print_header  ; if so print address header
                             ;
-                        ;dump_exit:
-                        	;ret
+                        
+                        ; convert one char expressing a hexadecimal digit 
+                        ; in A reg. to nibble in A
+                        ; set carry flag if got a wrong char
+                        ;
+F0E8:                   hex2nib:
+F0E8: FE30     [ 7]     		cp 		'0'
+F0EA: D8       [12|18]  		ret 	c		; A < '0'
+F0EB: FE3A     [19]     		cp 		'9' + 1
+F0ED: 3003     [26|31]  		jr 		nc, hex2nib.alpha
+F0EF: D630     [33]     		sub 	'0' 	; A was digit, results carry reset
+F0F1: C9       [43]     		ret
+F0F2:                   hex2nib.alpha:
+F0F2: FE61     [ 7]     		cp 		'a'
+F0F4: 3806     [14|19]  		jr 		c, hex2nib.upper
+F0F6: FE67     [21]     		cp 		'f'+1
+F0F8: 3F       [25]     		ccf		; set carry if A >= 'f'+1
+F0F9: D8       [30|36]  		ret 	c
+F0FA: E6DF     [37]     		and 	$df		; a - f to upper char
+F0FC:                   hex2nib.upper:
+F0FC: FE41     [ 7]     		cp 		'A'
+F0FE: D8       [12|18]  		ret 	c
+F0FF: FE47     [19]     		cp      'F' + 1
+F101: 3F       [23]     		ccf
+F102: D8       [28|34]  		ret 	c      ; error if it is larger than 'F'
+F103: D637     [35]     		sub 	'A'-10
+F105: C9       [45]     		ret
+                        
+                        ; read hexadecimal string char upto 2 or 4 (set in C) 
+                        ; bytes from (HL) and return int val in DE
+                        ; if non hexdec char is encountered at (HL), returns with current de value without inc hl.
+                        ; if C upper-limit bytes has been read, returns with current de value with increment hl.
+                        ; A reg. hold the last char read from (HL).
+                        ;
+F106:                   hexstr_de:
+F106: 110000   [10]     		ld      de, 0000h
+F109:                   hexstr_de.loop:
+F109: 7E       [ 7]     		ld      a, (hl)
+F10A: CDE8F0   [24]     		call 	hex2nib
+F10D: D8       [29|35]  		ret 	c 			; encountered non-hexdec char.
+F10E:                   hexstr_de.hex2nib_succ:
+F10E: 0604     [ 7]     		ld 		b, 4
+F110:                   hexstr_de.rl4:
+F110: CB13     [ 8]     		rl      e		 ;rotate left entire de
+F112: CB12     [16]     		rl      d
+F114: 10FA     [24|29]  		djnz    hexstr_de.rl4
+F116: 83       [28]     		add 	e
+F117: 5F       [32]     		ld 		e, a
+F118: 23       [38]     		inc 	hl 		; 
+F119: 0D       [42]     		dec 	c
+F11A: 20ED     [49|54]  		jr      nz, hexstr_de.loop
+F11C: C9       [59]     		ret 			; return after c bytes read
                         
                         ;
-                        ; print_err_msg
-                        ;
-F0F6:                   print_err_msg:
-F0F6: E5       [11]     		push 	hl
-F0F7: F5       [22]     		push 	af
-F0F8: CDA4F0   [39]     		call 	print_endl
-F0FB: 2112F1   [49]     		ld 		hl, err_msg
-F0FE: CD80F0   [66]     		call 	print_str_hl
-F101: F1       [76]     		pop 	af
-F102: CD97F0   [93]     		call 	print_byte
-F105: CDA4F0   [110]    		call 	print_endl
-F108: E1       [120]    		pop 	hl
-F109: 7C       [124]    		ld 		a, h
-F10A: CD97F0   [141]    		call 	print_byte
-F10D: 7D       [145]    		ld 		a, l
-F10E: CD97F0   [162]    		call 	print_byte
-F111: C9       [172]    		ret
-                        		;
-F112:                   err_msg:
-F112: 0A0D6572          		db 	$0a, $0d, "error", $0a, $0d, 0
-F116: 726F720A          
-F11A: 0D00              
+F11D:                   clk_spd_change:
+F11D: E607     [ 7]     		and 	$07
+F11F: D380     [18]     		out		(CLKMODE), a
+F121: C9       [28]     		ret
 
 
 ; +++ segments +++
 
-#CODE          = $F000 = 61440,  size = $011C =   284
+#CODE          = $F000 = 61440,  size = $0122 =   290
 
 ; +++ global symbols +++
 
-CLKMODE            = $0080 =   128          rom_f000.asm:15 (unused)
-CONIO              = $0001 =     1          rom_f000.asm:13 (unused)
-CONST              = $0000 =     0          rom_f000.asm:12 (unused)
-_end               = $F11C = 61724          rom_f000.asm:17 (unused)
-_size              = $011C =   284          rom_f000.asm:17 (unused)
-dump               = $F0AD = 61613          rom_f000.asm:182 (unused)
-dump.bytes         = $F0CA = 61642          rom_f000.asm:201
-dump.print_byte    = $F0DC = 61660          rom_f000.asm:216
-dump.print_header  = $F0B3 = 61619          rom_f000.asm:188
-dump.print_spc     = $F0E0 = 61664          rom_f000.asm:219
-err_msg            = $F112 = 61714          rom_f000.asm:261
+CLKMODE            = $0080 =   128          rom_f000.asm:15
+CONIO              = $0001 =     1          rom_f000.asm:13
+CONSTA             = $0000 =     0          rom_f000.asm:12
+_end               = $F122 = 61730          rom_f000.asm:17 (unused)
+_size              = $0122 =   290          rom_f000.asm:17 (unused)
+clk_spd_change     = $F11D = 61725          rom_f000.asm:261 (unused)
+dump               = $F09F = 61599          rom_f000.asm:150 (unused)
+dump.bytes         = $F0BC = 61628          rom_f000.asm:169
+dump.print_byte    = $F0CE = 61646          rom_f000.asm:184
+dump.print_header  = $F0A5 = 61605          rom_f000.asm:156
+dump.print_spc     = $F0D2 = 61650          rom_f000.asm:187
 getln              = $F000 = 61440          rom_f000.asm:24 (unused)
 getln_bkspc        = $F028 = 61480          rom_f000.asm:51
 getln_echo_proceed = $F03E = 61502          rom_f000.asm:66
 getln_end          = $F04B = 61515          rom_f000.asm:78
 getln_wait         = $F00B = 61451          rom_f000.asm:31
-hex2nib            = $F04C = 61516          rom_f000.asm:86
-hex2nib.err        = $F062 = 61538          rom_f000.asm:101
-hex2nib.toupper    = $F056 = 61526          rom_f000.asm:93
-hexstr_de          = $F065 = 61541          rom_f000.asm:112 (unused)
-hexstr_de.hex2nib_succ = $F070 = 61552          rom_f000.asm:120
-hexstr_de.loop     = $F068 = 61544          rom_f000.asm:114
-hexstr_de.rl4      = $F073 = 61555          rom_f000.asm:123
-print_byte         = $F097 = 61591          rom_f000.asm:158
-print_endl         = $F0A4 = 61604          rom_f000.asm:169
-print_err_msg      = $F0F6 = 61686          rom_f000.asm:245 (unused)
-print_nibble       = $F088 = 61576          rom_f000.asm:146
-print_nibble_out   = $F094 = 61588          rom_f000.asm:153
-print_str_hl       = $F080 = 61568          rom_f000.asm:137
+hex2nib            = $F0E8 = 61672          rom_f000.asm:212
+hex2nib.alpha      = $F0F2 = 61682          rom_f000.asm:219
+hex2nib.upper      = $F0FC = 61692          rom_f000.asm:226
+hexstr_de          = $F106 = 61702          rom_f000.asm:241 (unused)
+hexstr_de.hex2nib_succ = $F10E = 61710          rom_f000.asm:247 (unused)
+hexstr_de.loop     = $F109 = 61705          rom_f000.asm:243
+hexstr_de.rl4      = $F110 = 61712          rom_f000.asm:249
+print_byte         = $F05B = 61531          rom_f000.asm:95
+print_endl         = $F068 = 61544          rom_f000.asm:106
+print_err_msg      = $F079 = 61561          rom_f000.asm:122 (unused)
+print_nibble       = $F04C = 61516          rom_f000.asm:83
+print_nibble_out   = $F058 = 61528          rom_f000.asm:90
+print_str_hl       = $F071 = 61553          rom_f000.asm:113
+str_endl           = $F09C = 61596          rom_f000.asm:140 (unused)
+str_err            = $F095 = 61589          rom_f000.asm:138
 
 
-total time: 0.0011 sec.
+total time: 0.0006 sec.
 no errors

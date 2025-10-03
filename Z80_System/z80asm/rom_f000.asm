@@ -1,6 +1,6 @@
 ;
 ; macros
-clrf:	macro
+clrcf:	macro		; clear carry flag
 		and 	a
 		endm
 ;
@@ -9,7 +9,7 @@ clra: 	macro
 		endm
 ;
 ; I/O port
-CONST 	equ 	$00
+CONSTA 	equ 	$00
 CONIO 	equ 	$01
 ;CONOUT equ 	$02
 CLKMODE	equ 	$80
@@ -29,7 +29,7 @@ getln:
 		out 	(CONIO), a
         ;
 getln_wait:
-		in 		a, (CONST)
+		in 		a, (CONSTA)
 		and 	a
 		jr 		z, getln_wait
 ;
@@ -78,70 +78,7 @@ getln_echo_proceed:
 getln_end:	; parse lbuf
 		ret
 
-
-; convert one char expressing a hexadecimal digit 
-; in A reg. to nibble in A
-; set carry flag if got a wrong char
 ;
-hex2nib:
-		cp 		'0'
-		ret 	c		; error, return with carry flag set
-		cp 		'9' + 1
-		jr 		nc, hex2nib.toupper
-		sub 	'0' 	; never sets carry flag
-		ret				; no error, retuen the value without carry flag
-hex2nib.toupper:
-		and 	$df
-		sub     'A' 
-		ret      c		; error, return with carry flag set
-		cp      'F' + 1
-		jr      nc, hex2nib.err      ; error if it is larger than 'F'
-		add 	10		;  never sets carry flag
-		ret				; no error, return the value without carry
-hex2nib.err:
-		sub 	$ff 	; 	always sets carry flag
-		ret
-
-
-; read hexadecimal string char upto 2 or 4 (set in C) 
-; bytes from (HL) and return int val in DE
-; if non hexdec char is encountered at (HL), returns with current de value without inc hl.
-; if C upper-limit bytes has been read, returns with current de value with increment hl.
-; A reg. hold the last char read from (HL).
-;
-hexstr_de:
-		ld      de, 0000h
-hexstr_de.loop:
-		ld      a, (hl)
-		call 	hex2nib
-		jr 		nc, hexstr_de.hex2nib_succ
-		ld 		a, (hl) 	; recover original value of A
-		ret 	 			; encountered non-hexdec char.
-hexstr_de.hex2nib_succ:
-		clrf			; clear Carry bit
-		ld 		b, 4
-hexstr_de.rl4:
-		rl      e		 ;rotate left entire de
-		rl      d
-		djnz    hexstr_de.rl4
-		add 	e
-		ld 		e, a
-		inc 	hl 		; 
-		dec 	c
-		jr      nz, hexstr_de.loop
-		ret 			; return after c bytes read
-
-
-;
-;
-print_str_hl:
-		ld 		a,(hl)
-		and 	A
-		ret 	z
-		out 	(CONIO), a
-		inc 	hl
-		jr 		print_str_hl
-
 ; print a nibble in A
 print_nibble:
 		and 	$0f
@@ -172,6 +109,37 @@ print_endl:
 		ld 		a, $0d
 		out 	(CONIO), A
 		ret
+;
+print_str_hl:
+		ld 		a,(hl)
+		and 	A
+		ret 	z
+		out 	(CONIO), a
+		inc 	hl
+		jr 		print_str_hl
+;
+;
+print_err_msg:
+		push 	hl
+		push 	af
+		call 	print_endl
+		ld 		hl, str_err
+		call 	print_str_hl
+		pop 	af
+		call 	print_byte
+		call 	print_endl
+		pop 	hl
+		ld 		a, h
+		call 	print_byte
+		ld 		a, l
+		call 	print_byte
+		ret
+		;
+str_err:
+		db 	$0a, $0d, "error"
+str_endl:
+		db $0a, $0d, 0
+;
 
 ; dump : dump memory from addr to addr+2 (value)
 ; hl ... start address (will be trucated)
@@ -236,27 +204,61 @@ dump.print_spc:
 	ld 		c, l
 	jr 		dump.print_header  ; if so print address header
     ;
-;dump_exit:
-	;ret
+
+; convert one char expressing a hexadecimal digit 
+; in A reg. to nibble in A
+; set carry flag if got a wrong char
+;
+hex2nib:
+		cp 		'0'
+		ret 	c		; A < '0'
+		cp 		'9' + 1
+		jr 		nc, hex2nib.alpha
+		sub 	'0' 	; A was digit, results carry reset
+		ret
+hex2nib.alpha:
+		cp 		'a'
+		jr 		c, hex2nib.upper
+		cp 		'f'+1
+		ccf		; set carry if A >= 'f'+1
+		ret 	c
+		and 	$df		; a - f to upper char
+hex2nib.upper:
+		cp 		'A'
+		ret 	c
+		cp      'F' + 1
+		ccf
+		ret 	c      ; error if it is larger than 'F'
+		sub 	'A'-10
+		ret
+
+; read hexadecimal string char upto 2 or 4 (set in C) 
+; bytes from (HL) and return int val in DE
+; if non hexdec char is encountered at (HL), returns with current de value without inc hl.
+; if C upper-limit bytes has been read, returns with current de value with increment hl.
+; A reg. hold the last char read from (HL).
+;
+hexstr_de:
+		ld      de, 0000h
+hexstr_de.loop:
+		ld      a, (hl)
+		call 	hex2nib
+		ret 	c 			; encountered non-hexdec char.
+hexstr_de.hex2nib_succ:
+		ld 		b, 4
+hexstr_de.rl4:
+		rl      e		 ;rotate left entire de
+		rl      d
+		djnz    hexstr_de.rl4
+		add 	e
+		ld 		e, a
+		inc 	hl 		; 
+		dec 	c
+		jr      nz, hexstr_de.loop
+		ret 			; return after c bytes read
 
 ;
-; print_err_msg
-;
-print_err_msg:
-		push 	hl
-		push 	af
-		call 	print_endl
-		ld 		hl, err_msg
-		call 	print_str_hl
-		pop 	af
-		call 	print_byte
-		call 	print_endl
-		pop 	hl
-		ld 		a, h
-		call 	print_byte
-		ld 		a, l
-		call 	print_byte
+clk_spd_change:
+		and 	$07
+		out		(CLKMODE), a
 		ret
-		;
-err_msg:
-		db 	$0a, $0d, "error", $0a, $0d, 0

@@ -8,15 +8,15 @@
 ;
 ;	MEMORY ASIGN
 ROMTOP	EQU	0000H
-RAMTOP	EQU	8000H
-RAMSIZ	EQU	1000H
-TSTACK	EQU	80EDH
+;RAMTOP	EQU	8000H
+;RAMSIZ	EQU	1000H
+TSTACK	EQU	0F000H ;80EDH
 ;
 ;	UART REGISTER ADDRESS
 ; UARTDR	EQU	0E000H	; UART DATA REGISTOR  --> out (CONIO), a / out (CONIN), a
 ; UARTCR	EQU	0E001H	; UART CONTROL REGISTOR. --> in a, (CONST)
 ;
-CONST	EQU 	$00
+CONSTA	EQU 	$00
 CONIO	EQU 	$01
 
 ;	RESET (RST 00H)
@@ -39,7 +39,7 @@ CONIO	EQU 	$01
 ;
 ;	UART -> A
 RXA:
-	in 	a, (CONST)
+	in 	a, (CONSTA)
 	;LD	A,(UARTCR)
 	; BIT	0,A
 	and a
@@ -55,22 +55,22 @@ RXA:
 ;
 ;	CHECK RECEIVE STATUS
 KBHIT:	
-	in 	a, (CONST)
+	in 	a, (CONSTA)
 	;LD	A,(UARTCR)
-	; BIT	0,A --> set Z if the least sig bit is zero
+	;BIT	0,A ; --> set Z if the least sig bit is zero
 	and a 	; set Z if a == 0
 	RET
 ;
 ;	A -> UART
 TXA:	PUSH	AF
 TXAST1:	
-	in 	a, (CONST)
+	in 	a, (CONSTA)
 	;LD	A,(UARTCR)
 	; BIT	1,A
 	and a
 	JR	Z,TXAST1
 	POP	AF
-	out (CONIO), a
+	out (CONIO), a 	;echo back?
 	;LD	(UARTDR),A
 	RET
 ;
