@@ -44,6 +44,7 @@ print_str_hl       = $F071
 addr	equ		$e000
 addr2	equ 	addr+2
 lbuf	equ 	addr2+2
+BUFSIZE equ 	63
 
         org     0040h
 mon:            ;entry point
@@ -53,7 +54,7 @@ mon:            ;entry point
 		ld 		(lbuf), de 
 read_line:
 		ld 		hl, lbuf 	; line buffer
-		ld 		c, 31		; line size (except null terminal)
+		ld 		c, BUFSIZE	; line size (except null terminal)
 		call	getln
 		ld 		hl, lbuf
 		ld 		a, (hl)

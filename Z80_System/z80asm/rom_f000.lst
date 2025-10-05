@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "rom_f000.asm"
-                        ; date: 2025-10-03 22:24:25
+                        ; date: 2025-10-03 23:44:13
                         ; --------------------------------------
 
 
@@ -310,5 +310,5 @@ str_endl           = $F09C = 61596          rom_f000.asm:140 (unused)
 str_err            = $F095 = 61589          rom_f000.asm:138
 
 
-total time: 0.0006 sec.
+total time: 0.0007 sec.
 no errors

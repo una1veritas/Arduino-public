@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "mon_0000.asm"
-                        ; date: 2025-10-03 22:25:36
+                        ; date: 2025-10-04 00:58:04
                         ; --------------------------------------
 
 
@@ -50,6 +50,7 @@ F071:                   print_str_hl       = $F071
 E000:                   addr	equ		$e000
 E002:                   addr2	equ 	addr+2
 E004:                   lbuf	equ 	addr2+2
+003F:                   BUFSIZE equ 	63
                         
                                 org     0040h
 0040:                   mon:            ;entry point
@@ -59,7 +60,7 @@ E004:                   lbuf	equ 	addr2+2
 004B: ED5304E0 [70]     		ld 		(lbuf), de 
 004F:                   read_line:
 004F: 2104E0   [10]     		ld 		hl, lbuf 	; line buffer
-0052: 0E1F     [17]     		ld 		c, 31		; line size (except null terminal)
+0052: 0E3F     [17]     		ld 		c, BUFSIZE	; line size (except null terminal)
 0054: CD00F0   [34]     		call	getln
 0057: 2104E0   [44]     		ld 		hl, lbuf
 005A: 7E       [51]     		ld 		a, (hl)
@@ -172,6 +173,7 @@ E004:                   lbuf	equ 	addr2+2
 
 ; +++ global symbols +++
 
+BUFSIZE         = $003F =    63          mon_0000.asm:47
 CLKMODE         = $0080 =   128          mon_0000.asm:27 (unused)
 CONIO           = $0001 =     1          mon_0000.asm:25 (unused)
 CONST           = $0000 =     0          mon_0000.asm:24 (unused)
@@ -180,28 +182,28 @@ _end            = $0105 =   261          mon_0000.asm:11 (unused)
 _size           = $0105 =   261          mon_0000.asm:11 (unused)
 addr            = $E000 = 57344          mon_0000.asm:44
 addr2           = $E002 = 57346          mon_0000.asm:45
-clk_mode        = $00FD =   253          mon_0000.asm:152
+clk_mode        = $00FD =   253          mon_0000.asm:153
 clk_spd_change  = $F11D = 61725          mon_0000.asm:30
-default_dump    = $00A3 =   163          mon_0000.asm:102
-do_dump         = $00BB =   187          mon_0000.asm:116
+default_dump    = $00A3 =   163          mon_0000.asm:103
+do_dump         = $00BB =   187          mon_0000.asm:117
 dump            = $F09F = 61599          mon_0000.asm:31
 getln           = $F000 = 61440          mon_0000.asm:32
 hex2nib         = $F0E8 = 61672          mon_0000.asm:33 (unused)
 hexstr_de       = $F106 = 61702          mon_0000.asm:34
 lbuf            = $E004 = 57348          mon_0000.asm:46
-mon             = $0040 =    64          mon_0000.asm:49
-mon_halt        = $0104 =   260          mon_0000.asm:157
+mon             = $0040 =    64          mon_0000.asm:50
+mon_halt        = $0104 =   260          mon_0000.asm:158
 print_byte      = $F05B = 61531          mon_0000.asm:35 (unused)
 print_endl      = $F068 = 61544          mon_0000.asm:36 (unused)
 print_err_msg   = $F079 = 61561          mon_0000.asm:37
 print_nibble    = $F04C = 61516          mon_0000.asm:38 (unused)
 print_str_hl    = $F071 = 61553          mon_0000.asm:39 (unused)
-read_line       = $004F =    79          mon_0000.asm:54
-run_mode        = $00F9 =   249          mon_0000.asm:147
-specify_end     = $008F =   143          mon_0000.asm:91
-write_mode      = $00D2 =   210          mon_0000.asm:125
-write_mode.exit = $00F6 =   246          mon_0000.asm:144
+read_line       = $004F =    79          mon_0000.asm:55
+run_mode        = $00F9 =   249          mon_0000.asm:148
+specify_end     = $008F =   143          mon_0000.asm:92
+write_mode      = $00D2 =   210          mon_0000.asm:126
+write_mode.exit = $00F6 =   246          mon_0000.asm:145
 
 
-total time: 0.0010 sec.
+total time: 0.0016 sec.
 no errors

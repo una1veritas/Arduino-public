@@ -1,6 +1,8 @@
 #include "Z80Bus.h"
 
-void Z80Bus::clock_start(uint8_t presc, uint16_t top) {
+#include <SPI.h>
+
+void Z80Bus::clock_set(uint8_t presc, uint16_t top) {
 	const uint8_t WGM_CTC_OCR1A = B0100;
 	const uint8_t COM_TOGGLE = B01;
 	presc = (presc > 5 ? 5 : presc);
@@ -39,28 +41,28 @@ void Z80Bus::clock_stop() {
 	pinMode(CLK_OUT, INPUT_PULLUP);
 }
 
-void Z80Bus::clock_mode_select(const uint8_t & mode) {
+void Z80Bus::clock_mode_select(const uint8_t mode) {
 // stop clock
 	TCCR1B &= 0xf8; // once clear bits from CS12 to CS10 to stop (prescaler = No clk source)
 	switch(mode) {
 	case 0 : // 4 Hz
-	  clock_start(5, 2000);
+		clock_set(5, 2000);
 	  break;
 	case 1 : // 10 Hz
-	  clock_start(4, 3125); //
+		clock_set(4, 3125); //
 	  break;
 	case 3 : // 1 kHz
-	  clock_start(2, 1000);
+		clock_set(2, 1000);
 	  break;
 	case 4 : // 4 kHz
-	  clock_start(2, 250);
+		clock_set(2, 250);
 	  break;
-	case 5 :
-	  clock_start(1, 1000);
+	case 5 :	// 4kHz
+		clock_set(1, 2000);
 	  break;
 	case 2 :
 	default: // 100Hz
-	  clock_start(3, 1250);
+		clock_set(3, 1250);
 	  break;
 	}
 }
@@ -156,10 +158,22 @@ uint32_t Z80Bus::io_rw() {
 			data_bus_set(data);
 		}
 		break;
-	case 128: // set/change clock mode
+	case CLKMODE: // set/change clock mode
 		if ( io_mode == OUT ) {
 			data = data_bus_get();
 			clock_mode_select(data);
+		}
+		break;
+	case LEDARRAY:
+		if (io_mode == OUT) {
+			data = data_bus_get();
+			WAIT(LOW);
+			digitalWrite(53, LOW);
+			SPI.begin();
+			SPI.transfer(data);
+			SPI.end();
+			digitalWrite(53, HIGH);
+			WAIT(HIGH);
 		}
 		break;
 	default:

@@ -70,7 +70,12 @@ public:
     FDCST,       //fdc-port: status
     DMAL = 15,   //dma-port: dma address low
     DMAH,        //dma-port: dma address high
+
+	CLKMODE = 128,
+	LEDARRAY  = 129,
   };
+
+  uint8_t spi_dev_addr;
 
   enum DMA_mode {
     NO_REQUEST = 0,
@@ -124,14 +129,21 @@ public:
     pinMode(SRAM_EN, OUTPUT);
     ram_enable();
 
-    // z80 inputs, temporary set input mode.
-    pinMode(_INT, INPUT);
-    pinMode(_NMI, INPUT);
+    // z80/memory inputs, temporary set input mode.
     pinMode(_MREQ, INPUT);
     pinMode(_IORQ, INPUT);
-    pinMode(_WAIT, INPUT);
-    pinMode(_BUSREQ, INPUT);
-    pinMode(_RESET, INPUT);
+    // z80 inputs, fixed to input mode.
+    pinMode(_INT, OUTPUT);
+    digitalWrite(_INT, HIGH);
+    pinMode(_NMI, OUTPUT);
+    digitalWrite(_NMI, HIGH);
+    pinMode(_WAIT, OUTPUT);
+    digitalWrite(_WAIT, HIGH);
+    pinMode(_BUSREQ, OUTPUT);
+    digitalWrite(_BUSREQ, HIGH);
+    pinMode(_RESET, OUTPUT);
+    digitalWrite(_RESET, HIGH);
+
     // z80 output port, fixed to input mode.
     pinMode(_HALT, INPUT);
     pinMode(_BUSACK, INPUT);
@@ -149,11 +161,14 @@ public:
     pages[pageindex] = rom;
   }
 
-  void clock_start(uint8_t presc, uint16_t top);
+  void clock_set(uint8_t presc, uint16_t top);
   /* disable interrupt, set up TTCR1 control registers and activate timer 1 counter/toggle mode,
    * set prescaler, counter top value, enable intewrrupt,
    * and set CLK_OUT pin mode to output.
    */
+  inline void clock_start(const uint8_t mode = 3) {
+	  clock_mode_select(mode);
+  }
 
   void clock_stop();
   /* disconnect ocra1 and stop WGM (b10),
@@ -164,7 +179,7 @@ public:
     return (TCCR1A & (B11 << COM1C0)) == (B01 << COM1C0);
   }
 
-  void clock_mode_select(const uint8_t& mode);
+  void clock_mode_select(const uint8_t mode);
 
   uint8_t clock() {
     return digitalRead(CLK_OUT);
@@ -452,7 +467,6 @@ public:
   }
 
   void WAIT(uint8_t hilo) {
-    pinMode(_WAIT, OUTPUT);
     digitalWrite(_WAIT, hilo);
   }
 

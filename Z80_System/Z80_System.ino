@@ -1,6 +1,6 @@
 /* by sin, Aug, 2025 */
 #include <SPI.h>
-#include <LiquidCrystal.h>
+//#include <LiquidCrystal.h>
 
 #include "Z80Bus.h"
 
@@ -66,8 +66,8 @@ struct Terminal {
 */
 
 const int SPI_CS = 53;//latchPin = 53; --- must be controlled by user
-const int SPI_CLK = 52; //clockPin = 52; --- controlled by SPI module.
-const int SPI_COPI = 51; //dataPin = 51; --- controlled by SPI module.
+//const int SPI_CLK = 52; //clockPin = 52; --- controlled by SPI module.
+//const int SPI_COPI = 51; //dataPin = 51; --- controlled by SPI module.
 
 byte ascii7seg(byte ch) {
   const static uint8_t numeric7[] = { 0xc0, 0xf9, 0xa4, 0xb0, 0x99, 0x92, 0x82, 0xf8, 0x80, 0x90, 0xff };
@@ -145,7 +145,7 @@ void setup() {
 
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_start(2, 250); 
+  z80bus.clock_start(); 
   Serial.println("Reseting Z80...");
   z80bus.cpu_reset();
 
