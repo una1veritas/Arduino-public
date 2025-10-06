@@ -1,32 +1,39 @@
-              	; --------------------------------------
-              	; zasm: assemble "test.asm"
-              	; date: 2025-10-04 01:04:14
-              	; --------------------------------------
+                        ; --------------------------------------
+                        ; zasm: assemble "test.asm"
+                        ; date: 2025-10-06 21:53:18
+                        ; --------------------------------------
 
 
-1000:         	    org     1000h
-1000:         	start:
-1000: DD211010	    ld      ix, 1010h
-1004: 0608    	    ld      b, 8
-1006:         	loop:
-1006: DD7E00  	    ld      a, (ix)
-1009: D381    	    out     (129), a
-100B: DD23    	    inc     ix
-100D: 10F7    	    djnz    loop
-100F: C30000  	    jp  0000h
+                        
+1000:                       org     01000h
+1000:                   start:
+1000: 211710   [10]         ld      hl, segseq + 7
+1003: 0608     [17]         ld      b, 8
+1005:                   loop:
+1005: 7E       [ 7]         ld      a, (hl)
+1006: D381     [18]         out     (129), a
+1008: 2B       [24]         dec     hl
+1009: 10FA     [32|37]      djnz    loop
+100B: C30000   [42]         jp      0000h
+                        
+                            org     01010h
+1010:                   segseq:
+1010: C0F9A4B0              db  $c0, $f9, $a4, $b0, $99, $88, $83, $c6
+1014: 998883C6          
 
 
 ; +++ segments +++
 
-#CODE          = $1000 =  4096,  size = $0012 =    18
+#CODE          = $1000 =  4096,  size = $0018 =    24
 
 ; +++ global symbols +++
 
-_end    = $1012 =  4114          test.asm:1 (unused)
-_size   = $0012 =    18          test.asm:1 (unused)
-loop    = $1006 =  4102          test.asm:5
-start   = $1000 =  4096          test.asm:2 (unused)
+_end    = $1018 =  4120          test.asm:2 (unused)
+_size   = $0018 =    24          test.asm:2 (unused)
+loop    = $1005 =  4101          test.asm:6
+segseq  = $1010 =  4112          test.asm:14
+start   = $1000 =  4096          test.asm:3 (unused)
 
 
-total time: 0.0002 sec.
+total time: 0.0005 sec.
 no errors

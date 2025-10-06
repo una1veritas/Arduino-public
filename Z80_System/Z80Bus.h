@@ -38,8 +38,8 @@ public:
   static const uint8_t IOADDR_BUS_WIDTH = 8;
   static const uint8_t ADDR_BUS_WIDTH = 16;
   static const uint8_t DATA_BUS_WIDTH = 8;
-  static const uint8_t mon_0000[512] PROGMEM;
-  static const uint8_t rom_f000[512] PROGMEM;
+  static const uint8_t boot_0000[256] PROGMEM;
+  static const uint8_t rom_mon_F000[512] PROGMEM;
   static const uint8_t basic_0000[8192] PROGMEM;
 
 public:
@@ -154,7 +154,7 @@ public:
     dma_result = 0;
     dma_transfer_mode = NO_REQUEST;
 
-    set_rom_page(rom_f000, 0x0f);
+    set_rom_page(rom_mon_F000, 0x0f);
   }
 
   void set_rom_page(const uint8_t* rom PROGMEM, const uint8_t pageindex) {
@@ -502,6 +502,7 @@ public:
   //  uint8_t io_rw(const uint8_t & port, const uint8_t & val, const uint8_t & inout);
   uint32_t io_rw(void);
   uint32_t mem_rw(void);
+  uint8_t ascii7seg(char);
 };
 
 #endif

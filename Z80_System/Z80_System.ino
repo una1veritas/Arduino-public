@@ -132,7 +132,7 @@ void setup() {
   // put your setup code here, to run once:
   //lcdt.print(0,0, "System Starting.");
 
-  Serial.begin(38400);
+  Serial.begin(115200);
   while (! Serial) {}
   Serial.println("***********************");
   Serial.println("  Z80 system starting. ");
@@ -169,7 +169,7 @@ void setup() {
     }
 
     // Load bootloader from 0x0000 by  DMA, arduino to ram 
-    uint8_t res = z80bus.DMA_progmem_load(Z80Bus::mon_0000, 0x0000, 8192);
+    uint8_t res = z80bus.DMA_progmem_load(Z80Bus::boot_0000, 0x0000, 256);
     if (res != 0) {
       Serial.println("Something going wrong w/ sram read & write!");
     } else {

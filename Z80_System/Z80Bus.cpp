@@ -168,6 +168,7 @@ uint32_t Z80Bus::io_rw() {
 		if (io_mode == OUT) {
 			data = data_bus_get();
 			WAIT(LOW);
+			data = ascii7seg(data);
 			digitalWrite(53, LOW);
 			SPI.begin();
 			SPI.transfer(data);
@@ -233,36 +234,60 @@ uint32_t Z80Bus::mem_rw() {
 
 
 uint16_t Z80Bus::ram_check(const uint32_t & start_addr = 0x0000, const uint32_t & end_addr = 0x10000) {
-  uint8_t buf[256];
-  uint16_t errcount = 0;
-  uint16_t errtotal = 0;
-  randomSeed(analogRead(0));
-  uint16_t skip = 0x100;
-  for(uint32_t addr = start_addr; addr < end_addr; addr += skip) {
-    errcount = 0;
-    uint8_t t = random(256);
-    for(uint32_t ix = 0; ix < 0x100; ++ix) {
-      buf[ix] = ram_read(addr + ix);
-      buf[ix] ^= t;
-      ram_write(addr+ix, buf[ix]);
-    }
-    for(uint32_t ix = 0; ix < 0x100; ++ix) {
-      if (buf[ix] != ram_read(addr+ix)) {
-        Serial.println(addr+ix, HEX);
-        errcount++;
-      }
-    }
-    if ( errcount > 0 ) {
-      Serial.print(addr, HEX);
-      Serial.print(" -- ");
-      Serial.print(addr + 0x100, HEX);
-      Serial.print(" Errors = ");
-      Serial.println(errcount, DEC);
-    }
-    errtotal += errcount;
-  }
-  return errtotal;
+	uint8_t buf;
+	uint16_t errcount = 0;
+	randomSeed(analogRead(0));
+	for(uint32_t addr = start_addr; addr < end_addr; ++addr) {
+		errcount = 0;
+		uint8_t t = random(256);
+		buf = ram_read(addr);
+		ram_write(addr, buf^t);
+		if ( ram_read(addr) != (buf^t) ) {
+			// error
+			Serial.println(addr, HEX);
+			errcount++;
+		}
+		ram_write(addr, buf);
+	}
+	if ( errcount > 0 ) {
+		Serial.print(" Errors = ");
+		Serial.println(errcount, DEC);
+	}
+	return errcount;
 }
 
+uint8_t Z80Bus::ascii7seg(char ch) {
+  const static uint8_t numeric7[] = { 0xc0, 0xf9, 0xa4, 0xb0, 0x99, 0x92, 0x82, 0xf8, 0x80, 0x90, 0xff };
+  const static uint8_t alpha7[] = { 0x88, 0x83, 0xc6, 0xa1, 0x86, 0x8e, 0xc2, 0x89, 0x79, 0xe1,
+    0x09 /* 0x89*/, 0xc7, 0xbb /* 0xaa*/, 0xab /* 0xc8*/, 0xa3, 0x8c, 0x98, 0xaf /* 0xce */, 0x92 /*0x9b*/,
+    0x87, 0xc1, 0xc1 /* 0xe3*/, 0x86 /* 0xd5 */, 0xb6, 0x91, 0x24 /* 0xb8*/,
+  };  //a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
+  if ('0' <= ch and ch <= '9') {
+    return numeric7[ch - '0'];
+  }
+  switch(ch){
+    case '.':
+    case ',':
+      return 0x7f;
+      break;
+    case ' ':
+      return 0xff;
+      break;
+    case 'i':
+      return 0x7b;
+      break;
+    case 'o':
+      return 0xa3;
+      break;
+    case 'u':
+      return 0xe3;
+      break;
+  }
+  ch = toupper(ch);
+  if ('A' <= ch and ch <= 'Z') {
+    return alpha7[ch - 'A'];
+  } 
+  return 0xff;
+}
 
 //PROGMEM_ROM boot_blk(0x0000, 512, mon02);
