@@ -1,0 +1,23 @@
+
+diskdef 8in2s
+  seclen 128
+  tracks 154
+  sectrk 26
+  blocksize 1024
+  maxdir 128
+  skew 0
+  boottrk 1
+  os 2.2
+end
+
+diskdef 8in2d
+  seclen 256
+  tracks 154
+  sectrk 26
+  blocksize 1024
+  maxdir 128
+  skew 0
+  boottrk 1
+  os 2.2
+end
+
