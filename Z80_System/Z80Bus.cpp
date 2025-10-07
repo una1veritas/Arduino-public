@@ -4,7 +4,7 @@
 
 void Z80Bus::clock_set(uint8_t presc, uint16_t top) {
 	const uint8_t WGM_CTC_OCR1A = B0100;
-	const uint8_t COM_TOGGLE = B01;
+	const uint8_t COM_TOGGLE = B01, COM_DISCONNECT = B00;
 	presc = (presc > 5 ? 5 : presc);
 	/*
 	 * prescaler factors
@@ -25,6 +25,15 @@ void Z80Bus::clock_set(uint8_t presc, uint16_t top) {
 	OCR1A = top - 1;
 	TCCR1A |= (COM_TOGGLE << COM1C0) | ((WGM_CTC_OCR1A & B0011) << WGM10);
 	TCCR1B |= (((WGM_CTC_OCR1A >> 2) & B11) << WGM12) | (presc << CS10);
+	sei();
+}
+
+void Z80Bus::clock_start() {
+	const uint8_t WGM_CTC_OCR1A = B0100;
+	const uint8_t COM_TOGGLE = B01;
+
+	cli();
+	TCCR1A |= (COM_TOGGLE << COM1C0) | ((WGM_CTC_OCR1A & B0011) << WGM10);
 	sei();
 
 	pinMode(CLK_OUT, OUTPUT);
@@ -47,22 +56,28 @@ void Z80Bus::clock_mode_select(const uint8_t mode) {
 	switch(mode) {
 	case 0 : // 4 Hz
 		clock_set(5, 2000);
+		clock_mode = 0;
 	  break;
 	case 1 : // 10 Hz
 		clock_set(4, 3125); //
+		clock_mode = 1;
 	  break;
 	case 3 : // 1 kHz
 		clock_set(2, 1000);
+		clock_mode = 3;
 	  break;
-	case 4 : // 4 kHz
+	case 4 : // 8 kHz
 		clock_set(2, 250);
+		clock_mode = 4;
 	  break;
-	case 5 :	// 4kHz
-		clock_set(1, 2000);
+	case 5 :	// 10kHz
+		clock_set(1, 800);
+		clock_mode = 5;
 	  break;
 	case 2 :
 	default: // 100Hz
 		clock_set(3, 1250);
+		clock_mode = 2;
 	  break;
 	}
 }

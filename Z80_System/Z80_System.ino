@@ -145,7 +145,8 @@ void setup() {
 
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_start(); 
+  z80bus.clock_set(2, 1000); 
+  z80bus.clock_start();
   Serial.println("Reseting Z80...");
   z80bus.cpu_reset();
 
@@ -246,21 +247,21 @@ void loop() {
     } 
   }
 
-  if (false) {
-  addr = val>>16;
-  data = val & 0xff;
-  if ( busmode == 'o' or busmode == 'i') {
-    addr &= 0xff;
-    snprintf(buf, 9, "  %02X%c %02X", addr, busmode, data );
-  } else {
-    snprintf(buf, 9, "%04X%c %02X", addr, busmode, data );
-  }
-  digitalWrite(SPI_CS, LOW);
-  for (int i = 8; i > 0; ) {
-    SPI.transfer(ascii7seg(buf[--i]));
-  }
-  digitalWrite(SPI_CS, HIGH);
-  prev_millis = millis();
+  if (z80bus.clock_mode_current() <= 4) {
+	  addr = val>>16;
+	  data = val & 0xff;
+	  if ( busmode == 'o' or busmode == 'i') {
+		addr &= 0xff;
+		snprintf(buf, 9, "  %02X%c %02X", addr, busmode, data );
+	  } else {
+		snprintf(buf, 9, "%04X%c %02X", addr, busmode, data );
+	  }
+	  digitalWrite(SPI_CS, LOW);
+	  for (int i = 8; i > 0; ) {
+		  SPI.transfer(ascii7seg(buf[--i]));
+	  }
+	  digitalWrite(SPI_CS, HIGH);
+	  prev_millis = millis();
   }
 
   if ( ! z80bus.HALT() ) {

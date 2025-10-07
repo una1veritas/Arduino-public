@@ -30,7 +30,10 @@ enum IO_Ports {
     FDCST,       //fdc-port: status
     DMAL = 15,   //dma-port: dma address low
     DMAH,        //dma-port: dma address high
-  };
+
+	CLKMODE = 128,
+	LEDARRAY  = 129,
+};
 
 
 struct Z80Bus {
@@ -56,37 +59,18 @@ public:
 
   const uint8_t MEM_EN = 2;
   
-  enum IO_port {
-    CONSTA = 0,  //console status port
-    CONDAT,      //console data port
-    PRTSTA,
-    PRTDAT,
-    AUXDAT = 5,
-    FDCDAT = 8,  //fdc-port: # of drive
-    DRIVE = 10,  //fdc-port: # of drive
-    TRACK,       //fdc-port: # of track
-    SECTOR,      //fdc-port: # of sector
-    FDCOP,       //fdc-port: command
-    FDCST,       //fdc-port: status
-    DMAL = 15,   //dma-port: dma address low
-    DMAH,        //dma-port: dma address high
-
-	CLKMODE = 128,
-	LEDARRAY  = 129,
-  };
-
-  uint8_t spi_dev_addr;
-
   enum DMA_mode {
     NO_REQUEST = 0,
     READ_RAM = 1,
     WRITE_RAM = 0xff,
   };
   const uint16_t dma_block_size = 0x100;
+
   volatile uint16_t dma_address;
   volatile DMA_mode dma_transfer_mode;
   volatile uint8_t dma_result;
 
+  uint8_t clock_mode;
   uint8_t PROGMEM * pages[16]{
     0,
     0,
@@ -120,6 +104,7 @@ public:
   }
 
   void init() {
+    clock_mode_select(3); // default
     clock_stop();
     //
     address_bus16_mode(INPUT);
@@ -166,10 +151,10 @@ public:
    * set prescaler, counter top value, enable intewrrupt,
    * and set CLK_OUT pin mode to output.
    */
-  inline void clock_start(const uint8_t mode = 3) {
-	  clock_mode_select(mode);
-  }
 
+  void clock_mode_select(const uint8_t mode);
+  uint8_t clock_mode_current() { return clock_mode; }
+  void clock_start();
   void clock_stop();
   /* disconnect ocra1 and stop WGM (b10),
    * set CLK_OUT to input pulluped.
@@ -178,8 +163,6 @@ public:
   bool clock_is_running() {
     return (TCCR1A & (B11 << COM1C0)) == (B01 << COM1C0);
   }
-
-  void clock_mode_select(const uint8_t mode);
 
   uint8_t clock() {
     return digitalRead(CLK_OUT);

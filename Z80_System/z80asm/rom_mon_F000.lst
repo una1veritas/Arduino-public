@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "rom_mon_F000.asm"
-                        ; date: 2025-10-06 21:20:35
+                        ; date: 2025-10-08 00:21:24
                         ; --------------------------------------
 
 
@@ -410,61 +410,187 @@ F1E2:                   clk_spd_change:
 F1E2: E607     [ 7]     		and 	$07
 F1E4: D380     [18]     		out		(CLKMODE), a
 F1E6: C9       [28]     		ret
+                        
+                        ; arithmetic routines
+                        ; divide dividiend in d by divisor in e 
+                        ; returns quotient in d and remainder in a
+F1E7:                   div_d_e:
+F1E7: AF       [ 4]        xor	a
+F1E8: 0608     [11]        ld	b, 8
+                        
+F1EA:                   div_d_e_loop:
+F1EA: CB22     [ 8]        sla	d
+F1EC: 17       [12]        rla
+F1ED: BB       [16]        cp	e
+F1EE: 3802     [23|28]     jr	c, $+4
+F1F0: 93       [27]        sub	e
+F1F1: 14       [31]        inc	d
+                           
+F1F2: 10F6     [39|44]     djnz	div_d_e_loop
+                           
+F1F4: C9       [49]        ret
+                        
+                        ; dvi_hl_de stack in out wrapper
+                        ; [ret addr] [dividiend] [divisor] 
+                        ; --> [ret addr] [quotient] [reminder]
+F1F5:                   div16:
+F1F5: DD210200 [14]         ld      ix, 02
+F1F9: DD39     [29]         add     ix, sp
+F1FB: DD4E00   [48]         ld      c, (ix)
+F1FE: DD7E01   [67]         ld      a, (ix+1)
+F201: DD5E02   [86]         ld      de, (ix+2)
+F204: DD5603   [105]    
+F207: CD17F2   [122]        call    div_ac_de
+F20A: DD7502   [141]        ld      (ix+2), hl
+F20D: DD7403   [160]    
+F210: DD7100   [179]        ld      (ix), c
+F213: DD7701   [198]        ld      (ix+1), a
+F216: C9       [208]        ret
+                        
+                        ; The following routine divides ac (dividiend) by de (divisor) and 
+                        ; places the quotient in ac and the remainder in hl
+                        ; destrys hl, a, b, c, d, e, ix
+                        ; https://wikiti.brandonw.net/index.php?title=Z80_Routines:Math:Division
+                        ;
+F217:                   div_ac_de:
+F217: 210000   [10]         ld	    hl, 0
+F21A: 0610     [17]         ld	    b, 16
+F21C:                   div_ac_de_loop:
+F21C: CB31     [ 8]         sll	c
+F21E: 17       [12]         rla
+F21F: ED6A     [27]         adc	hl, hl
+F221: ED52     [42]         sbc	hl, de
+F223: 3002     [49|54]      jr	nc, $+4 
+F225: 19       [60]         add	hl, de
+F226: 0D       [64]         dec	c
+                            
+F227: 10F3     [72|77]      djnz	div_ac_de_loop
+F229: C9       [82]         ret
+                        
+                        
+                        ; dvi_hl_c stack in out wrapper
+                        ; [ret addr] [dividiend] [divisor:low] 
+                        ; --> [ret addr] [quotient] [reminder:low]
+F22A:                   div16_8:
+F22A: DD210200 [14]         ld      ix, 02
+F22E: DD39     [29]         add     ix, sp
+F230: DD6E00   [48]         ld      hl, (ix)
+F233: DD6601   [67]     
+F236: DD4E02   [86]         ld      c, (ix+2)
+F239: CD46F2   [103]        call    div_hl_c
+F23C: DD7500   [122]        ld      (ix), hl
+F23F: DD7401   [141]    
+F242: DD7702   [160]        ld      (ix+2), a
+F245: C9       [170]        ret
+                        
+                        ; divides hl by c and places the quotient in hl 
+                        ; and the remainder in a
+F246:                   div_hl_c:
+F246: AF       [ 4]        xor	a
+F247: 0610     [11]        ld	b, 16
+                        
+F249:                   div_hl_c_loop:
+F249: 29       [11]        add	hl, hl
+F24A: 17       [15]        rla
+F24B: 3803     [22|27]     jr	c, $+5
+F24D: B9       [26]        cp	c
+F24E: 3802     [33|38]     jr	c, $+4
+                        
+F250: 91       [37]        sub	c
+F251: 2C       [41]        inc	l
+                           
+F252: 10F5     [49|54]     djnz	div_hl_c_loop
+                           
+F254: C9       [59]        ret
+                        
+                        
+                        ; print the decimal integer in HL 
+F255:                   print_hl_dec:
+F255: AF       [ 4]     	xor 	a
+F256: F5       [15]     	push 	af 		; terminal null char
+F257: 0E0A     [22]     	ld 		c, 10 	; radix = 10
+                        
+F259:                   print_hl_dec_loop0:
+F259: CD46F2   [17]     	call 	div_hl_c 	; a = hl % 10, hl = hl / 10
+F25C: C630     [24]     	add 	a, $30		; to ascii code between '0' and '9'
+F25E: F5       [35]     	push 	af
+F25F: 7C       [39]     	ld 		a, h 		; check whether hl is empty
+F260: B5       [43]     	or 		l
+F261: 2802     [50|55]  	jr 		z, print_hl_dec_output		; if z then conversion finished
+F263: 18F4     [62]     	jr 		print_hl_dec_loop0
+                        
+F265:                   print_hl_dec_output:
+F265: F1       [10]     	pop 	af
+F266: A7       [14]     	and 	a
+F267: C8       [19|25]  	ret 	z
+F268: D302     [30]     	out 	(2), a
+F26A: 18F9     [42]     	jr 		print_hl_dec_output
 
 
 ; +++ segments +++
 
-#CODE          = $F000 = 61440,  size = $01E7 =   487
+#CODE          = $F000 = 61440,  size = $026C =   620
 
 ; +++ global symbols +++
 
-BUFSIZE           = $003F =    63          rom_mon_F000.asm:43
-BUSDISP           = $0081 =   129          rom_mon_F000.asm:16 (unused)
-CLKMODE           = $0080 =   128          rom_mon_F000.asm:15
-CONIO             = $0001 =     1          rom_mon_F000.asm:13
-CONSTA            = $0000 =     0          rom_mon_F000.asm:12
-_end              = $F1E7 = 61927          rom_mon_F000.asm:46 (unused)
-_size             = $01E7 =   487          rom_mon_F000.asm:46 (unused)
-addr              = $EFA0 = 61344          rom_mon_F000.asm:40
-addr2             = $EFA2 = 61346          rom_mon_F000.asm:41
-clk_mode          = $F0BD = 61629          rom_mon_F000.asm:150
-clk_spd_change    = $F1E2 = 61922          rom_mon_F000.asm:402
-default_dump      = $F063 = 61539          rom_mon_F000.asm:100
-do_dump           = $F07B = 61563          rom_mon_F000.asm:114
-dump              = $F164 = 61796          rom_mon_F000.asm:291
-dump.bytes        = $F181 = 61825          rom_mon_F000.asm:310
-dump.print_byte   = $F193 = 61843          rom_mon_F000.asm:325
-dump.print_header = $F16A = 61802          rom_mon_F000.asm:297
-dump.print_spc    = $F197 = 61847          rom_mon_F000.asm:328
-getln             = $F0C5 = 61637          rom_mon_F000.asm:165
-getln_bkspc       = $F0ED = 61677          rom_mon_F000.asm:192
+BUFSIZE            = $003F =    63          rom_mon_F000.asm:43
+BUSDISP            = $0081 =   129          rom_mon_F000.asm:16 (unused)
+CLKMODE            = $0080 =   128          rom_mon_F000.asm:15
+CONIO              = $0001 =     1          rom_mon_F000.asm:13
+CONSTA             = $0000 =     0          rom_mon_F000.asm:12
+_end               = $F26C = 62060          rom_mon_F000.asm:46 (unused)
+_size              = $026C =   620          rom_mon_F000.asm:46 (unused)
+addr               = $EFA0 = 61344          rom_mon_F000.asm:40
+addr2              = $EFA2 = 61346          rom_mon_F000.asm:41
+clk_mode           = $F0BD = 61629          rom_mon_F000.asm:150
+clk_spd_change     = $F1E2 = 61922          rom_mon_F000.asm:402
+default_dump       = $F063 = 61539          rom_mon_F000.asm:100
+div16              = $F1F5 = 61941          rom_mon_F000.asm:429 (unused)
+div16_8            = $F22A = 61994          rom_mon_F000.asm:465 (unused)
+div_ac_de          = $F217 = 61975          rom_mon_F000.asm:446
+div_ac_de_loop     = $F21C = 61980          rom_mon_F000.asm:449
+div_d_e            = $F1E7 = 61927          rom_mon_F000.asm:410 (unused)
+div_d_e_loop       = $F1EA = 61930          rom_mon_F000.asm:414
+div_hl_c           = $F246 = 62022          rom_mon_F000.asm:477
+div_hl_c_loop      = $F249 = 62025          rom_mon_F000.asm:481
+do_dump            = $F07B = 61563          rom_mon_F000.asm:114
+dump               = $F164 = 61796          rom_mon_F000.asm:291
+dump.bytes         = $F181 = 61825          rom_mon_F000.asm:310
+dump.print_byte    = $F193 = 61843          rom_mon_F000.asm:325
+dump.print_header  = $F16A = 61802          rom_mon_F000.asm:297
+dump.print_spc     = $F197 = 61847          rom_mon_F000.asm:328
+getln              = $F0C5 = 61637          rom_mon_F000.asm:165
+getln_bkspc        = $F0ED = 61677          rom_mon_F000.asm:192
 getln_echo_proceed = $F103 = 61699          rom_mon_F000.asm:207
-getln_end         = $F110 = 61712          rom_mon_F000.asm:219
-getln_wait        = $F0D0 = 61648          rom_mon_F000.asm:172
-hex2nib           = $F1AD = 61869          rom_mon_F000.asm:353
-hex2nib.alpha     = $F1B7 = 61879          rom_mon_F000.asm:360
-hex2nib.upper     = $F1C1 = 61889          rom_mon_F000.asm:367
-hexstr_de         = $F1CB = 61899          rom_mon_F000.asm:382
+getln_end          = $F110 = 61712          rom_mon_F000.asm:219
+getln_wait         = $F0D0 = 61648          rom_mon_F000.asm:172
+hex2nib            = $F1AD = 61869          rom_mon_F000.asm:353
+hex2nib.alpha      = $F1B7 = 61879          rom_mon_F000.asm:360
+hex2nib.upper      = $F1C1 = 61889          rom_mon_F000.asm:367
+hexstr_de          = $F1CB = 61899          rom_mon_F000.asm:382
 hexstr_de.hex2nib_succ = $F1D3 = 61907          rom_mon_F000.asm:388 (unused)
-hexstr_de.loop    = $F1CE = 61902          rom_mon_F000.asm:384
-hexstr_de.rl4     = $F1D5 = 61909          rom_mon_F000.asm:390
-lbuf              = $EFB0 = 61360          rom_mon_F000.asm:42
-mon               = $F000 = 61440          rom_mon_F000.asm:47
-mon_halt          = $F0C4 = 61636          rom_mon_F000.asm:155
-print_byte        = $F120 = 61728          rom_mon_F000.asm:236
-print_endl        = $F12D = 61741          rom_mon_F000.asm:247
-print_err_msg     = $F13E = 61758          rom_mon_F000.asm:263
-print_nibble      = $F111 = 61713          rom_mon_F000.asm:224
-print_nibble_out  = $F11D = 61725          rom_mon_F000.asm:231
-print_str_hl      = $F136 = 61750          rom_mon_F000.asm:254
-read_line         = $F00F = 61455          rom_mon_F000.asm:52
-run_mode          = $F0B9 = 61625          rom_mon_F000.asm:145
-specify_end       = $F04F = 61519          rom_mon_F000.asm:89
-str_endl          = $F161 = 61793          rom_mon_F000.asm:281 (unused)
-str_err           = $F15A = 61786          rom_mon_F000.asm:279
-write_mode        = $F092 = 61586          rom_mon_F000.asm:123
-write_mode.exit   = $F0B6 = 61622          rom_mon_F000.asm:142
+hexstr_de.loop     = $F1CE = 61902          rom_mon_F000.asm:384
+hexstr_de.rl4      = $F1D5 = 61909          rom_mon_F000.asm:390
+lbuf               = $EFB0 = 61360          rom_mon_F000.asm:42
+mon                = $F000 = 61440          rom_mon_F000.asm:47
+mon_halt           = $F0C4 = 61636          rom_mon_F000.asm:155
+print_byte         = $F120 = 61728          rom_mon_F000.asm:236
+print_endl         = $F12D = 61741          rom_mon_F000.asm:247
+print_err_msg      = $F13E = 61758          rom_mon_F000.asm:263
+print_hl_dec       = $F255 = 62037          rom_mon_F000.asm:497 (unused)
+print_hl_dec_loop0 = $F259 = 62041          rom_mon_F000.asm:502
+print_hl_dec_output = $F265 = 62053          rom_mon_F000.asm:511
+print_nibble       = $F111 = 61713          rom_mon_F000.asm:224
+print_nibble_out   = $F11D = 61725          rom_mon_F000.asm:231
+print_str_hl       = $F136 = 61750          rom_mon_F000.asm:254
+read_line          = $F00F = 61455          rom_mon_F000.asm:52
+run_mode           = $F0B9 = 61625          rom_mon_F000.asm:145
+specify_end        = $F04F = 61519          rom_mon_F000.asm:89
+str_endl           = $F161 = 61793          rom_mon_F000.asm:281 (unused)
+str_err            = $F15A = 61786          rom_mon_F000.asm:279
+write_mode         = $F092 = 61586          rom_mon_F000.asm:123
+write_mode.exit    = $F0B6 = 61622          rom_mon_F000.asm:142
 
 
-total time: 0.0016 sec.
+total time: 0.0018 sec.
 no errors

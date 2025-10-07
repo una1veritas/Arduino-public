@@ -1,0 +1,11 @@
+mon               = $F000
+clk_spd_change    = $F1E2 
+dump              = $F164
+getln             = $F0C5 
+hex2nib           = $F1AD
+hexstr_de         = $F1CB 
+print_byte        = $F120
+print_endl        = $F12D 
+print_err_msg     = $F13E
+print_nibble      = $F111
+print_str_hl      = $F136 
