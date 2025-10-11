@@ -1,0 +1,47 @@
+                MACLIB  DISKDEF
+S               ORG     $
+                
+S               DISKS       4
+S               DISKDEF     0, 1, 26, , 1024, 496, 128, 0, 1DISKDEF     1, 1, 26, , 1024, 496, 128, 0, 1
+P0000+#         SECMAX	SET	26-(1)
+P0000+#         SECTORS	SET	SECMAX+1
+P0000+#         ALS0	SET	(496)/8
+P0000+#         CSS0	SET	(0)/4
+P0000+#         BLKVAL	SET	1024/128
+P0000+#         BLKSHF	SET	0
+P0000+#         BLKMSK	SET	0
+P0000+#         EXTMSK	SET	0
+P0000+#         DIRREM	SET	128
+P0000+#         DIRBKS	SET	1024/32
+P0000+#         DIRBLK	SET	0
+P0000+=         DPB0	EQU	$		;DISK PARM BLOCK
+ 0000+0000      	DW	0		;SEC PER TRACK
+ 0002+10        	DB	16		;BLOCK SHIFT
+ 0003+FF        	DB	65535		;BLOCK MASK
+ 0004+00        	DB	0		;EXTNT MASK
+ 0005+EF01      	DW	495		;DISK SIZE-1
+ 0007+7F00      	DW	127		;DIRECTORY MAX
+ 0009+00        	DB	0		;ALLOC0
+ 000A+00        	DB	0		;ALLOC1
+ 000B+0000      	DW	0		;CHECK SIZE
+E    +          DISKDEF,<;OFFSET>
+ 000D+0000      	DW	0		;OFFSET
+P0000+=         XLT0	EQU	0		;NO XLATE TABLE
+S               DISKDEF     2, 1, 26, , 1024, 496, 128, 0, 1DISKDEF     3, 1, 26, , 1024, 496, 128, 0, 1
+P0000+#         ALS2	SET	(496)/8
+P0000+#         CSS2	SET	(0)/4
+P0000+=         DPB2	EQU	$		;DISK PARM BLOCK
+ 000F+1A00      	DW	26		;SEC PER TRACK
+ 0011+03        	DB	3		;BLOCK SHIFT
+ 0012+07        	DB	7		;BLOCK MASK
+ 0013+00        	DB	0		;EXTNT MASK
+ 0014+EF01      	DW	495		;DISK SIZE-1
+ 0016+7F00      	DW	127		;DIRECTORY MAX
+ 0018+F0        	DB	240		;ALLOC0
+ 0019+00        	DB	0		;ALLOC1
+ 001A+0000      	DW	0		;CHECK SIZE
+E    +          DISKDEF,<;OFFSET>
+ 001C+0000      	DW	0		;OFFSET
+P0000+=         XLT2	EQU	0		;NO XLATE TABLE
+                
+
