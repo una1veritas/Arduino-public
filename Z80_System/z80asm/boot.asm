@@ -3,7 +3,7 @@ SBOTTOM equ 	0ef00h
 MONITOR equ     0f000h
 ;
 	    org 	0000h
-RST_00: 	; Resetr/Power on
+RST_00: 	; Reset/Power on
 	    ld 		sp, SBOTTOM
 	    jp  	MONITOR
 ;

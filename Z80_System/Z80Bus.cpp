@@ -168,10 +168,8 @@ uint32_t Z80Bus::io_rw() {
 		}
 		break;
 	case FDCOP:       //fdc-port: command
-		if (io_mode == IN ) {
-			fdc_read();
-		} else if (io_mode == OUT ) {
-			fdc_write();
+		if (io_mode == OUT ) {
+			fdc.drives[fdc.drive].opcode = data_bus_get();
 		}
 		break;
 	case FDCST:       //fdc-port: status
@@ -179,12 +177,14 @@ uint32_t Z80Bus::io_rw() {
 			data_bus_set(fdc.drives[fdc.drive].status);
 		}
 		break;
+		/*
 	case 16: // track_sel_h
 		break;
 	case 17: // track_sel_l
 		break;
 	case 18: // sector_sel
 		break;
+		*/
 	case 20: // dma adr_L
 		if (io_mode == OUT) {
 			data = data_bus_get();
@@ -198,19 +198,19 @@ uint32_t Z80Bus::io_rw() {
 		}
 		break;
 	case 22: // exec_dma
-		DMA_mode();
 		if (io_mode == IN) {
 			dma_transfer_mode = READ_RAM;
-			ram_enable();
-			DMA_exec(dma_buff);
-
-			data_bus_set(1);
+			BUSREQ(LOW); // expect busack in a few clock
+			//ram_enable();
+			//DMA_exec(dma_buff);
+			//data_bus_set(1);
 		} else if (io_mode == OUT) {
 			dma_transfer_mode = WRITE_RAM;
-			ram_enable();
-			DMA_exec(dma_buff);
+			BUSREQ(LOW); // expect busack in a few clock
+			//ram_enable();
+			//DMA_exec(dma_buff);
 		}
-		MMC_mode();
+		//MMC_mode();
 		break;
 	case 23: // dma_rs
 		if (io_mode == IN) {
@@ -240,7 +240,34 @@ uint32_t Z80Bus::io_rw() {
 	default:
 		data = 0;
 	}
-	while (IORQ() == LOW) {}
+	if ( BUSREQ() == HIGH ) {
+		while (IORQ() == LOW) {}
+		// wait until IORQ get HIGH
+	} else {
+		// _BUSREQ has been asserted to do DMA
+		while ( BUSACK() == HIGH ) {}
+		// wait BUSACK after in/out opcode has been finished
+		// do FD read/write with DMA
+		if ( dma_transfer_mode == WRITE_RAM ) {
+			if ( fdc.drives[fdc.drive].opcode == fdc.FDC_READ ) {
+				unsigned long dskpos =
+						(fdc.drives[fdc.drive].track * fdc.sectors_per_track
+								+ fdc.drives[fdc.drive].sector) * fdc.sector_size;
+				DMA_mode();
+				dskfileptr->seek(dskpos);
+				for(unsigned long offset = 0; offset < 128 ; ++offset ) {
+					if ( dskpos + offset >= dskfileptr->size() )
+						break;
+					byte b = dskfileptr->read();
+					ram_write(dma_address+offset, b);
+				}
+			}
+
+		}
+		MMC_mode();
+		BUSREQ(HIGH);
+
+	}
 	return (uint32_t(port) << 16) | data;
 }
 
@@ -319,6 +346,17 @@ uint8_t Z80Bus::fdc_read() {
       }
 	 *
 	 */
+	unsigned long dskpos;
+	dskpos = (fdc.drives[fdc.drive].track * fdc.sectors_per_track
+					+ fdc.drives[fdc.drive].sector) * fdc.sector_size;
+	DMA_mode();
+	dskfileptr->seek(dskpos);
+	for(unsigned long offset = 0; offset < 128 ; ++offset ) {
+		if ( dskpos + offset >= dskfileptr->size() )
+			break;
+		byte b = dskfileptr->read();
+		ram_write(dma_address+offset, b);
+	}
 	return fdc.drives[fdc.drive].status;
 }
 

@@ -30,8 +30,8 @@ enum IO_Ports {
     FDCDRIVE = 10,  //fdc-port: drive #
     FDCTRACK,       //fdc-port: track #
     FDCSECTOR,      //fdc-port: sector #
-    FDCOP,       //fdc-port: command
-    FDCST,       //fdc-port: status
+    FDCOP,       //fdc-port: command, 0 ... read
+    FDCST,       //fdc-port: status, 0 ... was successful
 
     DMAL = 15,   //dma-port: dma address low
     DMAH,        //dma-port: dma address high
@@ -65,34 +65,34 @@ public:
   const uint8_t MEM_EN = 2;
   
   struct FDC {
+	  enum {
+		  FDC_READ = 0,
+		  FDC_WRITE = 0xff,
+	  };
 	  static const int no_of_drives = 2;
-	  static const int sectsize = 128;
 
 	  struct {
-		  uint16_t track;
-		  uint16_t sector;
-
+		  uint16_t track, sector;
+		  uint8_t opcode, status;
 		  uint8_t data;
-		  uint8_t opcode;
-		  uint8_t status;
-
-		  uint8_t secbuf[sectsize];
-		  uint8_t bufpix;
 	  } drives[no_of_drives];
 	  uint8_t drive;
+	  static const int sector_size = 128;
+	  static const int no_of_tracks = 77; // cylinders
+	  static const int sectors_per_track = 26;
 
 	  FDC() : drive(0) {
 		  for (uint8_t i = 0; i < no_of_drives; ++i) {
-			  drives[i].status =0;
-			  drives[i].bufpix =0;
+			  drives[i].status = 0;
+			  drives[i].track = 0;
+			  drives[i].sector = 0;
 		  }
 	  }
-
   } fdc;
 
-  File * dskfile;
+  File * dskfileptr;
 
-  enum DMA_mode {
+  enum DMA_status {
     NO_REQUEST = 0,
     READ_RAM = 1,
     WRITE_RAM = 0xff,
@@ -100,7 +100,7 @@ public:
   const uint16_t dma_block_size = 0x100;
 
   volatile uint16_t dma_address;
-  volatile DMA_mode dma_transfer_mode;
+  volatile DMA_status dma_transfer_mode;
   volatile uint8_t dma_result;
 
   uint8_t clock_mode;
@@ -181,7 +181,7 @@ public:
   }
 
   void set_dsk_file(File & file) {
-	  dskfile = &file;
+	  dskfileptr = &file;
   }
 
   void clock_presc_top_set(uint8_t presc, uint16_t top);

@@ -158,6 +158,7 @@ void setup() {
     while (true);
   }
   z80bus.set_dsk_file(dskpath);
+  Serial.println("/DRIVEA.DSK opened.");
   // nop test
   //z80bus.mem_disable();
   z80bus.set_clock_mode(3);
@@ -189,7 +190,7 @@ void setup() {
     if (res != 0) {
       Serial.println("Something going wrong w/ sram read & write!");
     } else {
-      Serial.println("Transfer completed.");
+      Serial.println("Boot page transfer completed.");
     }
     
     // test DMA, ram to arduino 
@@ -278,25 +279,10 @@ void loop() {
 	  digitalWrite(SPI_CS, HIGH);
 	  prev_millis = millis();
   }
-
+*/
   if ( ! z80bus.HALT() ) {
     Serial.println("Halted.");
-    if ( z80bus.DMA_mode() ) {
-      Serial.println("Entered DMA mode.");
-      //lcdt.print(0,0,"DMA mode.");
-      Serial.println("Memory dump...");
-      z80bus.DMA_address(0);
-      z80bus.DMA_read(dma_buff);
-      dump(dma_buff, 0x100, 0);
-      z80bus.DMA_address(0x100);
-      z80bus.DMA_read(dma_buff);
-      dump(dma_buff, 0x100, 0x100);
-
-      Serial.println("Exit to I/O Controller mode.");
-      z80bus.IOC_mode();
-    }
     z80bus.clock_stop();
     while (true);
   }
-  */
 }
