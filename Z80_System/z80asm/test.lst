@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "test.asm"
-                        ; date: 2025-10-12 10:17:54
+                        ; date: 2025-10-08 00:24:08
                         ; --------------------------------------
 
 
@@ -20,84 +20,69 @@ F136:                   print_str_hl      = $F136
 0000:                   CONSTA  equ     $00
 0001:                   CONIO   equ     $01
                         
-0100:                           org     0100h
-0100:                   vt_test:
-0100: 212001   [10]             ld      hl , wrkspc
-0103: CD36F1   [27]             call    print_str_hl
-0106: CD2DF1   [44]             call    print_endl
-0109: C300F0   [54]             jp      mon
+1000:                           org     01000h
+1000:                   vt_test:
+1000: 212010   [10]             ld      hl , wrkspc
+1003: CD36F1   [27]             call    print_str_hl
+1006: CD2DF1   [44]             call    print_endl
+1009: C300F0   [54]             jp      mon
                         
                         
-                                org 0120h
-0120:                   wrkspc:
-0120: 0A0D                      db $0a, $0d
-0122: 54686973                  db  "This is an apple."
-0126: 20697320          
-012A: 616E2061          
-012E: 70706C65          
-0132: 2E                
-0133: 0A0D                      db $0a, $0d
-0135: 1B5B481B                  db  $1b, "[H", $1b, "[2J"
-0139: 5B324A            
-013C: 48656C6C                  db "Hello, my friends!!!"
-0140: 08077F1B          
-0144: 5B481B32          
-0148: 4A001B5B          
-014C: 48001B5B          
+                                org 01020h
+1020:                   wrkspc:
+1020: 0A0D                      db $0a, $0d
+                        
+1022: 48656C6C                  db "Hello, my friends!!!"
+1026: 6F2C206D          
+102A: 79206672          
+102E: 69656E64          
+1032: 73212121          
                                 ; db  $08, $08, $08, $07, $07
-0150: 44001B5B                  db $1b, "[D", $1b, "[D", $1b, "[D", $1b, "[D", $1b, "[D"
-0154: 50001B5B          
-0158: 6B001B5B          
-015C: 40001B            
-015F: 5B4C00                    db $1b, "[K"
-0162: 00                        db 0
+1036: 1B5B441B                  db $1b, "[D", $1b, "[D", $1b, "[D", $1b, "[D", $1b, "[D"
+103A: 5B441B5B          
+103E: 441B5B44          
+1042: 1B5B44            
+1045: 1B5B501B                  db  $1b, "[P", $1b, "[P"
+1049: 5B50              
+104B: 00                        db 0
                         
-                                org  0140h
+                                org  01050h
                         ; ASCII CONTROL CODE
-0140:                   BACKSPACE:
-0140: 08                        db  $08
-0141: 07                BEEP:   db  $07
-0142: 7F                DELETE: db  $7f
+1050:                   BACKSPACE:
+1050: 08                        db  $08
+1051: 07                BEEP:   db  $07
+1052: 7F                DELETE: db  $7f
                         
                         ; VT100 ESC sequences
                         ;
-0143:                   CLRSCRN:
-0143: 1B5B481B                  db  $1b, "[H", $1b, "2J", 0
-0147: 324A00            
-014A:                   HOMEPOS:
-014A: 1B5B4800                  db  $1b, "[H", 0
-014E:                   CURSORL:
-014E: 1B5B4400                  db  $1b, "[D", 0
-0152:                   DELCHAR:
-0152: 1B5B5000                  db  $1b, "[P", 0
-0156:                   DELLEND:
-0156: 1B5B6B00                  db  $1b, "[k", 0
-015A:                   INSTSPC:
-015A: 1B5B4000                  db  $1b, "[@", 0
-015E:                   INSTLIN:
-015E: 1B5B4C00                  db  $1b, "[L", 0
+1053:                   CLRSCRN:
+1053: 1B5B481B                  db  $1b, "[H", $1b, "2J", 0
+1057: 324A00            
+105A:                   HOMEPOS:
+105A: 1B5B4800                  db  $1b, "[H", 0
+105E:                   CURSORLEFT:
+105E: 1B5B44                    db  $1b, "[D"
+1061:                   DELETE_CHAR:
+1061: 1B5B50                    db  $1b, "[P"
 
 
 ; +++ segments +++
 
-#CODE          = $0100 =   256,  size = $0063 =    99
+#CODE          = $1000 =  4096,  size = $0064 =   100
 
 ; +++ global symbols +++
 
-BACKSPACE      = $0140 =   320          test.asm:28 (unused)
-BEEP           = $0141 =   321          test.asm:30 (unused)
-CLRSCRN        = $0143 =   323          test.asm:35 (unused)
+BACKSPACE      = $1050 =  4176          test.asm:26 (unused)
+BEEP           = $1051 =  4177          test.asm:28 (unused)
+CLRSCRN        = $1053 =  4179          test.asm:33 (unused)
 CONIO          = $0001 =     1          test.asm:4 (unused)
 CONSTA         = $0000 =     0          test.asm:3 (unused)
-CURSORL        = $014E =   334          test.asm:39 (unused)
-DELCHAR        = $0152 =   338          test.asm:41 (unused)
-DELETE         = $0142 =   322          test.asm:31 (unused)
-DELLEND        = $0156 =   342          test.asm:43 (unused)
-HOMEPOS        = $014A =   330          test.asm:37 (unused)
-INSTLIN        = $015E =   350          test.asm:47 (unused)
-INSTSPC        = $015A =   346          test.asm:45 (unused)
-_end           = $0163 =   355          lib_rom_mon.inc:5 (unused)
-_size          = $0063 =    99          lib_rom_mon.inc:5 (unused)
+CURSORLEFT     = $105E =  4190          test.asm:37 (unused)
+DELETE         = $1052 =  4178          test.asm:29 (unused)
+DELETE_CHAR    = $1061 =  4193          test.asm:39 (unused)
+HOMEPOS        = $105A =  4186          test.asm:35 (unused)
+_end           = $1064 =  4196          lib_rom_mon.inc:5 (unused)
+_size          = $0064 =   100          lib_rom_mon.inc:5 (unused)
 clk_spd_change = $F1E2 = 61922          lib_rom_mon.inc:2 (unused)
 dump           = $F164 = 61796          lib_rom_mon.inc:3 (unused)
 getln          = $F0C5 = 61637          lib_rom_mon.inc:4 (unused)
@@ -109,9 +94,9 @@ print_endl     = $F12D = 61741          lib_rom_mon.inc:8
 print_err_msg  = $F13E = 61758          lib_rom_mon.inc:9 (unused)
 print_nibble   = $F111 = 61713          lib_rom_mon.inc:10 (unused)
 print_str_hl   = $F136 = 61750          lib_rom_mon.inc:11
-vt_test        = $0100 =   256          test.asm:7 (unused)
-wrkspc         = $0120 =   288          test.asm:15
+vt_test        = $1000 =  4096          test.asm:7 (unused)
+wrkspc         = $1020 =  4128          test.asm:15
 
 
-total time: 0.0009 sec.
+total time: 0.0006 sec.
 no errors

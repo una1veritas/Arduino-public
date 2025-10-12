@@ -3,7 +3,7 @@
 CONSTA  equ     $00
 CONIO   equ     $01
 
-        org     0100h
+        org     01000h
 vt_test:
         ld      hl , wrkspc
         call    print_str_hl
@@ -11,19 +11,17 @@ vt_test:
         jp      mon
 
 
-        org 0120h
+        org 01020h
 wrkspc:
         db $0a, $0d
-        db  "This is an apple."
-        db $0a, $0d
-        db  $1b, "[H", $1b, "[2J"
+
         db "Hello, my friends!!!"
         ; db  $08, $08, $08, $07, $07
         db $1b, "[D", $1b, "[D", $1b, "[D", $1b, "[D", $1b, "[D"
-        db $1b, "[K"
+        db  $1b, "[P", $1b, "[P"
         db 0
 
-        org  0140h
+        org  01050h
 ; ASCII CONTROL CODE
 BACKSPACE:
         db  $08
@@ -37,12 +35,12 @@ CLRSCRN:
 HOMEPOS:
         db  $1b, "[H", 0
 CURSORL:
-        db  $1b, "[D", 0
+        db  $1b, "[D"
 DELCHAR:
-        db  $1b, "[P", 0
+        db  $1b, "[P"
 DELLEND:
-        db  $1b, "[k", 0
+        db  $1b, "[k"
 INSTSPC:
-        db  $1b, "[@", 0
+        db  $1b, "[@"
 INSTLIN:
-        db  $1b, "[L", 0
+        db  $1b, "[L"

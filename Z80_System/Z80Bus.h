@@ -3,9 +3,6 @@
 
 #include <Arduino.h>
 
-#include <SPI.h>
-#include <SD.h>
-
 #define ADDR_OUT_L PORTA
 #define ADDR_OUT_H PORTC
 #define ADDR_IN_L PINA
@@ -25,14 +22,12 @@ enum IO_Ports {
     PRTSTA,
     PRTDAT,
     AUXDAT = 5,		// aux data port
-
-    FDCDIO = 8,  	//fdc-port:
-    FDCDRIVE = 10,  //fdc-port: drive #
-    FDCTRACK,       //fdc-port: track #
-    FDCSECTOR,      //fdc-port: sector #
+    // FDCD = 8,  	//fdc-port:
+    FDCDRIVE = 10,  //fdc-port: # of drive
+    FDCTRACK,       //fdc-port: # of track
+    FDCSECTOR,      //fdc-port: # of sector
     FDCOP,       //fdc-port: command
     FDCST,       //fdc-port: status
-
     DMAL = 15,   //dma-port: dma address low
     DMAH,        //dma-port: dma address high
 
@@ -47,7 +42,7 @@ public:
   static const uint8_t ADDR_BUS_WIDTH = 16;
   static const uint8_t DATA_BUS_WIDTH = 8;
   static const uint8_t boot_0000[256] PROGMEM;
-  static const uint8_t rom_mon_F000[768] PROGMEM;
+  static const uint8_t rom_mon_F000[512] PROGMEM;
   static const uint8_t basic_0000[8192] PROGMEM;
 
 public:
@@ -64,34 +59,6 @@ public:
 
   const uint8_t MEM_EN = 2;
   
-  struct FDC {
-	  static const int no_of_drives = 2;
-	  static const int sectsize = 128;
-
-	  struct {
-		  uint16_t track;
-		  uint16_t sector;
-
-		  uint8_t data;
-		  uint8_t opcode;
-		  uint8_t status;
-
-		  uint8_t secbuf[sectsize];
-		  uint8_t bufpix;
-	  } drives[no_of_drives];
-	  uint8_t drive;
-
-	  FDC() : drive(0) {
-		  for (uint8_t i = 0; i < no_of_drives; ++i) {
-			  drives[i].status =0;
-			  drives[i].bufpix =0;
-		  }
-	  }
-
-  } fdc;
-
-  File * dskfile;
-
   enum DMA_mode {
     NO_REQUEST = 0,
     READ_RAM = 1,
@@ -104,7 +71,6 @@ public:
   volatile uint8_t dma_result;
 
   uint8_t clock_mode;
-
   uint8_t PROGMEM * pages[16]{
     0,
     0,
@@ -138,7 +104,7 @@ public:
   }
 
   void init() {
-    set_clock_mode(3); // default
+    clock_mode_select(3); // default
     clock_stop();
     //
     address_bus16_mode(INPUT);
@@ -180,18 +146,14 @@ public:
     pages[pageindex] = rom;
   }
 
-  void set_dsk_file(File & file) {
-	  dskfile = &file;
-  }
-
-  void clock_presc_top_set(uint8_t presc, uint16_t top);
+  void clock_set(uint8_t presc, uint16_t top);
   /* disable interrupt, set up TTCR1 control registers and activate timer 1 counter/toggle mode,
    * set prescaler, counter top value, enable intewrrupt,
    * and set CLK_OUT pin mode to output.
    */
 
-  void set_clock_mode(const uint8_t mode);
-  uint8_t get_clock_mode(void) { return clock_mode; }
+  void clock_mode_select(const uint8_t mode);
+  uint8_t clock_mode_current() { return clock_mode; }
   void clock_start();
   void clock_stop();
   /* disconnect ocra1 and stop WGM (b10),
@@ -524,9 +486,6 @@ public:
   uint32_t io_rw(void);
   uint32_t mem_rw(void);
   uint8_t ascii7seg(char);
-
-  uint8_t fdc_read();
-  uint8_t fdc_write();
 };
 
 #endif

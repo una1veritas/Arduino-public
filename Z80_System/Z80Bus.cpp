@@ -2,7 +2,7 @@
 
 #include <SPI.h>
 
-void Z80Bus::clock_presc_top_set(uint8_t presc, uint16_t top) {
+void Z80Bus::clock_set(uint8_t presc, uint16_t top) {
 	const uint8_t WGM_CTC_OCR1A = B0100;
 	const uint8_t COM_TOGGLE = B01, COM_DISCONNECT = B00;
 	presc = (presc > 5 ? 5 : presc);
@@ -50,52 +50,40 @@ void Z80Bus::clock_stop() {
 	pinMode(CLK_OUT, INPUT_PULLUP);
 }
 
-void Z80Bus::set_clock_mode(const uint8_t mode) {
+void Z80Bus::clock_mode_select(const uint8_t mode) {
 // stop clock
 	TCCR1B &= 0xf8; // once clear bits from CS12 to CS10 to stop (prescaler = No clk source)
 	switch(mode) {
 	case 0 : // 4 Hz
-		clock_presc_top_set(5, 2000);
+		clock_set(5, 2000);
 		clock_mode = 0;
 	  break;
 	case 1 : // 10 Hz
-		clock_presc_top_set(4, 3125); //
+		clock_set(4, 3125); //
 		clock_mode = 1;
 	  break;
 	case 3 : // 1 kHz
-		clock_presc_top_set(2, 1000);
+		clock_set(2, 1000);
 		clock_mode = 3;
 	  break;
 	case 4 : // 8 kHz
-		clock_presc_top_set(2, 250);
+		clock_set(2, 250);
 		clock_mode = 4;
 	  break;
-	case 5 :	// 20kHz
-		clock_presc_top_set(1, 400);
+	case 5 :	// 10kHz
+		clock_set(1, 800);
 		clock_mode = 5;
 	  break;
 	case 2 :
 	default: // 100Hz
-		clock_presc_top_set(3, 1250);
+		clock_set(3, 1250);
 		clock_mode = 2;
 	  break;
 	}
-	return clock_mode;
 }
 
 //uint8_t Z80Bus::io_rw(const uint8_t &port, const uint8_t &val, const uint8_t &inout) {
-/*
- *     AUXDAT = 5,		// aux data port
-    // FDCDIO = 8,  	//fdc-port:
-    FDCDRIVE = 10,  //fdc-port: # of drive
-    FDCTRACK,       //fdc-port: # of track
-    FDCSECTOR,      //fdc-port: # of sector
-    FDCOP,       //fdc-port: command
-    FDCST,       //fdc-port: status
-    DMAL = 15,   //dma-port: dma address low
-    DMAH,        //dma-port: dma address high
- *
- */
+
 uint32_t Z80Bus::io_rw() {
 	uint16_t port;
 	uint8_t data;
@@ -139,45 +127,12 @@ uint32_t Z80Bus::io_rw() {
 			Serial.print((char) data);
 		}
 		break;
-	case FDCDIO: // 8 FD byte data I/O
-		if (io_mode == OUT ) {
-			fdc.drives[fdc.drive].data = data_bus_get();
-		} else if (io_mode == IN ) {
-			data_bus_set(fdc.drives[fdc.drive].data);
-		}
-		break;
-	case FDCDRIVE:  //10, fdc-port: drive #
-		if (io_mode == OUT ) {
-			fdc.drive = data_bus_get();
-		} else if (io_mode == IN ) {
-			data_bus_set(fdc.drive);
-		}
-		break;
+	case FDCDRIVE:  //10, fdc-port: # of drive
 	case FDCTRACK:       //11, fdc-port: # of track
-		if (io_mode == OUT ) {
-			fdc.drives[fdc.drive].track = data_bus_get();
-		} else if (io_mode == IN ) {
-			data_bus_set(fdc.drives[fdc.drive].track);
-		}
-		break;
-	case FDCSECTOR:       //fdc-port: sector #
-		if (io_mode == OUT ) {
-			fdc.drives[fdc.drive].sector = data_bus_get();
-		} else if (io_mode == IN ) {
-			data_bus_set(fdc.drives[fdc.drive].sector);
-		}
-		break;
+	case FDCSECTOR:       //fdc-port: # of sector
 	case FDCOP:       //fdc-port: command
-		if (io_mode == IN ) {
-			fdc_read();
-		} else if (io_mode == OUT ) {
-			fdc_write();
-		}
-		break;
 	case FDCST:       //fdc-port: status
-		if (io_mode == IN ) {
-			data_bus_set(fdc.drives[fdc.drive].status);
-		}
+		// not populated
 		break;
 	case 16: // track_sel_h
 		break;
@@ -221,7 +176,7 @@ uint32_t Z80Bus::io_rw() {
 	case CLKMODE: // set/change clock mode
 		if ( io_mode == OUT ) {
 			data = data_bus_get();
-			set_clock_mode(data);
+			clock_mode_select(data);
 		}
 		break;
 	case LEDARRAY:
@@ -292,39 +247,6 @@ uint32_t Z80Bus::mem_rw() {
 	return (uint32_t(addr) << 16) | data;
 }
 
-
-uint8_t Z80Bus::fdc_read() {
-	/*
-	 *       unsigned long pos;
-      for (uint16_t page = 0; page < 1; ++page) {
-        pos = page;
-        pos <<= 7 ;
-        if ( pos < dskfile.size() ) {
-          dskfile.seek(pos);
-          for(unsigned long offset = 0; offset < 256 ; ++offset ) {
-            if ( pos + offset >= dskfile.size() )
-              break;
-            byte b = dskfile.read();
-            Serial.print(b>>8&0x0f, HEX);
-            Serial.print(b&0x0f, HEX);
-            Serial.print(' ');
-            if ( (offset & 0x0f) == 0x0f) {
-              Serial.println();
-            }
-            if ( (offset & 0xff) == 0xff)  {
-              Serial.println();
-            }
-          }
-        }
-      }
-	 *
-	 */
-	return fdc.drives[fdc.drive].status;
-}
-
-uint8_t Z80Bus::fdc_write() {
-	return fdc.drives[fdc.drive].status;
-}
 
 uint16_t Z80Bus::ram_check(const uint32_t & start_addr = 0x0000, const uint32_t & end_addr = 0x10000) {
 	uint8_t buf;
