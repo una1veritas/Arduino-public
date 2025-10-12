@@ -273,9 +273,9 @@ void loop() {
       z80bus.DMA_address(0);
       z80bus.DMA_read(dma_buff);
       dump(dma_buff, 0x100, 0);
-      z80bus.DMA_address(0x100);
-      z80bus.DMA_read(dma_buff);
-      dump(dma_buff, 0x100, 0x100);
+      //z80bus.DMA_address(0x100);
+      //z80bus.DMA_read(dma_buff);
+      //dump(dma_buff, 0x100, 0x100);
 
       Serial.println("Exit to I/O Controller mode.");
       z80bus.IOC_mode();
