@@ -1,5 +1,7 @@
 /* by sin, Aug, 2025 */
 #include <SPI.h>
+#include <SD.h>
+
 //#include <LiquidCrystal.h>
 
 #include "Z80Bus.h"
@@ -68,6 +70,7 @@ struct Terminal {
 const int SPI_CS = 53;//latchPin = 53; --- must be controlled by user
 //const int SPI_CLK = 52; //clockPin = 52; --- controlled by SPI module.
 //const int SPI_COPI = 51; //dataPin = 51; --- controlled by SPI module.
+const int SD_CS = SPI_CS;
 
 byte ascii7seg(byte ch) {
   const static uint8_t numeric7[] = { 0xc0, 0xf9, 0xa4, 0xb0, 0x99, 0x92, 0x82, 0xf8, 0x80, 0x90, 0xff };
@@ -109,6 +112,7 @@ byte ascii7seg(byte ch) {
 char busmode = ' ';
 long prev_millis;
 char buf[32];
+File dskpath;
 uint8_t dma_buff[256];
 
 void dump(uint8_t mem_buff[], const uint16_t size = 0x0100, const uint16_t offset_addr = 0x0000) {
@@ -143,9 +147,20 @@ void setup() {
   // SPI.setClockDivider(SPI_CLOCK_DIV4);  -- div4 seems to be the default clock divider value
   SPI.begin();
 
+  while (!SD.begin(SD_CS)) {
+    Serial.println("open SD/MMC failed.");
+    delay(3000);
+  }
+
+  dskpath = SD.open("/DRIVEA.DSK");
+    if (! dskpath) {
+    Serial.println("Couldn't open file /DRIVEA.DSK.");
+    while (true);
+  }
+  z80bus.set_dsk_file(dskpath);
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_set(2, 1000); 
+  z80bus.set_clock_mode(3);
   z80bus.clock_start();
   Serial.println("Reseting Z80...");
   z80bus.cpu_reset();
@@ -200,7 +215,7 @@ void loop() {
   uint8_t data;
   uint16_t addr;
   uint32_t val;
-  z80bus.clock_wait_rising_edge();
+  //z80bus.clock_wait_rising_edge();
    if ( !z80bus.MREQ() ) {
     if ( ! z80bus.RD() ) {
       /*
@@ -246,7 +261,7 @@ void loop() {
       busmode = 'o';
     } 
   }
-
+/*
   if (z80bus.clock_mode_current() <= 4) {
 	  addr = val>>16;
 	  data = val & 0xff;
@@ -283,4 +298,5 @@ void loop() {
     z80bus.clock_stop();
     while (true);
   }
+  */
 }

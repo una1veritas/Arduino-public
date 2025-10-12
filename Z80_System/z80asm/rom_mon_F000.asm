@@ -39,8 +39,10 @@ BUSDISP	equ 	129
 ; work space
 addr	equ		0EFA0H
 addr2	equ 	addr+2
+escqbuf	equ		addr+4
 lbuf	equ 	0EFB0H
 BUFSIZE equ 	63
+
 ;
 
         org     0F000h
@@ -157,6 +159,13 @@ mon_halt:
 
 
 ; subroutines
+;
+getchar:
+		in 		a, (CONSTA)
+		and 	a
+		jr 		z, getchar
+		in 		a, (CONIO)
+		ret
 
 ; getlin
 ; read up to c bytes into buffer pointed by hl, end with 0
@@ -170,12 +179,8 @@ getln:
 		out 	(CONIO), a
         ;
 getln_wait:
-		in 		a, (CONSTA)
-		and 	a
-		jr 		z, getln_wait
-;
-; no echo back
-		in 		a, (CONIO)
+		call 	getchar
+		;
 		cp 		$08 	;backspace
 		jr 		z, getln_bkspc
 		cp 		$7f		; del
@@ -185,6 +190,8 @@ getln_wait:
 		cp 		$0d
 		jr 		z, getln_end
 ; other ctrl codes
+		cp 		$1b
+		jp 		z, esc_seq_machine
 		cp 		$20
 		jr 		nc, getln_echo_proceed
 		jr 		getln_wait
@@ -204,6 +211,25 @@ getln_bkspc:
 		dec 	b
 		jr 		getln_wait
 
+esc_seq_machine:
+		ld		ix, escqbuf
+		ld 		(ix), a
+		inc 	ix
+		call 	getchar
+		cp 		'['
+		jr 		nz, getln_wait
+		ld 		(ix), a
+		inc 	ix
+		call 	getchar
+		cp 		'D'
+		ret 	nz
+		ld 		(ix), a
+		inc 	ix
+		clra	
+		ld 		(ix), a
+		; echo back
+		jr 		getln_bkspc
+
 getln_echo_proceed:
 		out 	(CONIO), a 		; echo back
 		;
@@ -218,7 +244,6 @@ getln_echo_proceed:
 
 getln_end:	; parse lbuf
 		ret
-
 ;
 ; print a nibble in A
 print_nibble:
@@ -250,6 +275,7 @@ print_endl:
 		ld 		a, $0d
 		out 	(CONIO), A
 		ret
+;
 ;
 print_str_hl:
 		ld 		a,(hl)
@@ -397,6 +423,23 @@ hexstr_de.rl4:
 		dec 	c
 		jr      nz, hexstr_de.loop
 		ret 			; return after c bytes read
+;
+;
+; translate adcii char digit in A register
+; into integer value
+dec2nib:
+		cp 		'0'
+		ret 	c		; A < '0'
+		cp 		'9' + 1
+		ccf
+		ret 	c
+		sub 	'0' 	; A was digit, results carry reset
+		ret
+;
+;
+
+
+
 
 ;
 clk_spd_change:
@@ -404,13 +447,89 @@ clk_spd_change:
 		out		(CLKMODE), a
 		ret
 
+;
 ; arithmetic routines
+;
+;8*8 multiplication
+;The following routine multiplies h by e and places the result in hl
+mul_h_e:
+   ld	d, 0	; Combining the overhead and
+   sla	h		; optimised first iteration
+   sbc	a, a
+   and	e
+   ld	l, a
+   ;
+   ld	b, 7
+mul_h_e.loop:
+   add	hl, hl          
+   jr	nc, $+3
+   add	hl, de
+   ;
+   djnz	mul_h_e.loop
+   ;
+   ret
+
+; 16*8 multiplication
+; The following routine multiplies de by a and places the result in ahl
+; (which means a is the most significant byte of the product, l the least 
+; significant and h the intermediate one...)
+;
+mul_a_de:
+   ld	c, 0
+   ld	h, c
+   ld	l, h
+   ;
+   add	a, a		; optimised 1st iteration
+   jr	nc, $+4
+   ld	h,d
+   ld	l,e
+   ;
+   ld b, 7
+mul_a_de.loop:
+   add	hl, hl
+   rla
+   jr	nc, $+4
+   add	hl, de
+   adc	a, c   		; yes this is actually adc a, 0 but since c is free we set it to zero and so we can save 1 byte and up to 3 T-states per iteration
+   ;
+   djnz	_loop
+   ;   
+   ret
+
+;
+; 16*16 multiplication
+;The following routine multiplies bc by de and places the result in dehl.
+mul_de_bc:
+   ld	hl, 0
+
+   sla	e		; optimised 1st iteration
+   rl	d
+   jr	nc, $+4
+   ld	h, b
+   ld	l, c
+
+   ld	a, 15
+_loop:
+   add	hl, hl
+   rl	e
+   rl	d
+   jr	nc, $+6
+   add	hl, bc
+   jr	nc, $+3
+   inc	de
+   
+   dec	a
+   jr	nz, _loop
+   
+   ret
+ 
+ 
 ; divide dividiend in d by divisor in e 
 ; returns quotient in d and remainder in a
 div_d_e:
    xor	a
    ld	b, 8
-
+   ;
 div_d_e_loop:
    sla	d
    rla
@@ -418,9 +537,9 @@ div_d_e_loop:
    jr	c, $+4
    sub	e
    inc	d
-   
+   ;
    djnz	div_d_e_loop
-   
+   ;
    ret
 
 ; dvi_hl_de stack in out wrapper
