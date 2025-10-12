@@ -83,8 +83,6 @@ read_line:
 		jr 		z, write_mode
 		cp		'R'
 		jr 		z, run_mode
-		;cp		'C'
-		;jr 		z, call_mode
 		cp		'S'
 		jr 		z, clk_mode
 		call 	print_err_msg
@@ -149,14 +147,7 @@ write_mode.exit
 run_mode:
 		ld 		hl, (addr)
 		jp 		(hl)
-;
-call_mode:
-		ld 		hl, read_line
-		push 	hl
-		ld 		hl, (addr)
-		jp 		(hl)
-;
-;
+;;
 ;  clockspeed change by output number to port 128
 clk_mode:
 		ld 		a, e
@@ -166,6 +157,15 @@ clk_mode:
 mon_halt:
 		halt
 
+
+; subroutines
+;
+getchar:
+		in 		a, (CONSTA)
+		and 	a
+		jr 		z, getchar
+		in 		a, (CONIO)
+		ret
 
 ; getlin
 ; read up to c bytes into buffer pointed by hl, end with 0
@@ -179,11 +179,7 @@ getln:
 		out 	(CONIO), a
         ;
 getln_wait:
-		;call 	getchar
-		in 		a, (CONSTA)
-		and 	a
-		jr 		z, getln_wait
-		in 		a, (CONIO)
+		call 	getchar
 		;
 		cp 		$08 	;backspace
 		jr 		z, getln_bkspc
