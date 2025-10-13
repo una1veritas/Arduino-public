@@ -78,6 +78,7 @@ long prev_millis;
 char buf[32];
 uint8_t dma_buff[256];
 DFR7segarray dfr7seg(19, 20, 21);
+File dskfile;
 
 void dump(uint8_t mem_buff[], const uint16_t size = 0x0100, const uint16_t offset_addr = 0x0000) {
   //char buf[16];
@@ -114,18 +115,29 @@ void setup() {
   dfr7seg.clear();
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_set(2, 1000); 
+  z80bus.clock_mode_select(2); 
   z80bus.clock_start();
   Serial.println("Reseting Z80...");
   z80bus.cpu_reset();
 
-  if (!z80bus.DMA_mode() ) {
+  while (! SD.begin(SS) ) {
+    Serial.println("Initializing SD card interface failed.");
+    delay(3000);
+  }
+  dskfile = SD.open("/drivea.dsk");
+  if (!dskfile) {
+    Serial.println("error opening dskfile.");
+    while(1);
+  }
+  z80bus.fdc.set_SD_file(&dskfile, 0);
+  Serial.println("/drivea.dsk has been set to drive A.");
+
+  if (! z80bus.DMA_mode() ) {
     //lcdt.print(0,0,"DMA mode failed.");
     while (true) ;
   } else {
     Serial.println("Entered DMA mode.");
     //lcdt.print(0,0,"DMA mode.");
-
     
     Serial.print("Memory check...");
     uint16_t errcount = z80bus.ram_check(0x0000, 0x1000);
