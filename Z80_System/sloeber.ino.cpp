@@ -2,57 +2,19 @@
 //This is a automatic generated file
 //Please do not modify this file
 //If you touch this file your change will be overwritten during the next build
-//This file has been generated on 2025-10-13 22:01:40
+//This file has been generated on 2025-09-22 16:54:06
 
 #include "Arduino.h"
 #include <SPI.h>
+#include <LiquidCrystal.h>
 #include "Z80Bus.h"
-#include "DFR7segarray.h"
-#include <LiquidCrystal.h>
-#include <LiquidCrystal.h>
-#include <LiquidCrystal.h>
-#include <LiquidCrystal.h>
-#include <LiquidCrystal.h>
-#include <LiquidCrystal.h>
-#include <LiquidCrystal.h>
-#include <LiquidCrystal.h>
-#include <LiquidCrystal.h>
-#include <LiquidCrystal.h>
+#include "progmem_rom.h"
 
-void setup() ;
-void loop() ;
-void setup() ;
-void loop() ;
-void setup() ;
-void loop() ;
-void setup() ;
-void loop() ;
-void setup() ;
-void loop() ;
-void setup() ;
-void loop() ;
-void setup() ;
-void loop() ;
-void setup() ;
-void loop() ;
-void setup() ;
-void loop() ;
-void setup() ;
-void loop() ;
+byte ascii7seg(byte ch) ;
 void setup() ;
 void loop() ;
 
 #include "Z80_System.ino"
 
-#include "libraries/LiquidCrystal/examples/Autoscroll/Autoscroll.ino"
-#include "libraries/LiquidCrystal/examples/Blink/Blink.ino"
-#include "libraries/LiquidCrystal/examples/Cursor/Cursor.ino"
-#include "libraries/LiquidCrystal/examples/CustomCharacter/CustomCharacter.ino"
-#include "libraries/LiquidCrystal/examples/Display/Display.ino"
-#include "libraries/LiquidCrystal/examples/HelloWorld/HelloWorld.ino"
-#include "libraries/LiquidCrystal/examples/Scroll/Scroll.ino"
-#include "libraries/LiquidCrystal/examples/SerialDisplay/SerialDisplay.ino"
-#include "libraries/LiquidCrystal/examples/TextDirection/TextDirection.ino"
-#include "libraries/LiquidCrystal/examples/setCursor/setCursor.ino"
 
 #endif

@@ -2,7 +2,6 @@
 #define _Z80BUS_H_
 
 #include <Arduino.h>
-#include <SD.h>
 
 #define ADDR_OUT_L PORTA
 #define ADDR_OUT_H PORTC
@@ -27,81 +26,13 @@ enum IO_Ports {
     FDCDRIVE = 10,  //fdc-port: # of drive
     FDCTRACK,       //fdc-port: # of track
     FDCSECTOR,      //fdc-port: # of sector
-    FDCOP,       //fdc-port: command 0... read
-    FDCST,       //fdc-port: status  0... ok
+    FDCOP,       //fdc-port: command
+    FDCST,       //fdc-port: status
     DMAL = 15,   //dma-port: dma address low
     DMAH,        //dma-port: dma address high
-	DMAEXEC,
-	DMARES,
 
 	CLKMODE = 128,
 	LED7SEG  = 129,
-};
-
-struct DMA_Controller {
-	static const uint16_t block_size = 0x100;
-
-	union {
-		uint16_t address;
-		struct {
-			uint8_t addrlow, addrhigh;
-		};
-	};
-
-	enum DMA_request {
-		NO_REQUEST = 0, READ_RAM = 1, WRITE_RAM = 0xff,
-	} transfer_mode;
-
-	uint8_t result;
-
-	DMA_Controller() : address(), transfer_mode(NO_REQUEST), result(0) {}
-};
-
-struct Disk_Controller {
-	static const uint16_t sector_size = 128;
-	static const uint8_t num_of_drives = 4;
-	enum Disk_Type {
-		IBM8INSS = 0,
-	};
-	enum OpCode {
-		READ = 0,
-		WRITE = 0xff,
-	};
-
-	struct driveinfo {
-		uint8_t disktype;
-		uint16_t sector;
-		uint16_t track;
-		uint16_t seekpos;
-		File * sdfile;
-		driveinfo() { disktype = IBM8INSS; }
-	} drives[num_of_drives];
-	uint8_t current_drive;
-	uint8_t opcode;
-
-	Disk_Controller() : current_drive(0) { }
-
-	void set_SD_file(File * sdfile, uint8_t drv = 0) {
-		drives[drv].sdfile = sdfile;
-	}
-
-	void sel_drive(uint8_t dno) {
-		current_drive = dno;
-	}
-
-	void sel_track(uint8_t tno) {
-		drives[current_drive].track = tno;
-	}
-
-	void sel_sector(uint8_t sno) {
-		drives[current_drive].sector = sno;
-	}
-
-	void set_opcode(uint8_t code) {
-		opcode = code;
-	}
-
-	uint8_t status() { return 0; }
 };
 
 
@@ -127,9 +58,17 @@ public:
   const uint8_t CLK_OUT = 13;  // PB7 (OC1C)
 
   const uint8_t MEM_EN = 2;
+  
+  enum DMA_mode {
+    NO_REQUEST = 0,
+    READ_RAM = 1,
+    WRITE_RAM = 0xff,
+  };
+  const uint16_t dma_block_size = 0x100;
 
-  DMA_Controller dma;
-  Disk_Controller fdc;
+  volatile uint16_t dma_address;
+  volatile DMA_mode dma_transfer_mode;
+  volatile uint8_t dma_result;
 
   uint8_t clock_mode;
   uint8_t PROGMEM * pages[16]{
@@ -196,8 +135,9 @@ public:
     pinMode(_M1, INPUT);
     pinMode(_RFSH, INPUT);
 
-    dma.address = 0;
-    dma.transfer_mode = dma.NO_REQUEST;
+    dma_address = 0;
+    dma_result = 0;
+    dma_transfer_mode = NO_REQUEST;
 
     set_rom_page(rom_mon_F000, 0x0f);
   }
@@ -245,13 +185,13 @@ public:
 	 * ATMega controls all the devices.
 	 */
   bool DMA_mode() {
-	  if (RESET() == HIGH) {
-	  if (BUSACK() == HIGH) {
-		BUSREQ(LOW);
-		while (BUSACK() == HIGH)
-		  clock_wait_rising_edge();
-	  }
-	  }
+    if (RESET() == HIGH) {
+      if (BUSACK() == HIGH) {
+        BUSREQ(LOW);
+        while (BUSACK() == HIGH)
+          clock_wait_rising_edge();
+      }
+    }
     ram_disable();
     address_bus16_mode(OUTPUT);
     pinMode(_MREQ, OUTPUT);
@@ -275,8 +215,10 @@ public:
     pinMode(_RD, INPUT);
     pinMode(_WR, INPUT);
     ram_enable();  // IO/mem is controlled by Z80
-    if (BUSACK() == LOW)
+    if (BUSREQ() == LOW)
       BUSREQ(HIGH);
+    if (RESET() == LOW)
+      RESET(HIGH);
     while (BUSACK() == LOW)
       ;
   }
@@ -293,8 +235,10 @@ public:
     pinMode(_MREQ, INPUT);
     pinMode(_RD, INPUT);
     pinMode(_WR, INPUT);
-    if ( BUSACK() == LOW )
+    if (BUSREQ() == LOW)
       BUSREQ(HIGH);
+    if (RESET() == LOW)
+      RESET(HIGH);
     while (BUSACK() == LOW)
       ;
   }
@@ -402,52 +346,52 @@ public:
   }
 
   uint8_t DMA_requested() {
-    return dma.transfer_mode != dma.NO_REQUEST;
+    return dma_transfer_mode != NO_REQUEST;
   }
 
   uint8_t DMA_direction() {
-    return (dma.transfer_mode == dma.WRITE_RAM ? OUTPUT : INPUT);
+    return (dma_transfer_mode == WRITE_RAM ? OUTPUT : INPUT);
   }
 
   void DMA_read(uint8_t mem[]) {
-    dma.transfer_mode = dma.READ_RAM;  // issue request internaly
+    dma_transfer_mode = READ_RAM;  // issue request internaly
     DMA_exec(mem);
   }
 
   void DMA_write(uint8_t mem[]) {
-    dma.transfer_mode = dma.WRITE_RAM;  // issue request internaly
+    dma_transfer_mode = WRITE_RAM;  // issue request internaly
     DMA_exec(mem);
   }
 
   uint8_t DMA_block_size() {
-    return dma.block_size;
+    return dma_block_size;
   }
 
   void DMA_address(const uint16_t& addr) {
-    dma.address = addr;
+    dma_address = addr;
   }
 
   void DMA_exec(uint8_t mem[]) {
-    if (dma.transfer_mode == dma.NO_REQUEST)
-      return;
-    if ( BUSACK() == HIGH ) {
-      dma.transfer_mode = dma.NO_REQUEST;
-      dma.result = 0xff;
+    if (dma_transfer_mode == NO_REQUEST)
+      return 0x00;
+    if (BUSACK() == HIGH and RESET() == HIGH) {
+      dma_transfer_mode = NO_REQUEST;
+      dma_result = 0xff;
       return;
     }
     ram_enable();
-    if (dma.transfer_mode == dma.WRITE_RAM) {
-      for (uint16_t ix = 0; ix < dma.block_size; ++ix) {
-        ram_write(dma.address + ix, mem[ix]);
+    if (dma_transfer_mode == WRITE_RAM) {
+      for (uint16_t ix = 0; ix < dma_block_size; ++ix) {
+        ram_write(dma_address + ix, mem[ix]);
       }
-    } else if (dma.transfer_mode == dma.READ_RAM) {
-      for (uint16_t ix = 0; ix < dma.block_size; ++ix) {
-        mem[ix] = ram_read(dma.address + ix);
+    } else if (dma_transfer_mode == READ_RAM) {
+      for (uint16_t ix = 0; ix < dma_block_size; ++ix) {
+        mem[ix] = ram_read(dma_address + ix);
       }
     }
     ram_disable();
-    dma.transfer_mode = dma.NO_REQUEST;
-    dma.result = 0x00;
+    dma_transfer_mode = NO_REQUEST;
+    dma_result = 0x00;
   }
 
   void RESET(uint8_t val) {
@@ -456,7 +400,7 @@ public:
   }
 
   uint8_t RESET() {
-    return digitalRead(_RESET);
+    digitalRead(_RESET);
   }
 
   void cpu_reset() {
@@ -520,6 +464,10 @@ public:
   void BUSREQ(uint8_t hilo) {
     pinMode(_BUSREQ, OUTPUT);
     digitalWrite(_BUSREQ, hilo);
+  }
+
+  uint8_t BUSREQ() {
+    digitalRead(_BUSREQ);
   }
 
   bool bus_request() {
