@@ -13,7 +13,7 @@ CONSTA 	equ 	0
 CONIO 	equ 	1
 ;CONOUT equ 	2
 CLKMODE	equ 	128
-BUSDISP	equ 	129
+LED7SEG	equ 	129
 ;
 ;
 ; a  ... workspace reg.
@@ -157,6 +157,13 @@ mon_halt:
 
 
 ; subroutines
+; getchar
+getchar:
+		in 		a, (CONSTA)
+		and 	a
+		jr 		z, getchar
+		in 		a, (CONIO)
+		ret
 
 ; getlin
 ; read up to c bytes into buffer pointed by hl, end with 0
@@ -170,16 +177,18 @@ getln:
 		out 	(CONIO), a
         ;
 getln_wait:
-		in 		a, (CONSTA)
-		and 	a
-		jr 		z, getln_wait
-;
-; no echo back
-		in 		a, (CONIO)
+		call 	getchar
+		;in 		a, (CONSTA)
+		;and 	a
+		;jr 		z, getln_wait
+		;in 		a, (CONIO)
+		; 
 		cp 		$08 	;backspace
 		jr 		z, getln_bkspc
 		cp 		$7f		; del
 		jr 		z, getln_bkspc
+		cp 		$1b
+		jr 		z, getln_escseq
 		cp 		$0a
 		jr 		z, getln_end
 		cp 		$0d
@@ -202,6 +211,15 @@ getln_bkspc:
 		dec 	hl
 		ld 		(hl), $0
 		dec 	b
+		jr 		getln_wait
+
+getln_escseq:
+		call  	getchar
+		cp 		'['
+		jr 		nz, getln_wait
+		call 	getchar
+		cp 		'D'
+		jr 		z, getln_bkspc
 		jr 		getln_wait
 
 getln_echo_proceed:
@@ -405,60 +423,6 @@ clk_spd_change:
 		ret
 
 ; arithmetic routines
-; divide dividiend in d by divisor in e 
-; returns quotient in d and remainder in a
-div_d_e:
-   xor	a
-   ld	b, 8
-
-div_d_e_loop:
-   sla	d
-   rla
-   cp	e
-   jr	c, $+4
-   sub	e
-   inc	d
-   
-   djnz	div_d_e_loop
-   
-   ret
-
-; dvi_hl_de stack in out wrapper
-; [ret addr] [dividiend] [divisor] 
-; --> [ret addr] [quotient] [reminder]
-div16:
-    ld      ix, 02
-    add     ix, sp
-    ld      c, (ix)
-    ld      a, (ix+1)
-    ld      de, (ix+2)
-    call    div_ac_de
-    ld      (ix+2), hl
-    ld      (ix), c
-    ld      (ix+1), a
-    ret
-
-; The following routine divides ac (dividiend) by de (divisor) and 
-; places the quotient in ac and the remainder in hl
-; destrys hl, a, b, c, d, e, ix
-; https://wikiti.brandonw.net/index.php?title=Z80_Routines:Math:Division
-;
-div_ac_de:
-    ld	    hl, 0
-    ld	    b, 16
-div_ac_de_loop:
-    sll	c
-    rla
-    adc	hl, hl
-    sbc	hl, de
-    jr	nc, $+4 
-    add	hl, de
-    dec	c
-    
-    djnz	div_ac_de_loop
-    ret
-
-
 ; dvi_hl_c stack in out wrapper
 ; [ret addr] [dividiend] [divisor:low] 
 ; --> [ret addr] [quotient] [reminder:low]

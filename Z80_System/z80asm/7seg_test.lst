@@ -1,0 +1,83 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "7seg_test.asm"
+                        ; date: 2025-10-13 13:25:28
+                        ; --------------------------------------
+
+
+                        #include "lib_rom_mon.inc"
+                        ;
+0080:                   CLKMODE            = $0080
+0001:                   CONIO              = $0001        
+0000:                   CONSTA             = $0000        
+0081:                   LED7SEG            = $0081
+                        
+                        ;
+F000:                   mon               = $F000
+F1E2:                   clk_spd_change    = $F1E2 
+F164:                   dump              = $F164
+F0C5:                   getln             = $F0C5 
+F1AD:                   hex2nib           = $F1AD
+F1CB:                   hexstr_de         = $F1CB 
+F120:                   print_byte        = $F120
+F12D:                   print_endl        = $F12D 
+F13E:                   print_err_msg     = $F13E
+F111:                   print_nibble      = $F111
+F136:                   print_str_hl      = $F136 
+                        
+F212:                   print_hl_dec       = $F212 
+F1E7:                   div16_8            = $F1E7 
+                        
+0100:                           org     0100h
+0100:                   test:
+0100: CD0601   [17]             call    led7seg.out
+0103: C300F0   [27]             jp      mon
+                        
+0106:                   led7seg.out:
+0106: 212001   [10]             ld      hl, LED7SEG_DATA
+0109: 0608     [17]             ld      b, 8
+010B: 7E       [ 7]     loop:   ld      a, (hl)
+010C: D381     [18]             out     (LED7SEG), A
+010E: 23       [24]             inc     hl
+010F: 10FA     [32|37]          djnz    loop
+0111: C9       [42]             ret
+                        
+                                org     0120h
+0120:                   LED7SEG_DATA:
+0120: 41424344                  db      "ABCD0123", 0
+0124: 30313233          
+0128: 00                
+
+
+; +++ segments +++
+
+#CODE          = $0100 =   256,  size = $0029 =    41
+
+; +++ global symbols +++
+
+CLKMODE        = $0080 =   128          lib_rom_mon.inc:2 (unused)
+CONIO          = $0001 =     1          lib_rom_mon.inc:3 (unused)
+CONSTA         = $0000 =     0          lib_rom_mon.inc:4 (unused)
+LED7SEG        = $0081 =   129          lib_rom_mon.inc:5
+LED7SEG_DATA   = $0120 =   288          7seg_test.asm:18
+_end           = $0129 =   297          lib_rom_mon.inc:2 (unused)
+_size          = $0029 =    41          lib_rom_mon.inc:2 (unused)
+clk_spd_change = $F1E2 = 61922          lib_rom_mon.inc:9 (unused)
+div16_8        = $F1E7 = 61927          lib_rom_mon.inc:21 (unused)
+dump           = $F164 = 61796          lib_rom_mon.inc:10 (unused)
+getln          = $F0C5 = 61637          lib_rom_mon.inc:11 (unused)
+hex2nib        = $F1AD = 61869          lib_rom_mon.inc:12 (unused)
+hexstr_de      = $F1CB = 61899          lib_rom_mon.inc:13 (unused)
+led7seg.out    = $0106 =   262          7seg_test.asm:8
+loop           = $010B =   267          7seg_test.asm:11
+mon            = $F000 = 61440          lib_rom_mon.inc:8
+print_byte     = $F120 = 61728          lib_rom_mon.inc:14 (unused)
+print_endl     = $F12D = 61741          lib_rom_mon.inc:15 (unused)
+print_err_msg  = $F13E = 61758          lib_rom_mon.inc:16 (unused)
+print_hl_dec   = $F212 = 61970          lib_rom_mon.inc:20 (unused)
+print_nibble   = $F111 = 61713          lib_rom_mon.inc:17 (unused)
+print_str_hl   = $F136 = 61750          lib_rom_mon.inc:18 (unused)
+test           = $0100 =   256          7seg_test.asm:4 (unused)
+
+
+total time: 0.0008 sec.
+no errors

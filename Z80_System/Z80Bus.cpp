@@ -1,6 +1,6 @@
-#include "Z80Bus.h"
-
 #include <SPI.h>
+#include "Z80Bus.h"
+#include "DFR7segarray.h"
 
 void Z80Bus::clock_set(uint8_t presc, uint16_t top) {
 	const uint8_t WGM_CTC_OCR1A = B0100;
@@ -66,12 +66,12 @@ void Z80Bus::clock_mode_select(const uint8_t mode) {
 		clock_set(2, 1000);
 		clock_mode = 3;
 	  break;
-	case 4 : // 8 kHz
-		clock_set(2, 250);
+	case 4 : // 10 kHz
+		clock_set(2, 200);
 		clock_mode = 4;
 	  break;
-	case 5 :	// 10kHz
-		clock_set(1, 800);
+	case 5 :	// 20kHz
+		clock_set(1, 400);
 		clock_mode = 5;
 	  break;
 	case 2 :
@@ -179,16 +179,13 @@ uint32_t Z80Bus::io_rw() {
 			clock_mode_select(data);
 		}
 		break;
-	case LEDARRAY:
+	case LED7SEG:
 		if (io_mode == OUT) {
 			data = data_bus_get();
 			WAIT(LOW);
-			data = ascii7seg(data);
-			digitalWrite(53, LOW);
-			SPI.begin();
-			SPI.transfer(data);
-			SPI.end();
-			digitalWrite(53, HIGH);
+			digitalWrite(21, LOW);
+			shiftOut(19, 20, MSBFIRST, ascii7seg(data));
+			digitalWrite(21, HIGH);
 			WAIT(HIGH);
 		}
 		break;

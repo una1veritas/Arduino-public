@@ -32,7 +32,7 @@ enum IO_Ports {
     DMAH,        //dma-port: dma address high
 
 	CLKMODE = 128,
-	LEDARRAY  = 129,
+	LED7SEG  = 129,
 };
 
 
@@ -42,7 +42,7 @@ public:
   static const uint8_t ADDR_BUS_WIDTH = 16;
   static const uint8_t DATA_BUS_WIDTH = 8;
   static const uint8_t boot_0000[256] PROGMEM;
-  static const uint8_t rom_mon_F000[512] PROGMEM;
+  static const uint8_t rom_mon_F000[768] PROGMEM;
   static const uint8_t basic_0000[8192] PROGMEM;
 
 public:

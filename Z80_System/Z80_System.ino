@@ -3,6 +3,7 @@
 //#include <LiquidCrystal.h>
 
 #include "Z80Bus.h"
+#include "DFR7segarray.h"
 
 //#define BUS_DEBUG
 
@@ -69,40 +70,6 @@ const int SPI_CS = 53;//latchPin = 53; --- must be controlled by user
 //const int SPI_CLK = 52; //clockPin = 52; --- controlled by SPI module.
 //const int SPI_COPI = 51; //dataPin = 51; --- controlled by SPI module.
 
-byte ascii7seg(byte ch) {
-  const static uint8_t numeric7[] = { 0xc0, 0xf9, 0xa4, 0xb0, 0x99, 0x92, 0x82, 0xf8, 0x80, 0x90, 0xff };
-  const static uint8_t alpha7[] = { 0x88, 0x83, 0xc6, 0xa1, 0x86, 0x8e, 0xc2, 0x89, 0x79, 0xe1,
-    0x09 /* 0x89*/, 0xc7, 0xbb /* 0xaa*/, 0xab /* 0xc8*/, 0xa3, 0x8c, 0x98, 0xaf /* 0xce */, 0x92 /*0x9b*/,
-    0x87, 0xc1, 0xc1 /* 0xe3*/, 0x86 /* 0xd5 */, 0xb6, 0x91, 0x24 /* 0xb8*/,
-  };  //a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
-  if ('0' <= ch and ch <= '9') {
-    return numeric7[ch - '0'];
-  }
-  switch(ch){
-    case '.':
-    case ',':
-      return 0x7f;
-      break;
-    case ' ':
-      return 0xff;
-      break;
-    case 'i':
-      return 0x7b;
-      break;
-    case 'o':
-      return 0xa3;
-      break;
-    case 'u':
-      return 0xe3;
-      break;
-  }
-  ch = toupper(ch);
-  if ('A' <= ch and ch <= 'Z') {
-    return alpha7[ch - 'A'];
-  } 
-  return 0xff;
-}
-
 
 //uint16_t addr;
 //uint8_t data;
@@ -110,6 +77,7 @@ char busmode = ' ';
 long prev_millis;
 char buf[32];
 uint8_t dma_buff[256];
+DFR7segarray dfr7seg(19, 20, 21);
 
 void dump(uint8_t mem_buff[], const uint16_t size = 0x0100, const uint16_t offset_addr = 0x0000) {
   //char buf[16];
@@ -142,7 +110,8 @@ void setup() {
   digitalWrite(SPI_CS, HIGH);
   // SPI.setClockDivider(SPI_CLOCK_DIV4);  -- div4 seems to be the default clock divider value
   SPI.begin();
-
+  
+  dfr7seg.clear();
   // nop test
   //z80bus.mem_disable();
   z80bus.clock_set(2, 1000); 
@@ -200,7 +169,7 @@ void loop() {
   uint8_t data;
   uint16_t addr;
   uint32_t val;
-  z80bus.clock_wait_rising_edge();
+  //z80bus.clock_wait_rising_edge();
    if ( !z80bus.MREQ() ) {
     if ( ! z80bus.RD() ) {
       /*
@@ -247,25 +216,13 @@ void loop() {
     } 
   }
 
-  if (z80bus.clock_mode_current() <= 4) {
-	  addr = val>>16;
-	  data = val & 0xff;
-	  if ( busmode == 'o' or busmode == 'i') {
-		addr &= 0xff;
-		snprintf(buf, 9, "  %02X%c %02X", addr, busmode, data );
-	  } else {
-		snprintf(buf, 9, "%04X%c %02X", addr, busmode, data );
-	  }
-	  digitalWrite(SPI_CS, LOW);
-	  for (int i = 8; i > 0; ) {
-		  SPI.transfer(ascii7seg(buf[--i]));
-	  }
-	  digitalWrite(SPI_CS, HIGH);
-	  prev_millis = millis();
+  if (z80bus.clock_mode_current() < 4) {
+    dfr7seg.show_digits(val>>16 & 0xffff, val & 0xff, busmode);
   }
 
   if ( ! z80bus.HALT() ) {
     Serial.println("Halted.");
+    /*
     if ( z80bus.DMA_mode() ) {
       Serial.println("Entered DMA mode.");
       //lcdt.print(0,0,"DMA mode.");
@@ -273,14 +230,13 @@ void loop() {
       z80bus.DMA_address(0);
       z80bus.DMA_read(dma_buff);
       dump(dma_buff, 0x100, 0);
-      //z80bus.DMA_address(0x100);
-      //z80bus.DMA_read(dma_buff);
-      //dump(dma_buff, 0x100, 0x100);
 
       Serial.println("Exit to I/O Controller mode.");
       z80bus.IOC_mode();
     }
+    */
     z80bus.clock_stop();
+    Serial.println("Z80 Clock stopped.");
     while (true);
   }
 }
