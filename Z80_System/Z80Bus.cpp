@@ -193,6 +193,9 @@ uint32_t Z80Bus::io_rw() {
 		data = 0;
 	}
 	while (IORQ() == LOW) {}
+	if (BUSACK() == LOW) {
+		BUSREQ(HIGH);
+	}
 	return (uint32_t(port) << 16) | data;
 }
 

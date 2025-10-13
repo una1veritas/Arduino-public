@@ -2,6 +2,7 @@
 #define _Z80BUS_H_
 
 #include <Arduino.h>
+#include <SD.h>
 
 #define ADDR_OUT_L PORTA
 #define ADDR_OUT_H PORTC
@@ -30,11 +31,78 @@ enum IO_Ports {
     FDCST,       //fdc-port: status
     DMAL = 15,   //dma-port: dma address low
     DMAH,        //dma-port: dma address high
+	DMAEXEC,
+	DMARES,
 
 	CLKMODE = 128,
 	LED7SEG  = 129,
 };
 
+struct DMA_Controller {
+	static const uint16_t block_size = 0x100;
+
+	union {
+		uint16_t address;
+		struct {
+			uint8_t addrlow, addrhigh;
+		};
+	};
+
+	enum DMA_request {
+		NO_REQUEST = 0, READ_RAM = 1, WRITE_RAM = 0xff,
+	} transfer_mode;
+
+	uint8_t result;
+
+	DMA_Controller() : address(), transfer_mode(NO_REQUEST), result(0) {}
+};
+
+struct Disk_Controller {
+	static const uint16_t sector_size = 128;
+	static const uint8_t num_of_drives = 4;
+	enum Disk_Type {
+		IBM8INSS = 0,
+	};
+	enum OpCode {
+		READ = 0,
+		WRITE = 0xff,
+	};
+
+	struct driveinfo {
+		uint8_t disktype;
+		uint16_t sector;
+		uint16_t track;
+		uint16_t seekpos;
+		File * sdfile;
+		driveinfo() { disktype = IBM8INSS; }
+	} drives[num_of_drives];
+	uint8_t current_drive;
+	uint8_t opcode;
+
+	Disk_Controller() : current_drive(0) { }
+
+	void set_SD_file(File * sdfile, uint8_t drv = 0) {
+		drives[drv].sdfile = sdfile;
+	}
+
+	void sel_drive(uint8_t dno) {
+		current_drive = dno;
+	}
+
+	void sel_track(uint8_t tno) {
+		drives[current_drive].track = tno;
+	}
+
+	void sel_sector(uint8_t sno) {
+		drives[current_drive].sector = sno;
+	}
+
+	void set_opcode(uint8_t code) {
+		opcode = code;
+	}
+
+	uint8_t status() { return 0; }
+};
 
 struct Z80Bus {
 public:
