@@ -216,7 +216,7 @@ void loop() {
     } 
   }
 
-  if (z80bus.clock_mode_current() < 4) {
+  if (z80bus.clock_mode_current() < 3) {
     dfr7seg.show_digits(val>>16 & 0xffff, val & 0xff, busmode);
   }
 
