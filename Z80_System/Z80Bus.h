@@ -40,11 +40,23 @@ enum IO_Ports {
 
 struct DMA_Controller {
 	static const uint16_t block_size = 0x100;
+	  /*
+	  enum DMA_mode {
+	    NO_REQUEST = 0,
+	    READ_RAM = 1,
+	    WRITE_RAM = 0xff,
+	  };
+	  const uint16_t dma_block_size = 0x100;
+
+	  volatile uint16_t dma_address;
+	  volatile DMA_mode dma_transfer_mode;
+	  volatile uint8_t dma_result;
+	  */
 
 	union {
-		uint16_t address;
+		uint16_t addr16;
 		struct {
-			uint8_t addrlow, addrhigh;
+			uint8_t addr_low8, addr_high8;
 		};
 	};
 
@@ -54,7 +66,20 @@ struct DMA_Controller {
 
 	uint8_t result;
 
-	DMA_Controller() : address(), transfer_mode(NO_REQUEST), result(0) {}
+	DMA_Controller() { init(); }
+
+	void init() {
+		addr16 = 0;
+		transfer_mode = NO_REQUEST;
+		result = 0;
+	}
+
+	void set_address_low(uint8_t addrlow) {
+		addr_low8 = addrlow;
+	}
+	void set_address_high(uint8_t addrhi) {
+		addr_high8 = addrhi;
+	}
 };
 
 struct Disk_Controller {
@@ -72,6 +97,8 @@ struct Disk_Controller {
 		uint8_t disktype;
 		uint16_t sector;
 		uint16_t track;
+		//
+		uint8_t status;
 		uint16_t seekpos;
 		File * sdfile;
 		driveinfo() { disktype = IBM8INSS; }
@@ -79,7 +106,12 @@ struct Disk_Controller {
 	uint8_t current_drive;
 	uint8_t opcode;
 
-	Disk_Controller() : current_drive(0) { }
+	Disk_Controller() { init(); }
+
+	void init() {
+		current_drive = 0;
+		opcode = READ;
+	}
 
 	void set_SD_file(File * sdfile, uint8_t drv = 0) {
 		drives[drv].sdfile = sdfile;
@@ -126,18 +158,12 @@ public:
   const uint8_t CLK_OUT = 13;  // PB7 (OC1C)
 
   const uint8_t MEM_EN = 2;
+
+  Disk_Controller fdc;
+  DMA_Controller dma;
+
+
   
-  enum DMA_mode {
-    NO_REQUEST = 0,
-    READ_RAM = 1,
-    WRITE_RAM = 0xff,
-  };
-  const uint16_t dma_block_size = 0x100;
-
-  volatile uint16_t dma_address;
-  volatile DMA_mode dma_transfer_mode;
-  volatile uint8_t dma_result;
-
   uint8_t clock_mode;
   uint8_t PROGMEM * pages[16]{
     0,
@@ -203,9 +229,8 @@ public:
     pinMode(_M1, INPUT);
     pinMode(_RFSH, INPUT);
 
-    dma_address = 0;
-    dma_result = 0;
-    dma_transfer_mode = NO_REQUEST;
+    dma.init();
+    fdc.init();
 
     set_rom_page(rom_mon_F000, 0x0f);
   }
@@ -414,52 +439,52 @@ public:
   }
 
   uint8_t DMA_requested() {
-    return dma_transfer_mode != NO_REQUEST;
+    return dma.transfer_mode != dma.NO_REQUEST;
   }
 
   uint8_t DMA_direction() {
-    return (dma_transfer_mode == WRITE_RAM ? OUTPUT : INPUT);
+    return (dma.transfer_mode == dma.WRITE_RAM ? OUTPUT : INPUT);
   }
 
   void DMA_read(uint8_t mem[]) {
-    dma_transfer_mode = READ_RAM;  // issue request internaly
+    dma.transfer_mode = dma.READ_RAM;  // issue request internaly
     DMA_exec(mem);
   }
 
   void DMA_write(uint8_t mem[]) {
-    dma_transfer_mode = WRITE_RAM;  // issue request internaly
+    dma.transfer_mode = dma.WRITE_RAM;  // issue request internaly
     DMA_exec(mem);
   }
 
   uint8_t DMA_block_size() {
-    return dma_block_size;
+    return dma.block_size;
   }
 
   void DMA_address(const uint16_t& addr) {
-    dma_address = addr;
+    dma.addr16 = addr;
   }
 
   void DMA_exec(uint8_t mem[]) {
-    if (dma_transfer_mode == NO_REQUEST)
+    if (dma.transfer_mode == dma.NO_REQUEST)
       return 0x00;
     if (BUSACK() == HIGH and RESET() == HIGH) {
-      dma_transfer_mode = NO_REQUEST;
-      dma_result = 0xff;
+      dma.transfer_mode = dma.NO_REQUEST;
+      dma.result = 0xff;
       return;
     }
     ram_enable();
-    if (dma_transfer_mode == WRITE_RAM) {
-      for (uint16_t ix = 0; ix < dma_block_size; ++ix) {
-        ram_write(dma_address + ix, mem[ix]);
+    if (dma.transfer_mode == dma.WRITE_RAM) {
+      for (uint16_t ix = 0; ix < dma.block_size; ++ix) {
+        ram_write(dma.addr16 + ix, mem[ix]);
       }
-    } else if (dma_transfer_mode == READ_RAM) {
-      for (uint16_t ix = 0; ix < dma_block_size; ++ix) {
-        mem[ix] = ram_read(dma_address + ix);
+    } else if (dma.transfer_mode == dma.READ_RAM) {
+      for (uint16_t ix = 0; ix < dma.block_size; ++ix) {
+        mem[ix] = ram_read(dma.addr16 + ix);
       }
     }
     ram_disable();
-    dma_transfer_mode = NO_REQUEST;
-    dma_result = 0x00;
+    dma.transfer_mode = dma.NO_REQUEST;
+    dma.result = 0x00;
   }
 
   void RESET(uint8_t val) {

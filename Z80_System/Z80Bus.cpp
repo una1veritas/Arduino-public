@@ -59,7 +59,7 @@ void Z80Bus::clock_mode_select(const uint8_t mode) {
 		clock_mode = 0;
 	  break;
 	case 1 : // 10 Hz
-		clock_set(4, 3125); //
+		clock_set(4, 2500); //
 		clock_mode = 1;
 	  break;
 	case 3 : // 1 kHz
@@ -103,95 +103,81 @@ uint32_t Z80Bus::io_rw() {
 	if (RD() == LOW) {
 		io_mode = IN;
 		data_bus_mode_output();
+		switch ( uint8_t(port & 0xff) ) {
+		case CONSTA:  //CONSTA
+			data = uint8_t(Serial.available()); //(Serial.available() ? 0xff : 0x00);
+			break;
+		case CONIO:  // CONDAT/CON_IN
+			data = Serial.read();
+			break;
+		case FDCST:       //fdc-port: status
+			data = 1; //fdc.status();
+			// not populated
+			break;
+		case DMAEXEC: // exec_dma
+			dma.transfer_mode = dma.READ_RAM;
+			data = 1;
+			BUSREQ(LOW);
+			while (BUSACK() == HIGH) ;
+			break;
+		case DMARES: // dma_rs
+			data = dma.result;
+			break;
+		default:
+			data = 0;
+		}
+		data_bus_set(data);
+
 	} else if (WR() == LOW) {
 		io_mode = OUT;
 		data_bus_mode_input();
-	} else
-		return 0;
+		data = data_bus_get();
 
-	switch ( uint8_t(port & 0xff) ) {
-	case CONSTA:  //CONSTA
-		if (io_mode == IN ) {
-			data = uint8_t(Serial.available()); //(Serial.available() ? 0xff : 0x00);
-			data_bus_set(data);
-		}
-		break;
-	case CONIO:  // CONDAT/CON_IN
-		if (io_mode == IN ) {
-			data = Serial.read();
-			data_bus_set(data);
-		} // else if io_mode = OUT then join together in the next case
-	case CON_OUT:  // CON_OUT
-		if (io_mode == OUT ) {
-			data = data_bus_get();
+		switch ( uint8_t(port & 0xff) ) {
+		case CONIO:  // CONDAT/CON_IN
+		case CON_OUT:  // CON_OUT
 			Serial.print((char) data);
-		}
-		break;
-	case FDCDRIVE:  //10, fdc-port: # of drive
-	case FDCTRACK:       //11, fdc-port: # of track
-	case FDCSECTOR:       //fdc-port: # of sector
-	case FDCOP:       //fdc-port: command
-	case FDCST:       //fdc-port: status
-		// not populated
-		break;
-	case 16: // track_sel_h
-		break;
-	case 17: // track_sel_l
-		break;
-	case 18: // sector_sel
-		break;
-	case 20: // dma adr_L
-		if (io_mode == OUT) {
-			data = data_bus_get();
-			dma_address = (dma_address & 0xff00) | data;
-		}
-		break;
-	case 21: // dma adr_H
-		if (io_mode == OUT) {
-			data = data_bus_get();
-			dma_address = (dma_address & 0x00ff) | (data << 8);
-		}
-		break;
-	case 22: // exec_dma
-		DMA_mode();
-		if (io_mode == IN) {
-			dma_transfer_mode = READ_RAM;
-			ram_enable();
-			DMA_exec(dma_buff);
-
-			data_bus_set(1);
-		} else if (io_mode == OUT) {
-			dma_transfer_mode = WRITE_RAM;
-			ram_enable();
-			DMA_exec(dma_buff);
-		}
-		MMC_mode();
-		break;
-	case 23: // dma_rs
-		if (io_mode == IN) {
-			data = dma_result;
-			data_bus_set(data);
-		}
-		break;
-	case CLKMODE: // set/change clock mode
-		if ( io_mode == OUT ) {
-			data = data_bus_get();
+			break;
+		case FDCDRIVE:  //10, fdc-port: # of drive
+			fdc.sel_drive(data);
+			break;
+		case FDCTRACK:       //11, fdc-port: # of track
+			fdc.sel_track(data);
+			break;
+		case FDCSECTOR:       //fdc-port: # of sector
+			fdc.sel_sector(data);
+			break;
+		case FDCOP:       //fdc-port: command
+			fdc.set_opcode(data);
+			dma.transfer_mode = dma.WRITE_RAM;
+			BUSREQ(LOW);
+			while (BUSACK() == HIGH) ;
+			break;
+		case DMAL: // dma adr_L
+			dma.set_address_low(data);
+			break;
+		case DMAH: // dma adr_H
+			dma.set_address_high(data);
+			break;
+		case DMAEXEC: // exec_dma
+			dma.transfer_mode = dma.WRITE_RAM;
+			BUSREQ(LOW);
+			while (BUSACK() == HIGH) ;
+			break;
+		case CLKMODE: // set/change clock mode
 			clock_mode_select(data);
-		}
-		break;
-	case LED7SEG:
-		if (io_mode == OUT) {
-			data = data_bus_get();
+			break;
+		case LED7SEG:
 			WAIT(LOW);
 			digitalWrite(21, LOW);
 			shiftOut(19, 20, MSBFIRST, ascii7seg(data));
 			digitalWrite(21, HIGH);
 			WAIT(HIGH);
+			break;
 		}
-		break;
-	default:
-		data = 0;
-	}
+	} else
+		return 0;
+
 	while (IORQ() == LOW) {}
 	if (BUSACK() == LOW) {
 		BUSREQ(HIGH);
