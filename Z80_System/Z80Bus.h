@@ -33,32 +33,22 @@ enum IO_Ports {
     DMAH,        //dma-port: dma address high
 	DMAEXEC,
 	DMARES,
+	DMABLKSIZE,
 
 	CLKMODE = 128,
 	LED7SEG  = 129,
 };
 
 struct DMA_Controller {
-	static const uint16_t block_size = 0x100;
-	  /*
-	  enum DMA_mode {
-	    NO_REQUEST = 0,
-	    READ_RAM = 1,
-	    WRITE_RAM = 0xff,
-	  };
-	  const uint16_t dma_block_size = 0x100;
-
-	  volatile uint16_t dma_address;
-	  volatile DMA_mode dma_transfer_mode;
-	  volatile uint8_t dma_result;
-	  */
+	static const uint16_t blk_size_base = 128;
 
 	union {
-		uint16_t addr16;
+		uint16_t address;
 		struct {
-			uint8_t addr_low8, addr_high8;
+			uint8_t addr_lo8, addr_hi8;
 		};
 	};
+	uint16_t blk_size;
 
 	enum DMA_request {
 		NO_REQUEST = 0, READ_RAM = 1, WRITE_RAM = 0xff,
@@ -69,52 +59,70 @@ struct DMA_Controller {
 	DMA_Controller() { init(); }
 
 	void init() {
-		addr16 = 0;
+		address = 0;
+		blk_size = blk_size_base;
 		transfer_mode = NO_REQUEST;
 		result = 0;
 	}
 
 	void set_address_low(uint8_t addrlow) {
-		addr_low8 = addrlow;
+		addr_lo8 = addrlow;
 	}
 	void set_address_high(uint8_t addrhi) {
-		addr_high8 = addrhi;
+		addr_hi8 = addrhi;
+	}
+
+	void set_block_size(uint8_t n) {
+		blk_size = blk_size_base << n;
+	}
+
+	uint16_t block_size() const {
+		return blk_size;
 	}
 };
 
+struct DiskType {
+	uint16_t nof_tracks;
+	uint16_t nof_sectors;
+	uint16_t sector_size;
+
+	DiskType() : nof_tracks(77), nof_sectors(26), sector_size(128){}
+	DiskType(const uint16_t & ntracks, const uint16_t & nsectors, const uint16_t sectsize) :
+		nof_tracks(ntracks), nof_sectors(nsectors), sector_size(sectsize) {}
+	DiskType(const DiskType & dt) :
+		nof_tracks(dt.nof_tracks), nof_sectors(dt.nof_sectors), sector_size(dt.sector_size) {}
+};
+static const DiskType IBM8inSS = {77, 26, 128};
+
 struct Disk_Controller {
-	static const uint16_t sector_size = 128;
-	static const uint8_t num_of_drives = 4;
-	enum Disk_Type {
-		IBM8INSS = 0,
-	};
+
 	enum OpCode {
 		READ = 0,
 		WRITE = 0xff,
 	};
+	static const uint8_t nof_drives = 2;
 
-	struct driveinfo {
-		uint8_t disktype;
+	struct Drive {
+		DiskType dtype;
+		//
 		uint16_t sector;
 		uint16_t track;
-		//
 		uint8_t status;
-		uint16_t seekpos;
 		File * sdfile;
-		driveinfo() { disktype = IBM8INSS; }
-	} drives[num_of_drives];
+	} drives[nof_drives];
 	uint8_t current_drive;
 	uint8_t opcode;
 
-	Disk_Controller() { init(); }
-
-	void init() {
+	Disk_Controller() {
 		current_drive = 0;
 		opcode = READ;
 	}
 
+	void init() {}
+
 	void set_SD_file(File * sdfile, uint8_t drv = 0) {
 		drives[drv].sdfile = sdfile;
+		drives[drv].dtype = IBM8inSS;
 	}
 
 	void sel_drive(uint8_t dno) {
@@ -131,6 +139,22 @@ struct Disk_Controller {
 
 	void set_opcode(uint8_t code) {
 		opcode = code;
+	}
+
+	uint16_t sector_size() {
+		return drives[current_drive].dtype.sector_size;
+	}
+
+	void operate(uint8_t buffer[]) {
+		if (opcode == READ) {
+			unsigned long pos = (drives[current_drive].track  * drives[current_drive].dtype.nof_sectors + drives[current_drive].sector) * drives[current_drive].dtype.sector_size;
+			drives[current_drive].sdfile->seek(pos);
+			for(uint16_t i = 0; i < drives[current_drive].dtype.sector_size; ++i) {
+				if ( pos + i >= drives[current_drive].sdfile->size() )
+					break;
+				buffer[i] = drives[current_drive].sdfile->read();
+			}
+		}
 	}
 
 	uint8_t status() { return 0; }
@@ -457,11 +481,11 @@ public:
   }
 
   uint8_t DMA_block_size() {
-    return dma.block_size;
+    return dma.block_size();
   }
 
   void DMA_address(const uint16_t& addr) {
-    dma.addr16 = addr;
+    dma.address = addr;
   }
 
   void DMA_exec(uint8_t mem[]) {
@@ -474,12 +498,12 @@ public:
     }
     ram_enable();
     if (dma.transfer_mode == dma.WRITE_RAM) {
-      for (uint16_t ix = 0; ix < dma.block_size; ++ix) {
-        ram_write(dma.addr16 + ix, mem[ix]);
+      for (uint16_t ix = 0; ix < dma.block_size(); ++ix) {
+        ram_write(dma.address + ix, mem[ix]);
       }
     } else if (dma.transfer_mode == dma.READ_RAM) {
-      for (uint16_t ix = 0; ix < dma.block_size; ++ix) {
-        mem[ix] = ram_read(dma.addr16 + ix);
+      for (uint16_t ix = 0; ix < dma.block_size(); ++ix) {
+        mem[ix] = ram_read(dma.address + ix);
       }
     }
     ram_disable();

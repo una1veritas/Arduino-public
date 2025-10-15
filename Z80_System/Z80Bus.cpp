@@ -87,7 +87,7 @@ void Z80Bus::clock_mode_select(const uint8_t mode) {
 uint32_t Z80Bus::io_rw() {
 	uint16_t port;
 	uint8_t data;
-	uint8_t dma_buff[256];
+	uint8_t dma_buff[dma.block_size()];
 
 	enum IO_MODE {
 		IN = 0, OUT = 1,
@@ -111,12 +111,12 @@ uint32_t Z80Bus::io_rw() {
 			data = Serial.read();
 			break;
 		case FDCST:       //fdc-port: status
-			data = 1; //fdc.status();
+			data = fdc.status(); //fdc.status();
 			// not populated
 			break;
 		case DMAEXEC: // exec_dma
 			dma.transfer_mode = dma.READ_RAM;
-			data = 1;
+			data = 0;
 			BUSREQ(LOW);
 			while (BUSACK() == HIGH) ;
 			break;
@@ -164,6 +164,9 @@ uint32_t Z80Bus::io_rw() {
 			BUSREQ(LOW);
 			while (BUSACK() == HIGH) ;
 			break;
+		case DMABLKSIZE:
+			dma.set_block_size(data);  // 128 * 2^n : default n = 0 -> 128 bytes
+			break;
 		case CLKMODE: // set/change clock mode
 			clock_mode_select(data);
 			break;
@@ -180,6 +183,30 @@ uint32_t Z80Bus::io_rw() {
 
 	while (IORQ() == LOW) {}
 	if (BUSACK() == LOW) {
+		Serial.println("FDC:");
+		Serial.print(" drive = ");
+		Serial.print(fdc.current_drive, DEC);
+		Serial.print(", track = ");
+		Serial.print(fdc.drives[fdc.current_drive].track, DEC);
+		Serial.print(", sector = ");
+		Serial.print(fdc.drives[fdc.current_drive].sector, DEC);
+		Serial.print(", sector size = ");
+		Serial.print(fdc.sector_size(), DEC);
+		Serial.print(", opcode = ");
+		Serial.print(fdc.opcode, DEC);
+		Serial.println();
+		Serial.println("DMA: ");
+		Serial.print(" dst/src address = ");
+		Serial.print(dma.address, HEX);
+		Serial.print(", block size = ");
+		Serial.print(dma.block_size(), DEC);
+		Serial.print(", transfer mode = ");
+		Serial.print(dma.transfer_mode, HEX);
+		Serial.println();
+		/*
+		fdc.operate(dma_buff);
+		DMA_exec(dma_buff);
+		*/
 		BUSREQ(HIGH);
 	}
 	return (uint32_t(port) << 16) | data;

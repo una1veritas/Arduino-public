@@ -1,0 +1,138 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "cpmboot.z80"
+                        ; date: 2025-10-16 02:44:22
+                        ; --------------------------------------
+
+
+                        ;	CP/M 2.2 boot-loader for Z80-Simulator
+                        ;
+                        ;	Copyright (C) 1988-2007 by Udo Munk
+                        ;
+                        
+                        ;	ORG	0		;mem base of boot
+0100:                   	ORG 	0100h
+                        ;
+0040:                   MSIZE	EQU	64		;mem size in kbytes
+                        ;
+B000:                   BIAS	EQU	(MSIZE-20)*1024	;offset from 20k system
+E400:                   CCP	EQU	3400H+BIAS	;base of the ccp
+FA00:                   BIOS	EQU	CCP+1600H	;base of the bios
+0300:                   BIOSL	EQU	0300H		;length of the bios
+FA00:                   BOOT	EQU	BIOS
+1900:                   SIZE	EQU	BIOS+BIOSL-CCP	;size of cp/m system
+0032:                   SECTS	EQU	SIZE/128	;# of sectors to load
+                        ;
+                        ;	I/O ports
+                        ;
+0001:                   CONDAT	EQU	1		;console data port
+000A:                   DRIVE   EQU	10		;fdc-port: # of drive
+000B:                   TRACK   EQU	11		;fdc-port: # of track
+000C:                   SECTOR  EQU	12		;fdc-port: # of sector
+000D:                   FDCOP   EQU	13		;fdc-port: command
+000E:                   FDCST   EQU	14		;fdc-port: status
+000F:                   DMAL    EQU	15		;dma-port: dma address low
+0010:                   DMAH    EQU	16		;dma-port: dma address high
+                        ;
+0100: C31901   [10]     	JP	COLD
+                        ;
+0103: 424F4F54          ERRMSG:	DEFM	'BOOT: error booting'
+0107: 3A206572          
+010B: 726F7220          
+010F: 626F6F74          
+0113: 696E67            
+0116: 0D0A00            	DEFB	13,10,0
+                        ;
+                        ;	begin the load operation
+                        ;
+0119: 010200   [10]     COLD:	LD	BC,2		;b=track 0, c=sector 2
+011C: 1632     [17]     	LD	D,SECTS		;d=# sectors to load
+011E: 2100E4   [27]     	LD	HL,CCP		;base transfer address
+0121: 3E00     [34]     	LD	A,0		;select drive A
+0123: D30A     [45]     	OUT	(DRIVE),A
+                        ;
+                        ;	load the next sector
+                        ;
+0125: 78       [ 4]     LSECT:	LD	A,B		;set track
+0126: D30B     [15]     	OUT	(TRACK),A
+0128: 79       [19]     	LD	A,C		;set sector
+0129: D30C     [30]     	OUT	(SECTOR),A
+012B: 7D       [34]     	LD	A,L		;set dma address low
+012C: D30F     [45]     	OUT	(DMAL),A
+012E: 7C       [49]     	LD	A,H		;set dma address high
+012F: D310     [60]     	OUT	(DMAH),A
+0131: AF       [64]     	XOR	A		;read sector
+0132: D30D     [75]     	OUT	(FDCOP),A
+0134: DB0E     [86]     	IN	A,(FDCST)	;get status of fdc
+0136: B7       [90]     	OR	A		;read successful ?
+0137: CA4A01   [100|100]	JP	Z,CONT		;yes, continue
+013A: 210301   [110]    	LD	HL,ERRMSG	;no, print error
+013D: 7E       [ 7]     PRTMSG:	LD	A,(HL)
+013E: B7       [11]     	OR	A
+013F: CA4801   [21|21]  	JP	Z,STOP
+0142: D301     [32]     	OUT	(CONDAT),A
+0144: 23       [38]     	INC	HL
+0145: C33D01   [48]     	JP	PRTMSG
+0148: F3       [ 4]     STOP:	DI
+0149: 76       [ 8]     	HALT			;and halt cpu
+                        ;
+014A:                   CONT:
+                        				;go to next sector if load is incomplete
+014A: 15       [ 4]     	DEC	D		;sects=sects-1
+014B: CA00F0   [14|14]  	JP	Z, 0f000h		;head for the bios
+                        ;
+                        ;	more sectors to load
+                        ;
+                        ;	we aren't using a stack, so use <sp> as scratch register
+                        ;	to hold the load address increment
+                        ;
+014E: 318000   [24]     	LD	SP,128		;128 bytes per sector
+0151: 39       [35]     	ADD	HL,SP		;<hl> = <hl> + 128
+                        ;
+0152: 0C       [39]     	INC	C		;sector = sector + 1
+0153: 79       [43]     	LD	A,C
+0154: FE1B     [50]     	CP	27		;last sector of track ?
+0156: DA2501   [60|60]  	JP	C,LSECT		;no, go read another
+                        ;
+                        ;	end of track, increment to next track
+                        ;
+0159: 0E01     [67]     	LD	C,1		;sector = 1
+015B: 04       [71]     	INC	B		;track = track + 1
+015C: C32501   [81]     	JP	LSECT		;for another group
+                        ;
+                        	END			;of boot loader
+
+
+; +++ segments +++
+
+#CODE          = $0100 =   256,  size = $005F =    95
+
+; +++ global symbols +++
+
+BIAS    = $B000 = 45056          cpmboot.z80:11
+BIOS    = $FA00 = 64000          cpmboot.z80:13
+BIOSL   = $0300 =   768          cpmboot.z80:14
+BOOT    = $FA00 = 64000          cpmboot.z80:15 (unused)
+CCP     = $E400 = 58368          cpmboot.z80:12
+COLD    = $0119 =   281          cpmboot.z80:37
+CONDAT  = $0001 =     1          cpmboot.z80:21
+CONT    = $014A =   330          cpmboot.z80:68
+DMAH    = $0010 =    16          cpmboot.z80:28
+DMAL    = $000F =    15          cpmboot.z80:27
+DRIVE   = $000A =    10          cpmboot.z80:22
+ERRMSG  = $0103 =   259          cpmboot.z80:32
+FDCOP   = $000D =    13          cpmboot.z80:25
+FDCST   = $000E =    14          cpmboot.z80:26
+LSECT   = $0125 =   293          cpmboot.z80:45
+MSIZE   = $0040 =    64          cpmboot.z80:9
+PRTMSG  = $013D =   317          cpmboot.z80:59
+SECTOR  = $000C =    12          cpmboot.z80:24
+SECTS   = $0032 =    50          cpmboot.z80:17
+SIZE    = $1900 =  6400          cpmboot.z80:16
+STOP    = $0148 =   328          cpmboot.z80:65
+TRACK   = $000B =    11          cpmboot.z80:23
+_end    = $015F =   351          cpmboot.z80:7 (unused)
+_size   = $005F =    95          cpmboot.z80:7 (unused)
+
+
+total time: 0.0013 sec.
+no errors

@@ -114,7 +114,7 @@ void setup() {
   dfr7seg.clear();
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_set(2, 1000); 
+  z80bus.clock_mode_select(3); 
   z80bus.clock_start();
   Serial.println("Reseting Z80...");
   z80bus.cpu_reset();
