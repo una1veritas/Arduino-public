@@ -1,0 +1,547 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "mon_1000.asm"
+                        ; date: 2025-10-17 01:23:38
+                        ; --------------------------------------
+
+
+                        ; macros
+                        clrcf:	macro		; clear carry flag
+                        		and 	a
+                        		endm
+                        ;
+                        clra: 	macro
+                        		xor 	a
+                        		endm
+                        ;
+                        ; I/O port
+                        ;
+0000:                   CONSTA 	equ 	0
+0001:                   CONIO 	equ 	1
+                        ;CONOUT equ 	2
+0080:                   CLKMODE	equ 	128
+0081:                   LED7SEG	equ 	129
+                        ;
+                        ;
+                        ; a  ... workspace reg.
+                        ; b  ... workspace reg. dnjz counter
+                        ; c  ... command
+                        ; de ... address
+                        ; ix ...  mon_curr_addr, curr_addr + 2 == end_addr
+                        ;
+                        
+                        ; rom subroutines;
+                        ;
+                        
+                        ; work space
+0F00:                   workspace   equ     00f00H
+0F00:                   addr	    equ		workspace
+0F02:                   addr2	    equ 	addr+2
+0F04:                   lbuf	    equ 	workspace+4
+003F:                   BUFSIZE     equ 	63
+                        ;
+                        
+1000:                           org     01000h
+1000:                   mon:            ;entry point
+1000: 110000   [10]     		ld 		de, 0
+1003: ED53000F [30]     		ld 		(addr), de
+1007: ED53020F [50]     		ld 		(addr2), de
+100B:                   read_line:
+100B: 21040F   [10]     		ld 		hl, lbuf 	; line buffer
+100E: 0E3F     [17]     		ld 		c, BUFSIZE	; line buffer size (except null terminal)
+1010: CDCB10   [34]     		call	getln
+1013: 21040F   [44]     		ld 		hl, lbuf
+1016: 7E       [51]     		ld 		a, (hl)
+                        ; no arity commands
+1017: FE00     [58]     		cp 		$0 		; line is empty
+1019: 2846     [65|70]  		jr 		z, default_dump
+                        		;
+101B: FE48     [72]     		cp 		'H' 	; begins with H
+101D: CAC210   [82|82]  		jp 		z, mon_halt
+                        		;
+1020: FE2E     [89]     		cp 		'.'		; begins with .
+1022: 2829     [96|101] 		jr 		z, specify_end
+1024: FE3A     [103]    		cp 		':'		; begins with :
+1026: 2868     [110|115]		jr 		z, write_mode
+1028: FE53     [117]            cp      'S'
+                        		;
+                        ; specify start address and function
+102A: 0E04     [124]    		ld 		c, 4
+102C: CDE111   [141]    		call 	hexstr_de
+102F: ED53000F [161]    		ld 		(addr), de
+                        		;
+1033: 7E       [168]    		ld 		a, (hl)
+1034: FE00     [175]    		cp 		$0
+1036: 2829     [182|187]		jr 		z, default_dump
+1038: FE2E     [189]    		cp		'.'
+103A: 2811     [196|201]		jr 		z, specify_end
+103C: FE3A     [203]    		cp		':'
+103E: 2850     [210|215]		jr 		z, write_mode
+1040: FE52     [217]    		cp		'R'
+1042: 2873     [224|229]		jr 		z, run_mode
+1044: FE53     [231]    		cp		'S'
+1046: 2873     [238|243]		jr 		z, clk_mode
+1048: CD5411   [255]    		call 	print_err_msg
+104B: 18B3     [267]    		jr 		mon		; addr and addr2 are possibly corrupted
+                        		;
+104D:                   specify_end:
+104D: 23       [ 6]     		inc 	hl 		; next to '.'
+104E: 0E04     [13]     		ld 		c, 4
+1050: CDE111   [30]     		call 	hexstr_de
+1053: ED53020F [50]     		ld 		(addr2), de
+1057: 7E       [57]     		ld 		a, (hl)
+1058: FE00     [64]     		cp 		0
+105A: 2805     [71|76]  		jr 		z, default_dump
+105C: CD5411   [88]     		call 	print_err_msg
+105F: 189F     [100]    		jr 		mon		; addr and addr2 are possibly corrupted
+                        		;
+1061:                   default_dump:
+1061: 2A000F   [16]     		ld 		hl, (addr)
+1064: ED5B020F [36]     		ld 		de, (addr2)
+1068: 7C       [40]     		ld 		a, h
+1069: BA       [44]     		cp 		d 
+106A: 2002     [51|56]  		jr 		nz, $+4 
+106C: 7D       [55]     		ld 		a, l 
+106D: BB       [59]     		cp 		e 
+106E: 3809     [66|71]  		jr 		c, do_dump  ; start < end
+1070: 2807     [73|78]  		jr 		z, do_dump  ; start == end
+1072: 111000   [83]     		ld 		de, $10
+1075: 19       [94]     		add 	hl, de
+1076: 22020F   [110]    		ld 		(addr2), hl
+                        		;
+1079:                   do_dump:
+1079: 2A000F   [16]     		ld 		hl, (addr)
+107C: ED5B020F [36]     		ld 		de, (addr2)
+1080: CD7A11   [53]     		call 	dump
+1083: 22000F   [69]     		ld 		(addr), hl
+1086: 110000   [79]     		ld 		de, 0
+1089: ED53020F [99]     		ld 		(addr2), de
+108D: C30B10   [109]    		jp 		read_line
+                                ;
+1090:                   write_mode:
+1090: 23       [ 6]     		inc 	hl 		; next to ':'
+1091: 7E       [13]     		ld 		a, (hl)
+1092: FE20     [20]     		cp 		' '
+1094: 28FA     [27|32]  		jr 		z, write_mode
+                        		;
+1096: 0E02     [34]     		ld 		c, 2
+1098: CDE111   [51]     		call 	hexstr_de
+109B: 79       [55]     		ld 		a, c 
+109C: FE02     [62]     		cp 		a, 2
+109E: 2814     [69|74]  		jr 		z, write_mode.exit	; no arg or illegal char
+10A0: DD2A000F [89]     		ld 		ix, (addr)
+10A4: DD7300   [108]    		ld 		(ix), e
+10A7: DD23     [118]    		inc 	ix
+10A9: DD22000F [138]    		ld 		(addr), ix
+10AD: 7E       [145]    		ld 		a, (hl)
+10AE: FE00     [152]    		cp 		0
+10B0: 2802     [159|164]		jr 		z, write_mode.exit
+10B2: 18DC     [171]    		jr 		write_mode
+10B4:                   write_mode.exit
+10B4: C30B10   [10]     		jp 		read_line
+                        ;
+10B7:                   run_mode:
+10B7: 2A000F   [16]     		ld 		hl, (addr)
+10BA: E9       [20]     		jp 		(hl)
+                        ;;
+                        ;  clockspeed change by output number to port 128
+10BB:                   clk_mode:
+10BB: 7B       [ 4]     		ld 		a, e
+10BC: CDF811   [21]     		call 	clk_spd_change
+10BF: C30B10   [31]     		jp 		read_line
+                        ;
+10C2:                   mon_halt:
+10C2: 76       [ 4]     		halt
+                        
+                        
+                        ; subroutines
+                        ; getchar
+10C3:                   getchar:
+10C3: DB00     [11]     		in 		a, (CONSTA)
+10C5: A7       [15]     		and 	a
+10C6: 28FB     [22|27]  		jr 		z, getchar
+10C8: DB01     [33]     		in 		a, (CONIO)
+10CA: C9       [43]     		ret
+                        
+                        ; getlin
+                        ; read up to c bytes into buffer pointed by hl, end with 0
+                        ; hl ... line buffer pointer
+                        ; c  .... buffer limit length
+10CB:                   getln:
+10CB: 3600     [10]     		ld 		(hl), 0
+10CD: 0600     [17]     		ld 		b, 0		; char count
+10CF: CD4311   [34]     		call 	print_endl
+10D2: 3E2A     [41]     		ld 		a, '*'
+10D4: D301     [52]     		out 	(CONIO), a
+                                ;
+10D6:                   getln_wait:
+10D6: CDC310   [17]     		call 	getchar
+                        		;in 		a, (CONSTA)
+                        		;and 	a
+                        		;jr 		z, getln_wait
+                        		;in 		a, (CONIO)
+                        		; 
+10D9: FE08     [24]     		cp 		$08 	;backspace
+10DB: 2816     [31|36]  		jr 		z, getln_bkspc
+10DD: FE7F     [38]     		cp 		$7f		; del
+10DF: 2812     [45|50]  		jr 		z, getln_bkspc
+10E1: FE1B     [52]     		cp 		$1b
+10E3: 2824     [59|64]  		jr 		z, getln_escseq
+10E5: FE0A     [66]     		cp 		$0a
+10E7: 283D     [73|78]  		jr 		z, getln_end
+10E9: FE0D     [80]     		cp 		$0d
+10EB: 2839     [87|92]  		jr 		z, getln_end
+                        ; other ctrl codes
+10ED: FE20     [94]     		cp 		$20
+10EF: 3028     [101|106]		jr 		nc, getln_echo_proceed
+10F1: 18E3     [113]    		jr 		getln_wait
+                        
+10F3:                   getln_bkspc:
+10F3: 78       [ 4]     		ld 		a, b
+10F4: A7       [ 8]     		and 	a
+10F5: 28DF     [15|20]  		jr 		z, getln_wait
+10F7: 3E08     [22]     		ld 		a, $08
+10F9: D301     [33]     		out 	(CONIO), a
+10FB: 3E20     [40]     		ld 		a, ' '
+10FD: D301     [51]     		out 	(CONIO), a
+10FF: 3E08     [58]     		ld 		a, $08
+1101: D301     [69]     		out 	(CONIO), a
+1103: 2B       [75]     		dec 	hl
+1104: 3600     [85]     		ld 		(hl), $0
+1106: 05       [89]     		dec 	b
+1107: 18CD     [101]    		jr 		getln_wait
+                        
+1109:                   getln_escseq:
+1109: CDC310   [17]     		call  	getchar
+110C: FE5B     [24]     		cp 		'['
+110E: 20C6     [31|36]  		jr 		nz, getln_wait
+1110: CDC310   [48]     		call 	getchar
+1113: FE44     [55]     		cp 		'D'
+1115: 28DC     [62|67]  		jr 		z, getln_bkspc
+1117: 18BD     [74]     		jr 		getln_wait
+                        
+1119:                   getln_echo_proceed:
+1119: D301     [11]     		out 	(CONIO), a 		; echo back
+                        		;
+111B: 77       [18]     		ld 		(hl),a		; *ptr++ = a
+111C: 23       [24]     		inc 	hl
+111D: 3600     [34]     		ld 		(hl), $0	; *ptr = NULL
+111F: 04       [38]     		inc 	b
+1120: 78       [42]     		ld 		a, b
+1121: B9       [46]     		cp 		c
+1122: 3002     [53|58]  		jr 		nc, getln_end  ; force terminate line
+1124: 18B0     [65]     		jr 		getln_wait
+                        
+1126:                   getln_end:	; parse lbuf
+1126: C9       [10]     		ret
+                        
+                        ;
+                        ; print a nibble in A
+1127:                   print_nibble:
+1127: E60F     [ 7]     		and 	$0f
+1129: FE0A     [14]     		cp 		$a
+112B: C630     [21]     		add 	'0'
+112D: FE3A     [28]     		cp 		':'
+112F: 3802     [35|40]  		jr 		c, print_nibble_out
+1131: C607     [42]     		add 	7
+1133:                   print_nibble_out:
+1133: D301     [11]     		out 	(CONIO), a
+1135: C9       [21]     		ret
+                        
+                        ; print a byte in A
+1136:                   print_byte:
+1136: F5       [11]     		push 	af
+1137: 07       [15]     		rlca
+1138: 07       [19]     		rlca
+1139: 07       [23]     		rlca
+113A: 07       [27]     		rlca
+113B: CD2711   [44]     		call 	print_nibble
+113E: F1       [54]     		pop 	af
+113F: CD2711   [71]     		call 	print_nibble
+1142: C9       [81]     		ret
+                        
+1143:                   print_endl:
+1143: 3E0A     [ 7]     		ld 		a, $0a
+1145: D301     [18]     		out 	(CONIO), A
+1147: 3E0D     [25]     		ld 		a, $0d
+1149: D301     [36]     		out 	(CONIO), A
+114B: C9       [46]     		ret
+                        ;
+114C:                   print_str_hl:
+114C: 7E       [ 7]     		ld 		a,(hl)
+114D: A7       [11]     		and 	A
+114E: C8       [16|22]  		ret 	z
+114F: D301     [27]     		out 	(CONIO), a
+1151: 23       [33]     		inc 	hl
+1152: 18F8     [45]     		jr 		print_str_hl
+                        ;
+                        ;
+1154:                   print_err_msg:
+1154: E5       [11]     		push 	hl
+1155: F5       [22]     		push 	af
+1156: CD4311   [39]     		call 	print_endl
+1159: 217011   [49]     		ld 		hl, str_err
+115C: CD4C11   [66]     		call 	print_str_hl
+115F: F1       [76]     		pop 	af
+1160: CD3611   [93]     		call 	print_byte
+1163: CD4311   [110]    		call 	print_endl
+1166: E1       [120]    		pop 	hl
+1167: 7C       [124]    		ld 		a, h
+1168: CD3611   [141]    		call 	print_byte
+116B: 7D       [145]    		ld 		a, l
+116C: CD3611   [162]    		call 	print_byte
+116F: C9       [172]    		ret
+                        		;
+1170:                   str_err:
+1170: 0A0D6572          		db 	$0a, $0d, "error"
+1174: 726F72            
+1177:                   str_endl:
+1177: 0A0D00            		db $0a, $0d, 0
+                        ;
+                        
+                        ; dump : dump memory from addr to addr+2 (value)
+                        ; hl ... start address (will be trucated)
+                        ; de ... end address
+                        ;
+                        ; bc ... the original start address
+                        
+117A:                   dump:
+117A: 44       [ 4]     	ld 		b, h
+117B: 4D       [ 8]     	ld 		c, l
+117C: 3EF0     [15]     	ld 		a, $F0
+117E: A5       [19]     	and 	l
+117F: 6F       [23]     	ld 		l, a
+1180:                   dump.print_header:
+1180: CD4311   [17]     	call 	print_endl
+1183: 78       [21]     	ld 		a, b
+1184: CD3611   [38]     	call 	print_byte
+1187: 79       [42]     	ld 		a, c
+1188: CD3611   [59]     	call 	print_byte
+118B: 3E20     [66]     	ld 		a, ' '
+118D: D301     [77]     	out 	(CONIO), a
+118F: 3E3A     [84]     	ld 		a, ':'
+1191: D301     [95]     	out 	(CONIO), a
+1193: 3E20     [102]    	ld 		a, ' '
+1195: D301     [113]    	out 	(CONIO), a
+                            ;
+1197:                   dump.bytes:
+                        	;cp 	bc, hl
+1197: 78       [ 4]     	ld 		a, b
+1198: BC       [ 8]     	cp 		h
+1199: 2002     [15|20]  	jr 		nz, $+4
+119B: 79       [19]     	ld 		a, c
+119C: BD       [23]     	cp 		l
+                        	;
+119D: 380A     [30|35]  	jr 		c, dump.print_byte
+119F: 2808     [37|42]  	jr 		z, dump.print_byte
+                        ; print two-spaces
+11A1: 3E20     [44]     	ld 		a, ' '
+11A3: D301     [55]     	out 	(CONIO), a
+11A5: D301     [66]     	out 	(CONIO), a
+11A7: 1804     [78]     	jr 		dump.print_spc
+11A9:                   dump.print_byte
+11A9: 7E       [ 7]     	ld 		a, (hl)
+11AA: CD3611   [24]     	call 	print_byte
+11AD:                   dump.print_spc:
+11AD: 3E20     [ 7]     	ld 		a, ' '
+11AF: D301     [18]     	out 	(CONIO), a
+11B1: 23       [24]     	inc 	hl
+                        	; cp 	de, hl
+11B2: 7A       [28]     	ld 		a, d
+11B3: BC       [32]     	cp 		h
+11B4: 2002     [39|44]  	jr 		nz, $+4; dump.cp_de_hl_end
+11B6: 7B       [43]     	ld 		a, e
+11B7: BD       [47]     	cp 		l
+                        	; cp 	de, hl end
+11B8: C8       [52|58]  	ret 	z ; de == hl, then exit dump
+11B9: D8       [57|63]  	ret 	c ; de < hl, then exit dump
+11BA: 7D       [61]     	ld 		a, l 	; test whether the least 4 bits of address is zero
+11BB: E60F     [68]     	and 	$0f
+11BD: 20D8     [75|80]  	jr 		nz, dump.bytes
+11BF: 44       [79]     	ld 		b, h 
+11C0: 4D       [83]     	ld 		c, l
+11C1: 18BD     [95]     	jr 		dump.print_header  ; if so print address header
+                            ;
+                        
+                        ; convert one char expressing a hexadecimal digit 
+                        ; in A reg. to nibble in A
+                        ; set carry flag if got a wrong char
+                        ;
+11C3:                   hex2nib:
+11C3: FE30     [ 7]     		cp 		'0'
+11C5: D8       [12|18]  		ret 	c		; A < '0'
+11C6: FE3A     [19]     		cp 		'9' + 1
+11C8: 3003     [26|31]  		jr 		nc, hex2nib.alpha
+11CA: D630     [33]     		sub 	'0' 	; A was digit, results carry reset
+11CC: C9       [43]     		ret
+11CD:                   hex2nib.alpha:
+11CD: FE61     [ 7]     		cp 		'a'
+11CF: 3806     [14|19]  		jr 		c, hex2nib.upper
+11D1: FE67     [21]     		cp 		'f'+1
+11D3: 3F       [25]     		ccf		; set carry if A >= 'f'+1
+11D4: D8       [30|36]  		ret 	c
+11D5: E6DF     [37]     		and 	$df		; a - f to upper char
+11D7:                   hex2nib.upper:
+11D7: FE41     [ 7]     		cp 		'A'
+11D9: D8       [12|18]  		ret 	c
+11DA: FE47     [19]     		cp      'F' + 1
+11DC: 3F       [23]     		ccf
+11DD: D8       [28|34]  		ret 	c      ; error if it is larger than 'F'
+11DE: D637     [35]     		sub 	'A'-10
+11E0: C9       [45]     		ret
+                        
+                        ; read hexadecimal string char upto 2 or 4 (set in C) 
+                        ; bytes from (HL) and return int val in DE
+                        ; if non hexdec char is encountered at (HL), returns with current de value without inc hl.
+                        ; if C upper-limit bytes has been read, returns with current de value with increment hl.
+                        ; A reg. hold the last char read from (HL).
+                        ;
+11E1:                   hexstr_de:
+11E1: 110000   [10]     		ld      de, 0000h
+11E4:                   hexstr_de.loop:
+11E4: 7E       [ 7]     		ld      a, (hl)
+11E5: CDC311   [24]     		call 	hex2nib
+11E8: D8       [29|35]  		ret 	c 			; encountered non-hexdec char.
+11E9:                   hexstr_de.hex2nib_succ:
+11E9: 0604     [ 7]     		ld 		b, 4
+11EB:                   hexstr_de.rl4:
+11EB: CB13     [ 8]     		rl      e		 ;rotate left entire de
+11ED: CB12     [16]     		rl      d
+11EF: 10FA     [24|29]  		djnz    hexstr_de.rl4
+11F1: 83       [28]     		add 	e
+11F2: 5F       [32]     		ld 		e, a
+11F3: 23       [38]     		inc 	hl 		; 
+11F4: 0D       [42]     		dec 	c
+11F5: 20ED     [49|54]  		jr      nz, hexstr_de.loop
+11F7: C9       [59]     		ret 			; return after c bytes read
+                        
+                        ;
+11F8:                   clk_spd_change:
+11F8: E607     [ 7]     		and 	$07
+11FA: D380     [18]     		out		(CLKMODE), a
+11FC: C9       [28]     		ret
+                        
+                        ; arithmetic routines
+                        ; dvi_hl_c stack in out wrapper
+                        ; [ret addr] [dividiend] [divisor:low] 
+                        ; --> [ret addr] [quotient] [reminder:low]
+11FD:                   div16_8:
+11FD: DD210200 [14]         ld      ix, 02
+1201: DD39     [29]         add     ix, sp
+1203: DD6E00   [48]         ld      hl, (ix)
+1206: DD6601   [67]     
+1209: DD4E02   [86]         ld      c, (ix+2)
+120C: CD1912   [103]        call    div_hl_c
+120F: DD7500   [122]        ld      (ix), hl
+1212: DD7401   [141]    
+1215: DD7702   [160]        ld      (ix+2), a
+1218: C9       [170]        ret
+                        
+                        ; divides hl by c and places the quotient in hl 
+                        ; and the remainder in a
+1219:                   div_hl_c:
+1219: AF       [ 4]        xor	a
+121A: 0610     [11]        ld	b, 16
+                        
+121C:                   div_hl_c_loop:
+121C: 29       [11]        add	hl, hl
+121D: 17       [15]        rla
+121E: 3803     [22|27]     jr	c, $+5
+1220: B9       [26]        cp	c
+1221: 3802     [33|38]     jr	c, $+4
+                        
+1223: 91       [37]        sub	c
+1224: 2C       [41]        inc	l
+                           
+1225: 10F5     [49|54]     djnz	div_hl_c_loop
+                           
+1227: C9       [59]        ret
+                        
+                        
+                        ; print the decimal integer in HL 
+1228:                   print_hl_dec:
+1228: AF       [ 4]     	xor 	a
+1229: F5       [15]     	push 	af 		; terminal null char
+122A: 0E0A     [22]     	ld 		c, 10 	; radix = 10
+                        
+122C:                   print_hl_dec_loop0:
+122C: CD1912   [17]     	call 	div_hl_c 	; a = hl % 10, hl = hl / 10
+122F: C630     [24]     	add 	a, $30		; to ascii code between '0' and '9'
+1231: F5       [35]     	push 	af
+1232: 7C       [39]     	ld 		a, h 		; check whether hl is empty
+1233: B5       [43]     	or 		l
+1234: 2802     [50|55]  	jr 		z, print_hl_dec_output		; if z then conversion finished
+1236: 18F4     [62]     	jr 		print_hl_dec_loop0
+                        
+1238:                   print_hl_dec_output:
+1238: F1       [10]     	pop 	af
+1239: A7       [14]     	and 	a
+123A: C8       [19|25]  	ret 	z
+123B: D302     [30]     	out 	(2), a
+123D: 18F9     [42]     	jr 		print_hl_dec_output
+
+
+; +++ segments +++
+
+#CODE          = $1000 =  4096,  size = $023F =   575
+
+; +++ global symbols +++
+
+BUFSIZE            = $003F =    63          mon_1000.asm:34
+CLKMODE            = $0080 =   128          mon_1000.asm:15
+CONIO              = $0001 =     1          mon_1000.asm:13
+CONSTA             = $0000 =     0          mon_1000.asm:12
+LED7SEG            = $0081 =   129          mon_1000.asm:16 (unused)
+_end               = $123F =  4671          mon_1000.asm:37 (unused)
+_size              = $023F =   575          mon_1000.asm:37 (unused)
+addr               = $0F00 =  3840          mon_1000.asm:31
+addr2              = $0F02 =  3842          mon_1000.asm:32
+clk_mode           = $10BB =  4283          mon_1000.asm:141
+clk_spd_change     = $11F8 =  4600          mon_1000.asm:411
+default_dump       = $1061 =  4193          mon_1000.asm:91
+div16_8            = $11FD =  4605          mon_1000.asm:420 (unused)
+div_hl_c           = $1219 =  4633          mon_1000.asm:432
+div_hl_c_loop      = $121C =  4636          mon_1000.asm:436
+do_dump            = $1079 =  4217          mon_1000.asm:105
+dump               = $117A =  4474          mon_1000.asm:300
+dump.bytes         = $1197 =  4503          mon_1000.asm:319
+dump.print_byte    = $11A9 =  4521          mon_1000.asm:334
+dump.print_header  = $1180 =  4480          mon_1000.asm:306
+dump.print_spc     = $11AD =  4525          mon_1000.asm:337
+getchar            = $10C3 =  4291          mon_1000.asm:152
+getln              = $10CB =  4299          mon_1000.asm:163
+getln_bkspc        = $10F3 =  4339          mon_1000.asm:192
+getln_echo_proceed = $1119 =  4377          mon_1000.asm:216
+getln_end          = $1126 =  4390          mon_1000.asm:228
+getln_escseq       = $1109 =  4361          mon_1000.asm:207
+getln_wait         = $10D6 =  4310          mon_1000.asm:170
+hex2nib            = $11C3 =  4547          mon_1000.asm:362
+hex2nib.alpha      = $11CD =  4557          mon_1000.asm:369
+hex2nib.upper      = $11D7 =  4567          mon_1000.asm:376
+hexstr_de          = $11E1 =  4577          mon_1000.asm:391
+hexstr_de.hex2nib_succ = $11E9 =  4585          mon_1000.asm:397 (unused)
+hexstr_de.loop     = $11E4 =  4580          mon_1000.asm:393
+hexstr_de.rl4      = $11EB =  4587          mon_1000.asm:399
+lbuf               = $0F04 =  3844          mon_1000.asm:33
+mon                = $1000 =  4096          mon_1000.asm:38
+mon_halt           = $10C2 =  4290          mon_1000.asm:146
+print_byte         = $1136 =  4406          mon_1000.asm:245
+print_endl         = $1143 =  4419          mon_1000.asm:256
+print_err_msg      = $1154 =  4436          mon_1000.asm:272
+print_hl_dec       = $1228 =  4648          mon_1000.asm:452 (unused)
+print_hl_dec_loop0 = $122C =  4652          mon_1000.asm:457
+print_hl_dec_output = $1238 =  4664          mon_1000.asm:466
+print_nibble       = $1127 =  4391          mon_1000.asm:233
+print_nibble_out   = $1133 =  4403          mon_1000.asm:240
+print_str_hl       = $114C =  4428          mon_1000.asm:263
+read_line          = $100B =  4107          mon_1000.asm:42
+run_mode           = $10B7 =  4279          mon_1000.asm:136
+specify_end        = $104D =  4173          mon_1000.asm:80
+str_endl           = $1177 =  4471          mon_1000.asm:290 (unused)
+str_err            = $1170 =  4464          mon_1000.asm:288
+workspace          = $0F00 =  3840          mon_1000.asm:30
+write_mode         = $1090 =  4240          mon_1000.asm:114
+write_mode.exit    = $10B4 =  4276          mon_1000.asm:133
+
+
+total time: 0.0040 sec.
+no errors

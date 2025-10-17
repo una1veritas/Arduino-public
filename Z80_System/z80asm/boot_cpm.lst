@@ -1,6 +1,6 @@
                         ; --------------------------------------
-                        ; zasm: assemble "cpmboot.z80"
-                        ; date: 2025-10-16 02:44:22
+                        ; zasm: assemble "boot_cpm.z80"
+                        ; date: 2025-10-16 22:11:48
                         ; --------------------------------------
 
 
@@ -8,9 +8,8 @@
                         ;
                         ;	Copyright (C) 1988-2007 by Udo Munk
                         ;
-                        
+0100:                   	ORG	0100h		;mem base of boot
                         ;	ORG	0		;mem base of boot
-0100:                   	ORG 	0100h
                         ;
 0040:                   MSIZE	EQU	64		;mem size in kbytes
                         ;
@@ -78,61 +77,62 @@ FA00:                   BOOT	EQU	BIOS
 014A:                   CONT:
                         				;go to next sector if load is incomplete
 014A: 15       [ 4]     	DEC	D		;sects=sects-1
-014B: CA00F0   [14|14]  	JP	Z, 0f000h		;head for the bios
+014B: CA0010   [14|14]  	JP	Z, 01000h		;head for the bios
+014E: CA00FA   [24|24]  	JP	Z,BOOT		;head for the bios
                         ;
                         ;	more sectors to load
                         ;
                         ;	we aren't using a stack, so use <sp> as scratch register
                         ;	to hold the load address increment
                         ;
-014E: 318000   [24]     	LD	SP,128		;128 bytes per sector
-0151: 39       [35]     	ADD	HL,SP		;<hl> = <hl> + 128
+0151: 318000   [34]     	LD	SP,128		;128 bytes per sector
+0154: 39       [45]     	ADD	HL,SP		;<hl> = <hl> + 128
                         ;
-0152: 0C       [39]     	INC	C		;sector = sector + 1
-0153: 79       [43]     	LD	A,C
-0154: FE1B     [50]     	CP	27		;last sector of track ?
-0156: DA2501   [60|60]  	JP	C,LSECT		;no, go read another
+0155: 0C       [49]     	INC	C		;sector = sector + 1
+0156: 79       [53]     	LD	A,C
+0157: FE1B     [60]     	CP	27		;last sector of track ?
+0159: DA2501   [70|70]  	JP	C,LSECT		;no, go read another
                         ;
                         ;	end of track, increment to next track
                         ;
-0159: 0E01     [67]     	LD	C,1		;sector = 1
-015B: 04       [71]     	INC	B		;track = track + 1
-015C: C32501   [81]     	JP	LSECT		;for another group
+015C: 0E01     [77]     	LD	C,1		;sector = 1
+015E: 04       [81]     	INC	B		;track = track + 1
+015F: C32501   [91]     	JP	LSECT		;for another group
                         ;
                         	END			;of boot loader
 
 
 ; +++ segments +++
 
-#CODE          = $0100 =   256,  size = $005F =    95
+#CODE          = $0100 =   256,  size = $0062 =    98
 
 ; +++ global symbols +++
 
-BIAS    = $B000 = 45056          cpmboot.z80:11
-BIOS    = $FA00 = 64000          cpmboot.z80:13
-BIOSL   = $0300 =   768          cpmboot.z80:14
-BOOT    = $FA00 = 64000          cpmboot.z80:15 (unused)
-CCP     = $E400 = 58368          cpmboot.z80:12
-COLD    = $0119 =   281          cpmboot.z80:37
-CONDAT  = $0001 =     1          cpmboot.z80:21
-CONT    = $014A =   330          cpmboot.z80:68
-DMAH    = $0010 =    16          cpmboot.z80:28
-DMAL    = $000F =    15          cpmboot.z80:27
-DRIVE   = $000A =    10          cpmboot.z80:22
-ERRMSG  = $0103 =   259          cpmboot.z80:32
-FDCOP   = $000D =    13          cpmboot.z80:25
-FDCST   = $000E =    14          cpmboot.z80:26
-LSECT   = $0125 =   293          cpmboot.z80:45
-MSIZE   = $0040 =    64          cpmboot.z80:9
-PRTMSG  = $013D =   317          cpmboot.z80:59
-SECTOR  = $000C =    12          cpmboot.z80:24
-SECTS   = $0032 =    50          cpmboot.z80:17
-SIZE    = $1900 =  6400          cpmboot.z80:16
-STOP    = $0148 =   328          cpmboot.z80:65
-TRACK   = $000B =    11          cpmboot.z80:23
-_end    = $015F =   351          cpmboot.z80:7 (unused)
-_size   = $005F =    95          cpmboot.z80:7 (unused)
+BIAS    = $B000 = 45056          boot_cpm.z80:10
+BIOS    = $FA00 = 64000          boot_cpm.z80:12
+BIOSL   = $0300 =   768          boot_cpm.z80:13
+BOOT    = $FA00 = 64000          boot_cpm.z80:14
+CCP     = $E400 = 58368          boot_cpm.z80:11
+COLD    = $0119 =   281          boot_cpm.z80:36
+CONDAT  = $0001 =     1          boot_cpm.z80:20
+CONT    = $014A =   330          boot_cpm.z80:67
+DMAH    = $0010 =    16          boot_cpm.z80:27
+DMAL    = $000F =    15          boot_cpm.z80:26
+DRIVE   = $000A =    10          boot_cpm.z80:21
+ERRMSG  = $0103 =   259          boot_cpm.z80:31
+FDCOP   = $000D =    13          boot_cpm.z80:24
+FDCST   = $000E =    14          boot_cpm.z80:25
+LSECT   = $0125 =   293          boot_cpm.z80:44
+MSIZE   = $0040 =    64          boot_cpm.z80:8
+PRTMSG  = $013D =   317          boot_cpm.z80:58
+SECTOR  = $000C =    12          boot_cpm.z80:23
+SECTS   = $0032 =    50          boot_cpm.z80:16
+SIZE    = $1900 =  6400          boot_cpm.z80:15
+STOP    = $0148 =   328          boot_cpm.z80:64
+TRACK   = $000B =    11          boot_cpm.z80:22
+_end    = $0162 =   354          boot_cpm.z80:5 (unused)
+_size   = $0062 =    98          boot_cpm.z80:5 (unused)
 
 
-total time: 0.0013 sec.
+total time: 0.0012 sec.
 no errors

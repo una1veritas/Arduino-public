@@ -1,0 +1,37 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "boot_mon.asm"
+                        ; date: 2025-10-16 22:35:16
+                        ; --------------------------------------
+
+
+                        ;
+0F80:                   SBOTTOM equ 	00f80h
+1000:                   MONITOR equ     01000h
+                        ;
+0000:                   	    org 	0000h
+0000:                   RST_00: 	; Resetr/Power on
+0000: 31800F   [10]     	    ld 		sp, SBOTTOM
+0003: C30010   [20]     	    jp  	MONITOR
+                        ;
+                        ;		org 	0038h
+                        ;RST_38:		; Mode 1 interrupt service routine
+                        ;
+                        ;		org 	0066h
+                        ;RST_66: 	; NMI interrupt service routine
+
+
+; +++ segments +++
+
+#CODE          = $0000 =     0,  size = $0006 =     6
+
+; +++ global symbols +++
+
+MONITOR = $1000 =  4096          boot_mon.asm:3
+RST_00  = $0000 =     0          boot_mon.asm:6 (unused)
+SBOTTOM = $0F80 =  3968          boot_mon.asm:2
+_end    = $0006 =     6          boot_mon.asm:5 (unused)
+_size   = $0006 =     6          boot_mon.asm:5 (unused)
+
+
+total time: 0.0003 sec.
+no errors

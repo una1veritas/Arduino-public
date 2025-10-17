@@ -96,9 +96,9 @@ static const DiskType IBM8inSS = {77, 26, 128};
 
 struct Disk_Controller {
 
-	enum OpCode {
-		READ = 0,
-		WRITE = 0xff,
+	enum FDCOP_CODE {
+		READ_SECTOR 	= 0,
+		WRITE_SECTOR 	= 0xff,
 	};
 	static const uint8_t nof_drives = 2;
 
@@ -115,7 +115,7 @@ struct Disk_Controller {
 
 	Disk_Controller() {
 		current_drive = 0;
-		opcode = READ;
+		opcode = READ_SECTOR;
 	}
 
 	void init() {}
@@ -146,7 +146,7 @@ struct Disk_Controller {
 	}
 
 	void operate(uint8_t buffer[]) {
-		if (opcode == READ) {
+		if (opcode == READ_SECTOR) {
 			unsigned long pos = (drives[current_drive].track  * drives[current_drive].dtype.nof_sectors + drives[current_drive].sector) * drives[current_drive].dtype.sector_size;
 			drives[current_drive].sdfile->seek(pos);
 			for(uint16_t i = 0; i < drives[current_drive].dtype.sector_size; ++i) {
@@ -165,8 +165,9 @@ public:
   static const uint8_t IOADDR_BUS_WIDTH = 8;
   static const uint8_t ADDR_BUS_WIDTH = 16;
   static const uint8_t DATA_BUS_WIDTH = 8;
+
   static const uint8_t boot_0000[256] PROGMEM;
-  static const uint8_t rom_mon_F000[768] PROGMEM;
+  static const uint8_t mon_1000[768] PROGMEM;
   static const uint8_t basic_0000[8192] PROGMEM;
 
 public:
@@ -185,10 +186,16 @@ public:
 
   Disk_Controller fdc;
   DMA_Controller dma;
-
-
   
   uint8_t clock_mode;
+  uint8_t bus_mode;
+
+  enum MEMORY_BUS_MODE {
+	  Z80_THRU_RW_MODE 	= 0x00,
+	  Z80_MMU_RW_MODE 	= 0x02,
+	  MEGA_RW_MODE 		= 0x04,
+  };
+
   uint8_t PROGMEM * pages[16]{
     0,
     0,
@@ -256,7 +263,7 @@ public:
     dma.init();
     fdc.init();
 
-    set_rom_page(rom_mon_F000, 0x0f);
+    //set_rom_page(rom_mon_F000, 0x0f);
   }
 
   void set_rom_page(const uint8_t* rom PROGMEM, const uint8_t pageindex) {
@@ -295,6 +302,11 @@ public:
     }
   }
 
+  bool set_bus_mode(uint8_t mode) {
+	  // dma, atmega <-> sram
+	  // z80 thru, z80 <-> sram,
+	  // z80 mmu, z80 <- atmega -> sram/emulated rom
+  }
   /*
 	 * In this mode atmegaXXX00 controls all the bus
 	 * with MREQ/EN, IORQ/IO, RD/OE, WR/WE by stopping Z80
@@ -491,7 +503,7 @@ public:
   void DMA_exec(uint8_t mem[]) {
     if (dma.transfer_mode == dma.NO_REQUEST)
       return 0x00;
-    if (BUSACK() == HIGH and RESET() == HIGH) {
+    if ( BUSACK() == HIGH ) {
       dma.transfer_mode = dma.NO_REQUEST;
       dma.result = 0xff;
       return;

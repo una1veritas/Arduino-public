@@ -183,8 +183,9 @@ uint32_t Z80Bus::io_rw() {
 
 	while (IORQ() == LOW) {}
 	if (BUSACK() == LOW) {
-		Serial.println("FDC:");
-		Serial.print(" drive = ");
+		/*
+		Serial.print("FDC: ");
+		Serial.print("drive = ");
 		Serial.print(fdc.current_drive, DEC);
 		Serial.print(", track = ");
 		Serial.print(fdc.drives[fdc.current_drive].track, DEC);
@@ -195,18 +196,29 @@ uint32_t Z80Bus::io_rw() {
 		Serial.print(", opcode = ");
 		Serial.print(fdc.opcode, DEC);
 		Serial.println();
-		Serial.println("DMA: ");
-		Serial.print(" dst/src address = ");
+		Serial.print("DMA: ");
+		Serial.print("address = ");
 		Serial.print(dma.address, HEX);
 		Serial.print(", block size = ");
 		Serial.print(dma.block_size(), DEC);
 		Serial.print(", transfer mode = ");
 		Serial.print(dma.transfer_mode, HEX);
 		Serial.println();
-		/*
-		fdc.operate(dma_buff);
-		DMA_exec(dma_buff);
 		*/
+		fdc.operate(dma_buff);
+		Serial.println();
+		Serial.print("address = ");
+		Serial.print(dma.address, HEX);
+		Serial.print(":");
+		for(int i = 0; i < 16; ++i) {
+			Serial.print(dma_buff[i]>>4 &0x0f, HEX);
+			Serial.print(dma_buff[i]&0x0f, HEX);
+			Serial.print(" ");
+		}
+		Serial.println();
+		DMA_mode();
+		DMA_exec(dma_buff);
+		MMC_mode();
 		BUSREQ(HIGH);
 	}
 	return (uint32_t(port) << 16) | data;

@@ -1,5 +1,6 @@
 /* by sin, Aug, 2025 */
 #include <SPI.h>
+#include <SD.h>
 //#include <LiquidCrystal.h>
 
 #include "Z80Bus.h"
@@ -77,8 +78,10 @@ char busmode = ' ';
 long prev_millis;
 char buf[32];
 uint8_t dma_buff[256];
-DFR7segarray dfr7seg(19, 20, 21);
+File dskfile;
 
+DFR7segarray dfr7seg(19, 20, 21);
+/*
 void dump(uint8_t mem_buff[], const uint16_t size = 0x0100, const uint16_t offset_addr = 0x0000) {
   //char buf[16];
   uint8_t data;
@@ -95,7 +98,7 @@ void dump(uint8_t mem_buff[], const uint16_t size = 0x0100, const uint16_t offse
     
   }
 }
-
+*/
 void setup() {
   // put your setup code here, to run once:
   //lcdt.print(0,0, "System Starting.");
@@ -111,10 +114,22 @@ void setup() {
   // SPI.setClockDivider(SPI_CLOCK_DIV4);  -- div4 seems to be the default clock divider value
   SPI.begin();
   
+  if (! SD.begin(SS) ) {
+	  Serial.println("Failed to initialize SD card interface.");
+	  while (true) ;
+  }
+  dskfile = SD.open("/drivea.dsk");
+  if (!dskfile) {
+	  Serial.println("Failed to open dsk file.");
+	  while (true) ;
+  } else {
+	  z80bus.fdc.set_SD_file(&dskfile, 0);
+  }
+
   dfr7seg.clear();
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_mode_select(3); 
+  z80bus.clock_mode_select(4); 
   z80bus.clock_start();
   Serial.println("Reseting Z80...");
   z80bus.cpu_reset();
@@ -139,22 +154,15 @@ void setup() {
     }
 
     // Load bootloader from 0x0000 by  DMA, arduino to ram 
-    uint8_t res = z80bus.DMA_progmem_load(Z80Bus::boot_0000, 0x0000, 256);
+    uint8_t res;
+    res = z80bus.DMA_progmem_load(Z80Bus::boot_0000, 0x0000, 256);
+    res |= z80bus.DMA_progmem_load(Z80Bus::mon_1000, 0x1000, 256*3);
     if (res != 0) {
       Serial.println("Something going wrong w/ sram read & write!");
     } else {
       Serial.println("Transfer completed.");
     }
     
-    // test DMA, ram to arduino 
-    /*
-    z80bus.DMA_address(0);
-    z80bus.DMA_read(dma_buff);
-    dump(dma_buff, 0x100, 0);
-    z80bus.DMA_address(0x100);
-    z80bus.DMA_read(dma_buff);
-    dump(dma_buff, 0x100, 0x100);
-    */
     Serial.println("Exit to Z80 mode.");
     z80bus.MMC_mode();
   }
