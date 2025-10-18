@@ -66,12 +66,12 @@ void Z80Bus::clock_mode_select(const uint8_t mode) {
 		clock_set(2, 1000);
 		clock_mode = 3;
 	  break;
-	case 4 : // 10 kHz
+	case 4 : // 5 kHz
 		clock_set(2, 200);
 		clock_mode = 4;
 	  break;
-	case 5 :	// 20kHz
-		clock_set(1, 400);
+	case 5 :	// 40kHz
+		clock_set(1, 200);
 		clock_mode = 5;
 	  break;
 	case 2 :
@@ -182,6 +182,7 @@ uint32_t Z80Bus::io_rw() {
 		return 0;
 
 	while (IORQ() == LOW) {}
+	data_bus_mode_input();
 	if (BUSACK() == LOW) {
 		/*
 		Serial.print("FDC: ");
@@ -216,60 +217,44 @@ uint32_t Z80Bus::io_rw() {
 			Serial.print(" ");
 		}
 		Serial.println();
-		DMA_mode();
+		mem_bus_DMA_mode();
 		DMA_exec(dma_buff);
-		MMC_mode();
+		mem_bus_Z80_mode();
 		BUSREQ(HIGH);
 	}
 	return (uint32_t(port) << 16) | data;
 }
 
-uint32_t Z80Bus::mem_rw() {
-	uint16_t addr;
-	uint8_t data;
-	enum RW_MODE {
-		READ = 0, WRITE,
+void Z80Bus::emulate_rom() {
+	union {
+		uint16_t addr16;
+		uint8_t addr8l, addr8h;
 	};
-	//Z80's mode
-	uint8_t rw_mode = READ;
+	uint8_t data;
 	uint8_t page = 0;
 
-	if (MREQ() == HIGH or ram_is_enabled())
-		return 0;
-	addr = address_bus16_get();
-	page = (addr >> 12) & 0x0f;
-	if ( pages[page] == NULL ) {
-		// sram
-		ram_enable();
-		data_bus_mode_input();
-		clock_wait_rising_edge();
-		data = data_bus_get();
+	if ( MREQ() == HIGH )
+		return;
+	addr16 = address_bus16_get();
+	page = (addr8h >> 4) & 0x0f;
+	if ( pages[page] == NULL )
+		return;
+	// address is in rom area
+	ram_disable();
+	if (RD() == LOW) {
+		data_bus_mode_output();
+		data = pgm_read_byte_near(pages[page] + (addr16 & 0x0fff));
+		data_bus_set(data);
+		while ( RD() == LOW ) {}
 	} else {
-		// rom area
-		if (RD() == LOW) {
-			rw_mode = READ;
-			data_bus_mode_output();
-		} else if (WR() == LOW) {
-			rw_mode = WRITE;
-			data_bus_mode_input(); // for observation
-		}
-		if (rw_mode == READ) {
-			data = pgm_read_byte_near(pages[page] + (addr & 0x0fff));
-			data_bus_set(data);
-			while (RD() == LOW)
-				;
-		} else if (rw_mode == WRITE) {
-			data_bus_mode_input();
-			while (WR() == LOW)
-				;
-			data = data_bus_get();
-			Serial.println("write rom area error.");
-		}
+		data_bus_mode_input();
+		while (WR() == LOW) {}
+		data = data_bus_get();
+		Serial.println("write rom area error.");
 	}
 	while (MREQ() == LOW)
 		;
-	ram_disable();
-	return (uint32_t(addr) << 16) | data;
+	ram_enable();
 }
 
 

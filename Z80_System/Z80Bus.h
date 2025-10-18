@@ -301,19 +301,19 @@ public:
         ;
     }
   }
-
+/*
   bool set_bus_mode(uint8_t mode) {
 	  // dma, atmega <-> sram
 	  // z80 thru, z80 <-> sram,
 	  // z80 mmu, z80 <- atmega -> sram/emulated rom
-  }
+  }*/
   /*
 	 * In this mode atmegaXXX00 controls all the bus
 	 * with MREQ/EN, IORQ/IO, RD/OE, WR/WE by stopping Z80
 	 * in BUSREQ/BUSACK state, or RESET and clock stop.
 	 * ATMega controls all the devices.
 	 */
-  bool DMA_mode() {
+  bool mem_bus_DMA_mode() {
     if (RESET() == HIGH) {
       if (BUSACK() == HIGH) {
         BUSREQ(LOW);
@@ -336,7 +336,7 @@ public:
 	 * Responses and handles only IORQ R/W requests.
 	 * Issues BUSREQ only if DMA access is requested.
 	 * Performs possible monitoring of cpu/bus/memory.
-	 */
+	 *//*
   bool IOC_mode() {
     ram_disable();
     address_bus16_mode(INPUT);
@@ -351,19 +351,21 @@ public:
     while (BUSACK() == LOW)
       ;
   }
-
+*/
   /*
 	 * Memory Manager/Controller mode.
 	 * ATmega does MMU function and
 	 * controls SRAM access, ROM emulation,
 	 * as well as the memory page control.
 	 */
-  bool MMC_mode() {
+  bool mem_bus_Z80_mode() {
     ram_disable();  // ram/rom is controlled by atmega100
     address_bus16_mode(INPUT);
+    data_bus_mode_input();
     pinMode(_MREQ, INPUT);
     pinMode(_RD, INPUT);
     pinMode(_WR, INPUT);
+    ram_enable();
     if (BUSREQ() == LOW)
       BUSREQ(HIGH);
     if (RESET() == LOW)
@@ -508,7 +510,7 @@ public:
       dma.result = 0xff;
       return;
     }
-    ram_enable();
+    //ram_enable();
     if (dma.transfer_mode == dma.WRITE_RAM) {
       for (uint16_t ix = 0; ix < dma.block_size(); ++ix) {
         ram_write(dma.address + ix, mem[ix]);
@@ -518,7 +520,7 @@ public:
         mem[ix] = ram_read(dma.address + ix);
       }
     }
-    ram_disable();
+    //ram_disable();
     dma.transfer_mode = dma.NO_REQUEST;
     dma.result = 0x00;
   }
@@ -613,7 +615,7 @@ public:
 
   //  uint8_t io_rw(const uint8_t & port, const uint8_t & val, const uint8_t & inout);
   uint32_t io_rw(void);
-  uint32_t mem_rw(void);
+  void emulate_rom(void);
   uint8_t ascii7seg(char);
 };
 

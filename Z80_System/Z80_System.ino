@@ -129,12 +129,12 @@ void setup() {
   dfr7seg.clear();
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_mode_select(4); 
+  z80bus.clock_mode_select(3); 
   z80bus.clock_start();
   Serial.println("Reseting Z80...");
   z80bus.cpu_reset();
 
-  if (!z80bus.DMA_mode() ) {
+  if (! z80bus.mem_bus_DMA_mode() ) {
     //lcdt.print(0,0,"DMA mode failed.");
     while (true) ;
   } else {
@@ -164,7 +164,7 @@ void setup() {
     }
     
     Serial.println("Exit to Z80 mode.");
-    z80bus.MMC_mode();
+    z80bus.mem_bus_Z80_mode();
   }
   Serial.println("_RESET goes HIGH.");
   z80bus.RESET(HIGH);
@@ -180,30 +180,27 @@ void loop() {
   //z80bus.clock_wait_rising_edge();
    if ( !z80bus.MREQ() ) {
     if ( ! z80bus.RD() ) {
-      /*
       addr = z80bus.address_bus16_get();
-      z80bus.clock_wait_rising_edge();
+      //z80bus.clock_wait_rising_edge();
       data = z80bus.data_bus_get();
-      */
-      val = z80bus.mem_rw();
+      //val = z80bus.mem_rw();
       busmode = 'r';      
     } else if ( ! z80bus.WR() ) {
-      /*
       addr = z80bus.address_bus16_get();
-      z80bus.clock_wait_rising_edge();
+      //z80bus.clock_wait_rising_edge();
       data = z80bus.data_bus_get();
-      */
-      val = z80bus.mem_rw();
+      //val = z80bus.mem_rw();
       busmode = 'u';
     } // else RFSH
   } else if ( !z80bus.IORQ() ) {
     if ( ! z80bus.RD() ) {
       // in operation
-      /*
+      
       addr = z80bus.address_bus16_get();
       z80bus.data_bus_mode_output();
-      */
+      
       val = z80bus.io_rw();
+      data =   z80bus.data_bus_get();
       /*
       z80bus.data_bus_set(data);
       z80bus.clock_wait_rising_edge(1);
@@ -213,19 +210,19 @@ void loop() {
       busmode = 'i';
     } else if ( ! z80bus.WR() ) {
       // out operation
-      /*
-      z80bus.data_bus_mode_input();
+      
       addr = z80bus.address_bus16_get();
-      z80bus.clock_wait_rising_edge(2);
+      //z80bus.clock_wait_rising_edge(2);
+      z80bus.data_bus_mode_input();
       data =   z80bus.data_bus_get();
-      */
+      
       val = z80bus.io_rw();
       busmode = 'o';
     } 
   }
 
-  if (z80bus.clock_mode_current() < 3) {
-    dfr7seg.show_digits(val>>16 & 0xffff, val & 0xff, busmode);
+  if (z80bus.clock_mode_current() < 4) {
+    dfr7seg.show_digits(addr, data, busmode);
   }
 
   if ( ! z80bus.HALT() ) {
