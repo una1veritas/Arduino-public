@@ -47,7 +47,7 @@ struct DMA_Controller {
 	union {
 		uint16_t address;
 		struct {
-			uint8_t addr_lo8, addr_hi8;
+			uint8_t addr8[2];
 		};
 	};
 	uint16_t blk_size;
@@ -70,11 +70,11 @@ struct DMA_Controller {
 	void set_address(uint16_t addr16) {
 		address = addr16;
 	}
-	void set_address_low(uint8_t addrlow) {
-		addr_lo8 = addrlow;
+	void set_address_low(uint8_t low8) {
+		addr8[0] = low8;
 	}
-	void set_address_high(uint8_t addrhi) {
-		addr_hi8 = addrhi;
+	void set_address_high(uint8_t hi8) {
+		addr8[1] = hi8;
 	}
 
 	void set_block_size(uint8_t n) {
@@ -151,6 +151,7 @@ struct Disk_Controller {
 	Drive & drive() {
 		return drives[current_drive];
 	}
+
 	void setup_read(uint8_t drv, uint8_t trk, uint8_t sect) {
 		current_drive = drv;
 		drives[current_drive].track = trk;
@@ -163,6 +164,14 @@ struct Disk_Controller {
 		drives[current_drive].track = trk;
 		drives[current_drive].sector = sect;
 		opcode = WRITE_SECTOR;
+	}
+
+	// calculate how many bytes from the file beginning
+	// with respect to trk, sect, specified
+	// track number begin with 0, sector number begin with 1 (to 27)
+	uint64_t seek_position() {
+		uint64_t sects = drive().track * drive().dtype.nof_sectors + (drive().sector - 1);
+		return sects * drive().dtype.sector_size;
 	}
 
 	uint8_t status() { return 0; }
@@ -533,11 +542,9 @@ public:
     dma.result = 0x00;
   }
 
-
 	void FDC_operate(uint8_t buffer[]) {
 		if (fdc.opcode == fdc.READ_SECTOR) {
-			unsigned long pos = (fdc.drive().track * fdc.drive().dtype.nof_sectors
-					+ fdc.drive().sector) * fdc.drive().dtype.sector_size;
+			unsigned long pos = fdc.seek_position();
 			fdc.drive().dskfile.seek(pos);
 			for (uint16_t i = 0; i < fdc.drive().dtype.sector_size; ++i) {
 				if (pos + i >= fdc.drive().dskfile.size())

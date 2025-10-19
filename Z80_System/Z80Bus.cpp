@@ -105,10 +105,14 @@ uint32_t Z80Bus::io_rw() {
 		data_bus_mode_output();
 		switch ( uint8_t(port & 0xff) ) {
 		case CONSTA:  //CONSTA
+			WAIT(LOW);
 			data = uint8_t(Serial.available()); //(Serial.available() ? 0xff : 0x00);
+			WAIT(HIGH);
 			break;
 		case CONIO:  // CONDAT/CON_IN
+			WAIT(LOW);
 			data = Serial.read();
+			WAIT(HIGH);
 			break;
 		case FDCST:       //fdc-port: status
 			data = fdc.status(); //fdc.status();
@@ -136,7 +140,9 @@ uint32_t Z80Bus::io_rw() {
 		switch ( uint8_t(port & 0xff) ) {
 		case CONIO:  // CONDAT/CON_IN
 		case CON_OUT:  // CON_OUT
+			WAIT(LOW);
 			Serial.print((char) data);
+			WAIT(HIGH);
 			break;
 		case FDCDRIVE:  //10, fdc-port: # of drive
 			fdc.sel_drive(data);
@@ -144,15 +150,15 @@ uint32_t Z80Bus::io_rw() {
 		case FDCTRACK:       //11, fdc-port: # of track
 			WAIT(LOW);
 			fdc.sel_track(data);
-			Serial.print("TRACK = ");
-			Serial.println(data, DEC);
+			//Serial.print(" TRACK = ");
+			//Serial.print(data, DEC);
 			WAIT(HIGH);
 			break;
 		case FDCSECTOR:       //fdc-port: # of sector
 			WAIT(LOW);
 			fdc.sel_sector(data);
-			Serial.print("SECTOR = ");
-			Serial.println(data, DEC);
+			//Serial.print(" SECTOR = ");
+			//Serial.print(data, DEC);
 			WAIT(HIGH);
 			break;
 		case FDCOP:       //fdc-port: command
@@ -211,8 +217,8 @@ uint32_t Z80Bus::io_rw() {
 		FDC_operate(dma_buff);
 		mem_bus_DMA_mode();
 		DMA_exec(dma_buff);
-		Serial.print("DMA address = ");
-		Serial.println(dma.address, HEX);
+		//Serial.print(" DMA dst = ");
+		//Serial.println(dma.address, HEX);
 		mem_bus_Z80_mode();
 		BUSREQ(HIGH);
 	}
