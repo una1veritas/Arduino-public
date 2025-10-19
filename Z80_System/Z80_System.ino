@@ -147,9 +147,10 @@ void setup() {
 }
 
 void loop() {
-  uint8_t data;
-  uint16_t addr;
   uint32_t val;
+  uint16_t addr;
+  uint8_t data, bus_mode;
+
   //z80bus.clock_wait_rising_edge();
    if ( !z80bus.MREQ() ) {
     if ( ! z80bus.RD() ) {
@@ -157,62 +158,31 @@ void loop() {
       //z80bus.clock_wait_rising_edge();
       data = z80bus.data_bus_get();
       //val = z80bus.mem_rw();
-      busmode = 'r';      
+      bus_mode = 'r';      
     } else if ( ! z80bus.WR() ) {
       addr = z80bus.address_bus16_get();
       //z80bus.clock_wait_rising_edge();
       data = z80bus.data_bus_get();
       //val = z80bus.mem_rw();
-      busmode = 'u';
+      bus_mode = 'u';
     } // else RFSH
   } else if ( !z80bus.IORQ() ) {
     if ( ! z80bus.RD() ) {
-      // in operation
-      
-      addr = z80bus.address_bus16_get();
-      z80bus.data_bus_mode_output();
-      
       val = z80bus.io_rw();
-      data =   z80bus.data_bus_get();
-      /*
-      z80bus.data_bus_set(data);
-      z80bus.clock_wait_rising_edge(1);
-      z80bus.clock_wait_rising_edge(1);
-      z80bus.data_bus_mode_input();
-      */
-      busmode = 'i';
     } else if ( ! z80bus.WR() ) {
-      // out operation
-      
-      addr = z80bus.address_bus16_get();
-      //z80bus.clock_wait_rising_edge(2);
-      z80bus.data_bus_mode_input();
-      data =   z80bus.data_bus_get();
-      
       val = z80bus.io_rw();
-      busmode = 'o';
     } 
+    data = ((uint8_t *) &val)[0];
+    bus_mode = ((uint8_t *) &val)[1];
+    addr = ((uint16_t *) &val)[1];
   }
 
   if (z80bus.clock_mode_current() < 4) {
-    dfr7seg.show_digits(addr, data, busmode);
+    dfr7seg.show_digits(addr, data, bus_mode);
   }
 
   if ( ! z80bus.HALT() ) {
     Serial.println("Halted.");
-    /*
-    if ( z80bus.DMA_mode() ) {
-      Serial.println("Entered DMA mode.");
-      //lcdt.print(0,0,"DMA mode.");
-      Serial.println("Memory dump...");
-      z80bus.DMA_address(0);
-      z80bus.DMA_read(dma_buff);
-      dump(dma_buff, 0x100, 0);
-
-      Serial.println("Exit to I/O Controller mode.");
-      z80bus.IOC_mode();
-    }
-    */
     z80bus.clock_stop();
     Serial.println("Z80 Clock stopped.");
     while (true);

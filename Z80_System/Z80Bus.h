@@ -318,12 +318,7 @@ public:
         ;
     }
   }
-/*
-  bool set_bus_mode(uint8_t mode) {
-	  // dma, atmega <-> sram
-	  // z80 thru, z80 <-> sram,
-	  // z80 mmu, z80 <- atmega -> sram/emulated rom
-  }*/
+
   /*
 	 * In this mode atmegaXXX00 controls all the bus
 	 * with MREQ/EN, IORQ/IO, RD/OE, WR/WE by stopping Z80
@@ -348,27 +343,6 @@ public:
     return true;
   }
 
-  /*
-	 * I/O Controller mode.
-	 * Responses and handles only IORQ R/W requests.
-	 * Issues BUSREQ only if DMA access is requested.
-	 * Performs possible monitoring of cpu/bus/memory.
-	 *//*
-  bool IOC_mode() {
-    ram_disable();
-    address_bus16_mode(INPUT);
-    pinMode(_MREQ, INPUT);
-    pinMode(_RD, INPUT);
-    pinMode(_WR, INPUT);
-    ram_enable();  // IO/mem is controlled by Z80
-    if (BUSREQ() == LOW)
-      BUSREQ(HIGH);
-    if (RESET() == LOW)
-      RESET(HIGH);
-    while (BUSACK() == LOW)
-      ;
-  }
-*/
   /*
 	 * Memory Manager/Controller mode.
 	 * ATmega does MMU function and
@@ -404,16 +378,17 @@ public:
   }
 
   uint16_t address_bus16_get() {
-    uint16_t val;
-    val = ADDR_IN_L | (ADDR_IN_H << 8);
-    return val;
+	uint16_t word;
+    ((uint8_t *) & word)[0] = ADDR_IN_L;
+    ((uint8_t *) & word)[1] = ADDR_IN_H;
+    return word;
   }
 
   void address_bus16_set(uint16_t addr) {
-    ADDR_OUT_L = addr & 0xff;
+    ADDR_OUT_L = ((uint8_t *) & addr)[0];
     //digitalWrite(29,(addr>>7) & 0x0001 ? HIGH : LOW);
     // ^ to solve PORTA 7th bit missing problem (reason unknown)
-    ADDR_OUT_H = (addr >> 8) & 0xff;
+    ADDR_OUT_H = ((uint8_t *) & addr)[1];
   }
 
   void data_bus_mode_input() {

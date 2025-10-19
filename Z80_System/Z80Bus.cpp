@@ -62,8 +62,8 @@ void Z80Bus::clock_mode_select(const uint8_t mode) {
 		clock_set(4, 2500); //
 		clock_mode = 1;
 	  break;
-	case 3 : // 1 kHz
-		clock_set(2, 1000);
+	case 3 : // 500 Hz
+		clock_set(2, 2000);
 		clock_mode = 3;
 	  break;
 	case 4 : // 5 kHz
@@ -87,13 +87,10 @@ void Z80Bus::clock_mode_select(const uint8_t mode) {
 uint32_t Z80Bus::io_rw() {
 	uint16_t port;
 	uint8_t data;
-	uint8_t dma_buff[dma.block_size()];
+	uint32_t result;
+	static uint8_t dma_buff[256];
 
-	enum IO_MODE {
-		IN = 0, OUT = 1,
-	};
 	// from Z80 side
-	uint8_t io_mode = IN;
 
 	if (IORQ() == HIGH)
 		return 0;
@@ -101,7 +98,7 @@ uint32_t Z80Bus::io_rw() {
 	//Serial.print("port: ");
 	//Serial.print(port, HEX);
 	if (RD() == LOW) {
-		io_mode = IN;
+		//io_mode = IN;
 		data_bus_mode_output();
 		switch ( uint8_t(port & 0xff) ) {
 		case CONSTA:  //CONSTA
@@ -131,9 +128,9 @@ uint32_t Z80Bus::io_rw() {
 			data = 0;
 		}
 		data_bus_set(data);
-
+		((uint8_t *) & result)[1] = 'i';
 	} else if (WR() == LOW) {
-		io_mode = OUT;
+		//io_mode = OUT;
 		data_bus_mode_input();
 		data = data_bus_get();
 
@@ -208,6 +205,7 @@ uint32_t Z80Bus::io_rw() {
 			WAIT(HIGH);
 			break;
 		}
+		((uint8_t *) & result)[1] = 'o';
 	} else
 		return 0;
 
@@ -222,28 +220,27 @@ uint32_t Z80Bus::io_rw() {
 		mem_bus_Z80_mode();
 		BUSREQ(HIGH);
 	}
-	return (uint32_t(port) << 16) | data;
+	((uint16_t *) & result)[1] = port;
+	((uint8_t *) & result)[0] = data;
+	return result;
 }
 
 void Z80Bus::emulate_rom() {
-	union {
-		uint16_t addr16;
-		uint8_t addr8l, addr8h;
-	};
+	uint16_t address;
 	uint8_t data;
 	uint8_t page = 0;
 
 	if ( MREQ() == HIGH )
 		return;
-	addr16 = address_bus16_get();
-	page = (addr8h >> 4) & 0x0f;
+	address = address_bus16_get();
+	page = (((uint8_t *)&address)[1] >> 4) & 0x0f;
 	if ( pages[page] == NULL )
 		return;
 	// address is in rom area
 	ram_disable();
 	if (RD() == LOW) {
 		data_bus_mode_output();
-		data = pgm_read_byte_near(pages[page] + (addr16 & 0x0fff));
+		data = pgm_read_byte_near(pages[page] + (address & 0x0fff));
 		data_bus_set(data);
 		while ( RD() == LOW ) {}
 	} else {
