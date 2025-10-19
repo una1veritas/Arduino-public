@@ -37,6 +37,8 @@ enum IO_Ports {
 
 	CLKMODE = 128,
 	LED7SEG  = 129,
+
+	FDINSERT = 135, // re-mount SD
 };
 
 struct DMA_Controller {
@@ -65,6 +67,9 @@ struct DMA_Controller {
 		result = 0;
 	}
 
+	void set_address(uint16_t addr16) {
+		address = addr16;
+	}
 	void set_address_low(uint8_t addrlow) {
 		addr_lo8 = addrlow;
 	}
@@ -104,11 +109,11 @@ struct Disk_Controller {
 
 	struct Drive {
 		DiskType dtype;
+		File dskfile;
 		//
 		uint16_t sector;
 		uint16_t track;
 		uint8_t status;
-		File * sdfile;
 	} drives[nof_drives];
 	uint8_t current_drive;
 	uint8_t opcode;
@@ -116,14 +121,12 @@ struct Disk_Controller {
 	Disk_Controller() {
 		current_drive = 0;
 		opcode = READ_SECTOR;
+		for(uint8_t i = 0; i < nof_drives; ++i) {
+			drive().dskfile.close();
+		}
 	}
 
 	void init() {}
-
-	void set_SD_file(File * sdfile, uint8_t drv = 0) {
-		drives[drv].sdfile = sdfile;
-		drives[drv].dtype = IBM8inSS;
-	}
 
 	void sel_drive(uint8_t dno) {
 		current_drive = dno;
@@ -145,16 +148,21 @@ struct Disk_Controller {
 		return drives[current_drive].dtype.sector_size;
 	}
 
-	void operate(uint8_t buffer[]) {
-		if (opcode == READ_SECTOR) {
-			unsigned long pos = (drives[current_drive].track  * drives[current_drive].dtype.nof_sectors + drives[current_drive].sector) * drives[current_drive].dtype.sector_size;
-			drives[current_drive].sdfile->seek(pos);
-			for(uint16_t i = 0; i < drives[current_drive].dtype.sector_size; ++i) {
-				if ( pos + i >= drives[current_drive].sdfile->size() )
-					break;
-				buffer[i] = drives[current_drive].sdfile->read();
-			}
-		}
+	Drive & drive() {
+		return drives[current_drive];
+	}
+	void setup_read(uint8_t drv, uint8_t trk, uint8_t sect) {
+		current_drive = drv;
+		drives[current_drive].track = trk;
+		drives[current_drive].sector = sect;
+		opcode = READ_SECTOR;
+	}
+
+	void setup_write(uint8_t drv, uint8_t trk, uint8_t sect) {
+		current_drive = drv;
+		drives[current_drive].track = trk;
+		drives[current_drive].sector = sect;
+		opcode = WRITE_SECTOR;
 	}
 
 	uint8_t status() { return 0; }
@@ -188,7 +196,7 @@ public:
   DMA_Controller dma;
   
   uint8_t clock_mode;
-  uint8_t bus_mode;
+  //uint8_t bus_mode;
 
   enum MEMORY_BUS_MODE {
 	  Z80_THRU_RW_MODE 	= 0x00,
@@ -524,6 +532,20 @@ public:
     dma.transfer_mode = dma.NO_REQUEST;
     dma.result = 0x00;
   }
+
+
+	void FDC_operate(uint8_t buffer[]) {
+		if (fdc.opcode == fdc.READ_SECTOR) {
+			unsigned long pos = (fdc.drive().track * fdc.drive().dtype.nof_sectors
+					+ fdc.drive().sector) * fdc.drive().dtype.sector_size;
+			fdc.drive().dskfile.seek(pos);
+			for (uint16_t i = 0; i < fdc.drive().dtype.sector_size; ++i) {
+				if (pos + i >= fdc.drive().dskfile.size())
+					break;
+				buffer[i] = fdc.drive().dskfile.read();
+			}
+		}
+	}
 
   void RESET(uint8_t val) {
     pinMode(_RESET, OUTPUT);

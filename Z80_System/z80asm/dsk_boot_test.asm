@@ -2,8 +2,9 @@
 ;
 ;	Copyright (C) 1988-2007 by Udo Munk
 ;
-	ORG	0100h		;mem base of boot
-;	ORG	0		;mem base of boot
+	ORG	0		;mem base of boot
+
+MON 	equ 	01000h
 ;
 MSIZE	EQU	64		;mem size in kbytes
 ;
@@ -26,7 +27,7 @@ FDCST   EQU	14		;fdc-port: status
 DMAL    EQU	15		;dma-port: dma address low
 DMAH    EQU	16		;dma-port: dma address high
 ;
-	JP	COLD
+	jp  MON     ;JP	COLD
 ;
 ERRMSG:	DEFM	'BOOT: error booting'
 	DEFB	13,10,0
@@ -62,13 +63,15 @@ PRTMSG:	LD	A,(HL)
 	INC	HL
 	JP	PRTMSG
 STOP:	DI
-	HALT			;and halt cpu
+	;HALT			;and halt cpu
+	jp 	MON
 ;
 CONT:
 				;go to next sector if load is incomplete
 	DEC	D		;sects=sects-1
-	JP	Z, 01000h		;head for the bios
+	jp 	Z, MON
 	JP	Z,BOOT		;head for the bios
+	
 ;
 ;	more sectors to load
 ;
@@ -90,4 +93,3 @@ CONT:
 	JP	LSECT		;for another group
 ;
 	END			;of boot loader
-

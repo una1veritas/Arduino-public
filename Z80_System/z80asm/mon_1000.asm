@@ -28,10 +28,10 @@ LED7SEG	equ 	129
 
 ; work space
 workspace   equ     00f00H
-addr	    equ		workspace
+lbuf	    equ 	workspace
+BUFSIZE     equ 	127
+addr	    equ		workspace + 80
 addr2	    equ 	addr+2
-lbuf	    equ 	workspace+4
-BUFSIZE     equ 	63
 ;
 
         org     01000h

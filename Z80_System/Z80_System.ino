@@ -1,10 +1,9 @@
 /* by sin, Aug, 2025 */
 #include <SPI.h>
 #include <SD.h>
-//#include <LiquidCrystal.h>
 
 #include "Z80Bus.h"
-#include "DFR7segarray.h"
+#include "displays.h"
 
 //#define BUS_DEBUG
 
@@ -34,39 +33,6 @@ Z80Bus z80bus(
   _RD, _WR, _BUSACK, _WAIT, _BUSREQ, _RESET, _M1, _RFSH,
   SRAMEN);
 
-/*
-const int LCD_RS = 14, LCD_EN = 15, LCD_D4 = 16, LCD_D5 = 17, LCD_D6 = 18, LCD_D7 = 19;
-LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
-
-struct Terminal {
-  const LiquidCrystal & lcd;
-  char line_buf[4][24];
-  int row, col;
-
-  Terminal(const LiquidCrystal & _lcd) : lcd(_lcd) {
-    lcd.begin(20,4);
-    lcd.clear();
-    col = 0;
-    row = 0;
-  }
-
-  void print(uint8 r, uint8 c, const char * str) {
-
-    row = r % 4;
-    snprintf(line_buf[row], 21, "%-20s", str);
-    //line_buf[row][20] = '\0';
-    lcd.setCursor(0,row);
-    lcd.print(line_buf[row]);
-  }
-
-  void clear() {
-    lcd.clear();
-    row = 0;
-    col = 0;
-  }
-} lcdt(lcd);
-*/
-
 const int SPI_CS = 53;//latchPin = 53; --- must be controlled by user
 //const int SPI_CLK = 52; //clockPin = 52; --- controlled by SPI module.
 //const int SPI_COPI = 51; //dataPin = 51; --- controlled by SPI module.
@@ -81,55 +47,48 @@ uint8_t dma_buff[256];
 File dskfile;
 
 DFR7segarray dfr7seg(19, 20, 21);
-/*
-void dump(uint8_t mem_buff[], const uint16_t size = 0x0100, const uint16_t offset_addr = 0x0000) {
-  //char buf[16];
-  uint8_t data;
-  for(uint32_t ix = 0; ix < size; ++ix) {
-    if ( (ix & 0x0f) == 0 ) {
-      snprintf(buf, 16, "%04X : ", offset_addr+ix);
-      Serial.print(buf);
-    }
-    snprintf(buf, 16, "%02x ", mem_buff[ix]);
-    Serial.print(buf);
-    if ( (ix & 0x0f) == 0x0f ) {
-      Serial.println();
-    }
-    
-  }
-}
-*/
+const int LCD_RS = 14, LCD_EN = 15, LCD_D4 = 16, LCD_D5 = 17, LCD_D6 = 18, LCD_D7 = 19;
+LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+
+// boot/ipl source
+enum BOOT_PROGRAM {
+  DMA_IPL = 0,
+  DISK_BOOTSECTOR,
+} boot_media;
+
 void setup() {
   // put your setup code here, to run once:
   //lcdt.print(0,0, "System Starting.");
 
   Serial.begin(115200);
   while (! Serial) {}
-  Serial.println("***********************");
-  Serial.println("  Z80 system starting. ");
-  Serial.println("***********************");
+  Serial.println("Z80 system stareding. ");
 
+  boot_media = DMA_IPL;
+  // microSD disk/file, SPI 
   pinMode(SPI_CS, OUTPUT);
   digitalWrite(SPI_CS, HIGH);
   // SPI.setClockDivider(SPI_CLOCK_DIV4);  -- div4 seems to be the default clock divider value
   SPI.begin();
-  
   if (! SD.begin(SS) ) {
 	  Serial.println("Failed to initialize SD card interface.");
-	  while (true) ;
-  }
-  dskfile = SD.open("/drivea.dsk");
-  if (!dskfile) {
-	  Serial.println("Failed to open dsk file.");
-	  while (true) ;
   } else {
-	  z80bus.fdc.set_SD_file(&dskfile, 0);
+    const char filename[] = "/cpmboot.dsk";
+    z80bus.fdc.drive().dskfile = SD.open(filename);
+    if (!z80bus.fdc.drive().dskfile) {
+	    Serial.print("Failed to open path/file ");
+      Serial.println(filename);
+    } else {
+      Serial.print("Trying to boot from ");
+      Serial.println(filename);
+      //boot_media = DISK_BOOTSECTOR;
+    }
   }
 
   dfr7seg.clear();
   // nop test
   //z80bus.mem_disable();
-  z80bus.clock_mode_select(3); 
+  z80bus.clock_mode_select(4); 
   z80bus.clock_start();
   Serial.println("Reseting Z80...");
   z80bus.cpu_reset();
@@ -139,9 +98,7 @@ void setup() {
     while (true) ;
   } else {
     Serial.println("Entered DMA mode.");
-    //lcdt.print(0,0,"DMA mode.");
 
-    
     Serial.print("Memory check...");
     uint16_t errcount = z80bus.ram_check(0x0000, 0x1000);
     if ( errcount > 0 ) {
@@ -154,16 +111,32 @@ void setup() {
     }
 
     // Load bootloader from 0x0000 by  DMA, arduino to ram 
-    uint8_t res;
-    res = z80bus.DMA_progmem_load(Z80Bus::boot_0000, 0x0000, 256);
-    res |= z80bus.DMA_progmem_load(Z80Bus::mon_1000, 0x1000, 256*3);
-    if (res != 0) {
-      Serial.println("Something going wrong w/ sram read & write!");
-    } else {
-      Serial.println("Transfer completed.");
+    if ( boot_media == DMA_IPL) {
+      uint8_t res;
+      res = z80bus.DMA_progmem_load(Z80Bus::boot_0000, 0x0000, 256);
+      res |= z80bus.DMA_progmem_load(Z80Bus::mon_1000, 0x1000, 256*3);
+      if (res != 0) {
+        Serial.println("Something going wrong w/ sram/IPL read & write!");
+      } else {
+        Serial.println("Transfer completed.");
+      }
+    } else if (boot_media == DISK_BOOTSECTOR ) {
+      z80bus.fdc.drive().dskfile.seek(0);
+      for(unsigned long pos = 0; pos < 256; ++pos) {
+        z80bus.ram_write(pos, z80bus.fdc.drive().dskfile.read());
+      }
+      /*
+      z80bus.dma.set_block_size(0);
+      z80bus.dma.transfer_mode = z80bus.dma.WRITE_RAM;
+      for(unsigned long sec = 0; sec < 2; ++sec) {
+        z80bus.DMA_address(sec * z80bus.dma.block_size());
+        z80bus.fdc.setup_read(0, 0, sec);
+        z80bus.FDC_operate(dma_buff);
+        z80bus.DMA_exec(dma_buff);
+      }
+      */
     }
-    
-    Serial.println("Exit to Z80 mode.");
+    Serial.println("Exit to Z80 mem bus mode.");
     z80bus.mem_bus_Z80_mode();
   }
   Serial.println("_RESET goes HIGH.");

@@ -142,10 +142,18 @@ uint32_t Z80Bus::io_rw() {
 			fdc.sel_drive(data);
 			break;
 		case FDCTRACK:       //11, fdc-port: # of track
+			WAIT(LOW);
 			fdc.sel_track(data);
+			Serial.print("TRACK = ");
+			Serial.println(data, DEC);
+			WAIT(HIGH);
 			break;
 		case FDCSECTOR:       //fdc-port: # of sector
+			WAIT(LOW);
 			fdc.sel_sector(data);
+			Serial.print("SECTOR = ");
+			Serial.println(data, DEC);
+			WAIT(HIGH);
 			break;
 		case FDCOP:       //fdc-port: command
 			fdc.set_opcode(data);
@@ -177,6 +185,22 @@ uint32_t Z80Bus::io_rw() {
 			digitalWrite(21, HIGH);
 			WAIT(HIGH);
 			break;
+		case FDINSERT:
+			WAIT(LOW);
+			if (! SD.begin(SS) ) {
+				Serial.println("Failed to initialize SD card interface.");
+			} else {
+			    const char filename[] = "/cpmboot.dsk";
+			    if (fdc.drive().dskfile)
+			    	fdc.drive().dskfile.close();
+			    fdc.drive().dskfile = SD.open(filename);
+			    if (!fdc.drive().dskfile) {
+				    Serial.print("Failed to open path/file ");
+				    Serial.println(filename);
+			    }
+			}
+			WAIT(HIGH);
+			break;
 		}
 	} else
 		return 0;
@@ -184,41 +208,11 @@ uint32_t Z80Bus::io_rw() {
 	while (IORQ() == LOW) {}
 	data_bus_mode_input();
 	if (BUSACK() == LOW) {
-		/*
-		Serial.print("FDC: ");
-		Serial.print("drive = ");
-		Serial.print(fdc.current_drive, DEC);
-		Serial.print(", track = ");
-		Serial.print(fdc.drives[fdc.current_drive].track, DEC);
-		Serial.print(", sector = ");
-		Serial.print(fdc.drives[fdc.current_drive].sector, DEC);
-		Serial.print(", sector size = ");
-		Serial.print(fdc.sector_size(), DEC);
-		Serial.print(", opcode = ");
-		Serial.print(fdc.opcode, DEC);
-		Serial.println();
-		Serial.print("DMA: ");
-		Serial.print("address = ");
-		Serial.print(dma.address, HEX);
-		Serial.print(", block size = ");
-		Serial.print(dma.block_size(), DEC);
-		Serial.print(", transfer mode = ");
-		Serial.print(dma.transfer_mode, HEX);
-		Serial.println();
-		*/
-		fdc.operate(dma_buff);
-		Serial.println();
-		Serial.print("address = ");
-		Serial.print(dma.address, HEX);
-		Serial.print(":");
-		for(int i = 0; i < 16; ++i) {
-			Serial.print(dma_buff[i]>>4 &0x0f, HEX);
-			Serial.print(dma_buff[i]&0x0f, HEX);
-			Serial.print(" ");
-		}
-		Serial.println();
+		FDC_operate(dma_buff);
 		mem_bus_DMA_mode();
 		DMA_exec(dma_buff);
+		Serial.print("DMA address = ");
+		Serial.println(dma.address, HEX);
 		mem_bus_Z80_mode();
 		BUSREQ(HIGH);
 	}
