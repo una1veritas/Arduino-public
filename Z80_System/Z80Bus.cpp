@@ -145,18 +145,18 @@ uint32_t Z80Bus::io_rw() {
 			fdc.sel_drive(data);
 			break;
 		case FDCTRACK:       //11, fdc-port: # of track
-			WAIT(LOW);
+			//WAIT(LOW);
 			fdc.sel_track(data);
 			//Serial.print(" TRACK = ");
 			//Serial.print(data, DEC);
-			WAIT(HIGH);
+			//WAIT(HIGH);
 			break;
 		case FDCSECTOR:       //fdc-port: # of sector
-			WAIT(LOW);
+			//WAIT(LOW);
 			fdc.sel_sector(data);
 			//Serial.print(" SECTOR = ");
 			//Serial.print(data, DEC);
-			WAIT(HIGH);
+			//WAIT(HIGH);
 			break;
 		case FDCOP:       //fdc-port: command
 			fdc.set_opcode(data);

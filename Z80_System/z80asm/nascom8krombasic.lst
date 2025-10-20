@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "nascom8krombasic.asm"
-                        ; date: 2025-09-29 21:04:14
+                        ; date: 2025-10-20 12:07:55
                         ; --------------------------------------
 
 
@@ -10,7 +10,7 @@
                         ; Adapted for the freeware Zilog Macro Assembler 2.10 to produce
                         ; the original ROM code (checksum A934H). PA
                         
-                        #include 'nascom8k.inc'
+                        #include 'nascom8krombasic.inc'
                         
                         ; MONITOR EQUATES (RESTART INSTRUCTIONS)
                         
@@ -643,21 +643,21 @@ E38B: 2ADA10   [27]             LD      HL,(ARREND)     ; Lowest free memory
 E38E: 0600     [34]             LD      B,0             ; BC = Number of levels to test
 E390: 09       [45]             ADD     HL,BC           ; 2 Bytes for each level
 E391: 09       [56]             ADD     HL,BC
-E392: 3E                        DB      3EH             ; Skip "PUSH HL"
-E393: E5       [11]     ENFMEM: PUSH    HL              ; Save code string address
+E392: 3E                        DB      3EH             ; Skip "PUSH HL"                ; ld a, $e5
+E393: E5       [11]     ENFMEM: PUSH    HL              ; Save code string address      ; $e5
 E394: FFFF     [33]             LD      A,LOW -48       ; 48 Bytes minimum RAM
 ***ERROR***                                  ^ label "LOW" not found
-E396: 95       [37]             SUB     L
-E397: 6F       [41]             LD      L,A
+E396: 95       [37]             SUB     L                 
+E397: 6F       [41]             LD      L,A                                     ; L <- (LOW - 48) - L 
 E398: FFFF     [63]             LD      A,HIGH -48      ; 48 Bytes minimum RAM
 ***ERROR***                                   ^ label "HIGH" not found
-E39A: 9C       [67]             SBC     A,H
+E39A: 9C       [67]             SBC     A,H                                     ; (HIGH - 48) - H - (LOW - 48 < L ? 1 : 0)
 E39B: DAA2E3   [77|77]          JP      C,OMERR         ; Not enough - ?OM Error
 E39E: 67       [81]             LD      H,A
 E39F: 39       [92]             ADD     HL,SP           ; Test if stack is overflowed
 E3A0: E1       [102]            POP     HL              ; Restore code string address
 E3A1: D8       [107|113]        RET     C               ; Return if enough mmory
-E3A2: 1E0C     [ 7]     OMERR:  LD      E,OM            ; ?OM Error
+E3A2: 1E0C     [ 7]     OMERR:  LD      E,OM            ; ?OM Error     ; Out of Memory Error
 E3A4: C3C1E3   [17]             JP      ERROR
                         
 E3A7: 2AC910   [16]     DATSNR: LD      HL,(DATLIN)     ; Get line of current DATA item
@@ -4934,11 +4934,11 @@ ANTVLU  = $EC65 = 60517          nascom8krombasic.asm:1714
 ANYNAM  = $F51C = 62748          nascom8krombasic.asm:3060
 ARET    = $FCD8 = 64728          nascom8krombasic.asm:4228
 ARETN   = $FEE5 = 65253          nascom8krombasic.asm:4528
-ARG1    = $0C0C =  3084          nascom8k.inc:50
-ARG2    = $0C0E =  3086          nascom8k.inc:51
-ARGN    = $0C2B =  3115          nascom8k.inc:54
+ARG1    = $0C0C =  3084          nascom8krombasic.inc:50
+ARG2    = $0C0E =  3086          nascom8krombasic.inc:51
+ARGN    = $0C2B =  3115          nascom8krombasic.inc:54
 ARLDSV  = $F012 = 61458          nascom8krombasic.asm:2259
-ARREND  = $10DA =  4314          nascom8k.inc:115
+ARREND  = $10DA =  4314          nascom8krombasic.inc:115
 ARRLD1  = $E8B9 = 59577          nascom8krombasic.asm:1213
 ARRLP   = $F28B = 62091          nascom8krombasic.asm:2642
 ARRSV1  = $E8BB = 59579          nascom8krombasic.asm:1214
@@ -4954,21 +4954,21 @@ BAD     = $F59D = 62877          nascom8krombasic.asm:3122
 BADINP  = $EBEC = 60396          nascom8krombasic.asm:1649
 BAKSTK  = $E356 = 58198          nascom8krombasic.asm:412
 BAKTMP  = $F371 = 62321          nascom8krombasic.asm:2799
-BASTXT  = $105E =  4190          nascom8k.inc:91
+BASTXT  = $105E =  4190          nascom8krombasic.inc:91
 BCDEFP  = $F85F = 63583          nascom8krombasic.asm:3584
 BFREE   = $E0B7 = 57527          nascom8krombasic.asm:111
-BKSP    = $0008 =     8          nascom8k.inc:20
+BKSP    = $0008 =     8          nascom8krombasic.inc:20
 BNORM   = $F61E = 63006          nascom8krombasic.asm:3198
 BNRMLP  = $F621 = 63009          nascom8krombasic.asm:3201
 BREAK   = $FEDE = 65246          nascom8krombasic.asm:4524
 BREAK2  = $FE53 = 65107          nascom8krombasic.asm:4457
-BRKFLG  = $104D =  4173          nascom8k.inc:84
-BRKLIN  = $10CE =  4302          nascom8k.inc:109
+BRKFLG  = $104D =  4173          nascom8krombasic.inc:84
+BRKLIN  = $10CE =  4302          nascom8krombasic.inc:109
 BRKMSG  = $E350 = 58192          nascom8krombasic.asm:410
 BRKRET  = $E0B1 = 57521          nascom8krombasic.asm:108
-BS      = $0010 =    16          nascom8k.inc:137
+BS      = $0010 =    16          nascom8krombasic.inc:137
 BSERR   = $F045 = 61509          nascom8krombasic.asm:2290
-BUFFER  = $1061 =  4193          nascom8k.inc:92
+BUFFER  = $1061 =  4193          nascom8krombasic.inc:92
 BYTSFT  = $F756 = 63318          nascom8krombasic.asm:3409
 CASFF   = $FCD5 = 64725          nascom8krombasic.asm:4226
 CASFFW  = $FCC8 = 64712          nascom8krombasic.asm:4219
@@ -4978,12 +4978,12 @@ CHEKFN  = $F189 = 61833          nascom8krombasic.asm:2495
 CHKBRK  = $FD40 = 64832          nascom8krombasic.asm:4287
 CHKLTR  = $E977 = 59767          nascom8krombasic.asm:1318
 CHKSTK  = $E38A = 58250          nascom8krombasic.asm:449
-CHKSUM  = $104A =  4170          nascom8k.inc:82
+CHKSUM  = $104A =  4170          nascom8krombasic.inc:82
 CHKSYN  = $E690 = 59024          nascom8krombasic.asm:891
 CHKTYP  = $ED46 = 60742          nascom8krombasic.asm:1829
 CHR     = $F3A2 = 62370          nascom8krombasic.asm:2833
 CHSUMS  = $E960 = 59744          nascom8krombasic.asm:1306
-CIN     = $0C75 =  3189          nascom8k.inc:57
+CIN     = $0C75 =  3189          nascom8krombasic.inc:57
 CLEAR   = $E9CA = 59850          nascom8krombasic.asm:1366
 CLOAD   = $F4F9 = 62713          nascom8krombasic.asm:3042
 CLOAD1  = $F52B = 62763          nascom8krombasic.asm:3069
@@ -5000,14 +5000,14 @@ CMPLOG  = $EEBA = 61114          nascom8krombasic.asm:2051
 CMPNUM  = $F88E = 63630          nascom8krombasic.asm:3625
 CMPRES  = $EEFE = 61182          nascom8krombasic.asm:2100
 CMPSTR  = $EEE6 = 61158          nascom8krombasic.asm:2080
-CN      = $0020 =    32          nascom8k.inc:145
+CN      = $0020 =    32          nascom8krombasic.inc:145
 CNVIN1  = $FD20 = 64800          nascom8krombasic.asm:4270
 CNVIN2  = $FD27 = 64807          nascom8krombasic.asm:4273
 CNVIN3  = $FD2E = 64814          nascom8krombasic.asm:4276
 CNVIN4  = $FD35 = 64821          nascom8krombasic.asm:4279
 CNVIN5  = $FD3C = 64828          nascom8krombasic.asm:4282
 CNVNUM  = $F926 = 63782          nascom8krombasic.asm:3732
-COMMAN  = $1043 =  4163          nascom8k.inc:77
+COMMAN  = $1043 =  4163          nascom8krombasic.inc:77
 COMPL   = $F67E = 63102          nascom8krombasic.asm:3272
 CONCAT  = $F306 = 62214          nascom8krombasic.asm:2732
 CONEXP  = $F956 = 63830          nascom8krombasic.asm:3756
@@ -5015,7 +5015,7 @@ CONMON  = $FCD9 = 64729          nascom8krombasic.asm:4230
 CONOT1  = $FCF1 = 64753          nascom8krombasic.asm:4243
 CONPOS  = $F61B = 63003          nascom8krombasic.asm:3196
 CONT    = $E89E = 59550          nascom8krombasic.asm:1197
-CONTAD  = $10D4 =  4308          nascom8k.inc:112
+CONTAD  = $10D4 =  4308          nascom8krombasic.inc:112
 CONVAR  = $EE22 = 60962          nascom8krombasic.asm:1950
 CONVIN  = $FD19 = 64793          nascom8krombasic.asm:4267
 COPY    = $E021 = 57377          nascom8krombasic.asm:28
@@ -5023,7 +5023,7 @@ COS     = $FC00 = 64512          nascom8krombasic.asm:4139
 COUNT   = $E746 = 59206          nascom8krombasic.asm:1002
 CPDEHL  = $E68A = 59018          nascom8krombasic.asm:884
 CPYLIT  = $E5B1 = 58801          nascom8krombasic.asm:773
-CR      = $000D =    13          nascom8k.inc:23
+CR      = $000D =    13          nascom8krombasic.inc:23
 CRARLP  = $F065 = 61541          nascom8krombasic.asm:2310
 CREARY  = $F04A = 61514          nascom8krombasic.asm:2293
 CRESTR  = $EAC9 = 60105          nascom8krombasic.asm:1505
@@ -5034,32 +5034,32 @@ CRTMST  = $F1C2 = 61890          nascom8krombasic.asm:2528
 CRTST   = $F1CE = 61902          nascom8krombasic.asm:2539
 CRTSTE  = $F1E4 = 61924          nascom8krombasic.asm:2553
 CRUNCH  = $E509 = 58633          nascom8krombasic.asm:677
-CS      = $000C =    12          nascom8k.inc:22
+CS      = $000C =    12          nascom8krombasic.inc:22
 CSAVE   = $F4C3 = 62659          nascom8krombasic.asm:3016
 CSTART  = $E012 = 57362          nascom8krombasic.asm:21
-CTLOFG  = $1045 =  4165          nascom8k.inc:79
-CTRLC   = $0003 =     3          nascom8k.inc:18
-CTRLG   = $0007 =     7          nascom8k.inc:19
-CTRLO   = $000F =    15          nascom8k.inc:24
-CTRLR   = $0012 =    18          nascom8k.inc:25
-CTRLS   = $0013 =    19          nascom8k.inc:26
-CTRLU   = $0015 =    21          nascom8k.inc:27
-CTRLZ   = $001A =    26          nascom8k.inc:28
-CUROPR  = $10C5 =  4293          nascom8k.inc:103
-CURPOS  = $10AB =  4267          nascom8k.inc:94
-CURSOR  = $0C29 =  3113          nascom8k.inc:53
+CTLOFG  = $1045 =  4165          nascom8krombasic.inc:79
+CTRLC   = $0003 =     3          nascom8krombasic.inc:18
+CTRLG   = $0007 =     7          nascom8krombasic.inc:19
+CTRLO   = $000F =    15          nascom8krombasic.inc:24
+CTRLR   = $0012 =    18          nascom8krombasic.inc:25
+CTRLS   = $0013 =    19          nascom8krombasic.inc:26
+CTRLU   = $0015 =    21          nascom8krombasic.inc:27
+CTRLZ   = $001A =    26          nascom8krombasic.inc:28
+CUROPR  = $10C5 =  4293          nascom8krombasic.inc:103
+CURPOS  = $10AB =  4267          nascom8krombasic.inc:94
+CURSOR  = $0C29 =  3113          nascom8krombasic.inc:53
 DATA    = $EA70 = 60016          nascom8krombasic.asm:1457
-DATFLG  = $10AE =  4270          nascom8k.inc:97
-DATLIN  = $10C9 =  4297          nascom8k.inc:105
+DATFLG  = $10AE =  4270          nascom8krombasic.inc:97
+DATLIN  = $10C9 =  4297          nascom8krombasic.inc:105
 DATSNR  = $E3A7 = 58279          nascom8krombasic.asm:469
 DCBCDE  = $F8DF = 63711          nascom8krombasic.asm:3685
-DD      = $0012 =    18          nascom8k.inc:138
+DD      = $0012 =    18          nascom8krombasic.inc:138
 DDERR   = $E3B6 = 58294          nascom8krombasic.asm:477
 DEEK    = $FDBC = 64956          nascom8krombasic.asm:4365
 DEF     = $F106 = 61702          nascom8krombasic.asm:2416
 DEFSIZ  = $F06D = 61549          nascom8krombasic.asm:2314
 DEINT   = $E98B = 59787          nascom8krombasic.asm:1329
-DEL     = $007F =   127          nascom8k.inc:34
+DEL     = $007F =   127          nascom8krombasic.inc:34
 DELAY   = $FD9B = 64923          nascom8krombasic.asm:4345
 DELAY1  = $FD9C = 64924          nascom8krombasic.asm:4346
 DELAYB  = $FCCD = 64717          nascom8krombasic.asm:4221
@@ -5072,15 +5072,15 @@ DIM     = $EF28 = 61224          nascom8krombasic.asm:2126
 DIMRET  = $EF1F = 61215          nascom8krombasic.asm:2121
 DINPOS  = $E6BF = 59071          nascom8krombasic.asm:918
 DIV     = $F767 = 63335          nascom8krombasic.asm:3420
-DIV1    = $100A =  4106          nascom8k.inc:67
+DIV1    = $100A =  4106          nascom8krombasic.inc:67
 DIV10   = $F75B = 63323          nascom8krombasic.asm:3415
-DIV2    = $100E =  4110          nascom8k.inc:68
-DIV3    = $1012 =  4114          nascom8k.inc:69
+DIV2    = $100E =  4110          nascom8krombasic.inc:68
+DIV3    = $1012 =  4114          nascom8krombasic.inc:69
 DIV3EX  = $FFB1 = 65457          nascom8krombasic.asm:4653
 DIV3LP  = $FFA8 = 65448          nascom8krombasic.asm:4648
-DIV4    = $1015 =  4117          nascom8k.inc:70
+DIV4    = $1015 =  4117          nascom8krombasic.inc:70
 DIVLP   = $F78E = 63374          nascom8krombasic.asm:3444
-DIVSUP  = $1009 =  4105          nascom8k.inc:66
+DIVSUP  = $1009 =  4105          nascom8krombasic.inc:66
 DOAGN   = $E4F8 = 58616          nascom8krombasic.asm:668
 DOCOM   = $EB98 = 60312          nascom8krombasic.asm:1613
 DODEL   = $E5C1 = 58817          nascom8krombasic.asm:787
@@ -5094,7 +5094,7 @@ DOTAB   = $EBAF = 60335          nascom8krombasic.asm:1624
 DPOINT  = $F952 = 63826          nascom8krombasic.asm:3754
 DTSTR   = $F1D2 = 61906          nascom8krombasic.asm:2542
 DVBCDE  = $F769 = 63337          nascom8krombasic.asm:3422
-DZ      = $0014 =    20          nascom8k.inc:139
+DZ      = $0014 =    20          nascom8krombasic.inc:139
 DZERR   = $E3B0 = 58288          nascom8krombasic.asm:473
 ECHDEL  = $E5D5 = 58837          nascom8krombasic.asm:796
 EDIGIT  = $F999 = 63897          nascom8krombasic.asm:3803
@@ -5107,11 +5107,11 @@ ENDNAM  = $EF4A = 61258          nascom8krombasic.asm:2142
 ENDPRG  = $E87A = 59514          nascom8krombasic.asm:1180
 ENFMEM  = $E393 = 58259          nascom8krombasic.asm:455
 ERRIN   = $E3E1 = 58337          nascom8krombasic.asm:498
-ERRLIN  = $10D2 =  4306          nascom8k.inc:111
+ERRLIN  = $10D2 =  4306          nascom8krombasic.inc:111
 ERRMSG  = $E33F = 58175          nascom8krombasic.asm:406
 ERROR   = $E3C1 = 58305          nascom8krombasic.asm:485
 ERRORS  = $E2B9 = 58041          nascom8krombasic.asm:329
-ESC     = $001B =    27          nascom8k.inc:29
+ESC     = $001B =    27          nascom8krombasic.inc:29
 EVAL    = $ED5A = 60762          nascom8krombasic.asm:1843
 EVAL1   = $ED5D = 60765          nascom8krombasic.asm:1845
 EVAL2   = $ED66 = 60774          nascom8krombasic.asm:1849
@@ -5125,7 +5125,7 @@ EXPTAB  = $FB3A = 64314          nascom8krombasic.asm:4036
 EXPTEN  = $FA72 = 64114          nascom8krombasic.asm:3931
 EXTIG   = $ECC1 = 60609          nascom8krombasic.asm:1762
 FANDT   = $ECEB = 60651          nascom8krombasic.asm:1780
-FC      = $0008 =     8          nascom8k.inc:133
+FC      = $0008 =     8          nascom8krombasic.inc:133
 FCERR   = $E9A0 = 59808          nascom8krombasic.asm:1339
 FDTLP   = $ECD2 = 60626          nascom8krombasic.asm:1764
 FILE    = $F58E = 62862          nascom8krombasic.asm:3120
@@ -5135,7 +5135,7 @@ FLGDIF  = $F81E = 63518          nascom8krombasic.asm:3540
 FLGREL  = $F825 = 63525          nascom8krombasic.asm:3546
 FLGVER  = $F509 = 62729          nascom8krombasic.asm:3050
 FLPLED  = $FE39 = 65081          nascom8krombasic.asm:4440
-FNARG   = $10E0 =  4320          nascom8k.inc:118
+FNARG   = $10E0 =  4320          nascom8krombasic.inc:118
 FNCTAB  = $E10F = 57615          nascom8krombasic.asm:120
 FNDARY  = $F018 = 61464          nascom8krombasic.asm:2263
 FNDELP  = $F0AD = 61613          nascom8krombasic.asm:2360
@@ -5145,21 +5145,21 @@ FNDTOK  = $E71B = 59163          nascom8krombasic.asm:976
 FNDVAR  = $EF8F = 61327          nascom8krombasic.asm:2174
 FNDWRD  = $E53C = 58684          nascom8krombasic.asm:701
 FNOFST  = $EE33 = 60979          nascom8krombasic.asm:1960
-FNRGNM  = $10DE =  4318          nascom8k.inc:117
+FNRGNM  = $10DE =  4318          nascom8krombasic.inc:117
 FNTHR   = $EF9D = 61341          nascom8krombasic.asm:2182
 FNVAL   = $EE5F = 61023          nascom8krombasic.asm:1984
 FOPRND  = $ED92 = 60818          nascom8krombasic.asm:1871
 FOR     = $E779 = 59257          nascom8krombasic.asm:1027
-FORFLG  = $10CB =  4299          nascom8k.inc:106
+FORFLG  = $10CB =  4299          nascom8krombasic.inc:106
 FORFND  = $E7A9 = 59305          nascom8krombasic.asm:1055
 FORSLP  = $E78D = 59277          nascom8krombasic.asm:1036
 FOUND   = $F594 = 62868          nascom8krombasic.asm:3121
 FPADD   = $F5CD = 62925          nascom8krombasic.asm:3147
 FPBCDE  = $F854 = 63572          nascom8krombasic.asm:3576
-FPEXP   = $10E7 =  4327          nascom8k.inc:120
+FPEXP   = $10E7 =  4327          nascom8krombasic.inc:120
 FPINT   = $F8BB = 63675          nascom8krombasic.asm:3662
 FPMULT  = $F708 = 63240          nascom8krombasic.asm:3358
-FPREG   = $10E4 =  4324          nascom8k.inc:119
+FPREG   = $10E4 =  4324          nascom8krombasic.inc:119
 FPROND  = $F665 = 63077          nascom8krombasic.asm:3248
 FPSINT  = $E97F = 59775          nascom8krombasic.asm:1325
 FPTHL   = $F86B = 63595          nascom8krombasic.asm:3595
@@ -5202,7 +5202,7 @@ HALF    = $FA91 = 64145          nascom8krombasic.asm:3952
 HALFPI  = $FC4A = 64586          nascom8krombasic.asm:4170
 HDRLP   = $E912 = 59666          nascom8krombasic.asm:1265
 HIGH    = ***UNDEFINED***
-ID      = $0016 =    22          nascom8k.inc:140
+ID      = $0016 =    22          nascom8krombasic.inc:140
 IDTEST  = $F17B = 61819          nascom8krombasic.asm:2485
 IF      = $EAFF = 60159          nascom8krombasic.asm:1538
 IFGO    = $EB0D = 60173          nascom8krombasic.asm:1545
@@ -5221,8 +5221,8 @@ INMSG   = $E346 = 58182          nascom8krombasic.asm:407
 INP     = $F441 = 62529          nascom8krombasic.asm:2944
 INPBIN  = $EC8F = 60559          nascom8krombasic.asm:1736
 INPBRK  = $E877 = 59511          nascom8krombasic.asm:1178
-INPORT  = $103F =  4159          nascom8k.inc:74
-INPSUB  = $103E =  4158          nascom8k.inc:73
+INPORT  = $103F =  4159          nascom8krombasic.inc:74
+INPSUB  = $103E =  4158          nascom8krombasic.inc:73
 INPUT   = $EBFD = 60413          nascom8krombasic.asm:1657
 INRNG   = $F9F3 = 63987          nascom8krombasic.asm:3852
 INT     = $F8E6 = 63718          nascom8krombasic.asm:3693
@@ -5235,20 +5235,20 @@ JPLDSV  = $FFD6 = 65494          nascom8krombasic.asm:4684
 JSTZER  = $FA7C = 64124          nascom8krombasic.asm:3937
 KILFOR  = $ED31 = 60721          nascom8krombasic.asm:1817
 KILIN   = $E5EC = 58860          nascom8krombasic.asm:808
-LCRFLG  = $10AC =  4268          nascom8k.inc:95
+LCRFLG  = $10AC =  4268          nascom8krombasic.inc:95
 LDNMI1  = $E73C = 59196          nascom8krombasic.asm:996
 LEFT    = $F3B2 = 62386          nascom8krombasic.asm:2841
 LEN     = $F382 = 62338          nascom8krombasic.asm:2811
 LET     = $EA87 = 60039          nascom8krombasic.asm:1473
 LETNUM  = $EADA = 60122          nascom8krombasic.asm:1515
 LETSTR  = $EAA2 = 60066          nascom8krombasic.asm:1486
-LF      = $000A =    10          nascom8k.inc:21
+LF      = $000A =    10          nascom8krombasic.inc:21
 LFRGNM  = $F437 = 62519          nascom8krombasic.asm:2935
-LINEAT  = $105C =  4188          nascom8k.inc:90
+LINEAT  = $105C =  4188          nascom8krombasic.inc:90
 LINEIN  = $F9A5 = 63909          nascom8krombasic.asm:3813
 LINES   = $FDAD = 64941          nascom8krombasic.asm:4359
-LINESC  = $1046 =  4166          nascom8k.inc:80
-LINESN  = $1048 =  4168          nascom8k.inc:81
+LINESC  = $1046 =  4166          nascom8krombasic.inc:80
+LINESN  = $1048 =  4168          nascom8krombasic.inc:81
 LINFND  = $E43E = 58430          nascom8krombasic.asm:544
 LINTBF  = $FF02 = 65282          nascom8krombasic.asm:4548
 LIST    = $E6DD = 59101          nascom8krombasic.asm:940
@@ -5257,22 +5257,22 @@ LOADFP  = $F862 = 63586          nascom8krombasic.asm:3585
 LOG     = $F6C7 = 63175          nascom8krombasic.asm:3326
 LOGTAB  = $F6BA = 63162          nascom8krombasic.asm:3321
 LOKFOR  = $E35A = 58202          nascom8krombasic.asm:414
-LOOPST  = $10C7 =  4295          nascom8k.inc:104
+LOOPST  = $10C7 =  4295          nascom8krombasic.inc:104
 LOW     = ***UNDEFINED***
-LS      = $001C =    28          nascom8k.inc:143
-LSTBIN  = $10CC =  4300          nascom8k.inc:107
+LS      = $001C =    28          nascom8krombasic.inc:143
+LSTBIN  = $10CC =  4300          nascom8krombasic.inc:107
 LSTLP2  = $E709 = 59145          nascom8krombasic.asm:967
 LSTLP3  = $E70C = 59148          nascom8krombasic.asm:968
-LSTRAM  = $10AF =  4271          nascom8k.inc:98
-LSTRND  = $103A =  4154          nascom8k.inc:72
+LSTRAM  = $10AF =  4271          nascom8krombasic.inc:98
+LSTRND  = $103A =  4154          nascom8krombasic.inc:72
 LTSTND  = $EC9A = 60570          nascom8krombasic.asm:1741
-LWIDTH  = $1042 =  4162          nascom8k.inc:76
+LWIDTH  = $1042 =  4162          nascom8krombasic.inc:76
 MAKINT  = $F487 = 62599          nascom8krombasic.asm:2977
 MAKNUM  = $FA0F = 64015          nascom8krombasic.asm:3867
 MANLP   = $F92E = 63790          nascom8krombasic.asm:3738
 MATCH   = $E589 = 58761          nascom8krombasic.asm:748
 MEMMSG  = $E103 = 57603          nascom8krombasic.asm:116
-MFLP    = $0051 =    81          nascom8k.inc:40
+MFLP    = $0051 =    81          nascom8krombasic.inc:40
 MID     = $F3EC = 62444          nascom8krombasic.asm:2881
 MID1    = $F3B8 = 62392          nascom8krombasic.asm:2845
 MIDNUM  = $F43C = 62524          nascom8krombasic.asm:2938
@@ -5283,13 +5283,13 @@ MLDBLP  = $F907 = 63751          nascom8krombasic.asm:3714
 MLDEBC  = $F8FF = 63743          nascom8krombasic.asm:3709
 MLOOP   = $E049 = 57417          nascom8krombasic.asm:46
 MLSP10  = $F7FC = 63484          nascom8krombasic.asm:3520
-MO      = $0024 =    36          nascom8k.inc:147
+MO      = $0024 =    36          nascom8krombasic.inc:147
 MONITR  = $FEA2 = 65186          nascom8krombasic.asm:4497
 MONLD   = $FE88 = 65160          nascom8krombasic.asm:4485
 MONOUT  = $FE45 = 65093          nascom8krombasic.asm:4447
-MONSTT  = $0000 =     0          nascom8k.inc:38
+MONSTT  = $0000 =     0          nascom8krombasic.inc:38
 MONTST  = $FE6D = 65133          nascom8krombasic.asm:4471
-MONTYP  = $008D =   141          nascom8k.inc:41
+MONTYP  = $008D =   141          nascom8krombasic.inc:41
 MONVE   = $FEAA = 65194          nascom8krombasic.asm:4501
 MORDT   = $ECA6 = 60582          nascom8krombasic.asm:1746
 MORINP  = $E610 = 58896          nascom8krombasic.asm:824
@@ -5305,7 +5305,7 @@ MULLN2  = $F6FF = 63231          nascom8krombasic.asm:3352
 MULT    = $F706 = 63238          nascom8krombasic.asm:3356
 MULT8   = $F72A = 63274          nascom8krombasic.asm:3375
 MULTEN  = $F970 = 63856          nascom8krombasic.asm:3774
-MULVAL  = $10F6 =  4342          nascom8k.inc:123
+MULVAL  = $10F6 =  4342          nascom8krombasic.inc:123
 MVSTPT  = $EAD1 = 60113          nascom8krombasic.asm:1509
 NASOUT  = $FCFB = 64763          nascom8krombasic.asm:4248
 NEDMOR  = $EC39 = 60473          nascom8krombasic.asm:1690
@@ -5314,10 +5314,10 @@ NEW     = $E4B9 = 58553          nascom8krombasic.asm:634
 NEXITM  = $EBD2 = 60370          nascom8krombasic.asm:1643
 NEXT    = $ECF6 = 60662          nascom8krombasic.asm:1785
 NEXT1   = $ECF9 = 60665          nascom8krombasic.asm:1786
-NF      = $0000 =     0          nascom8k.inc:129
+NF      = $0000 =     0          nascom8krombasic.inc:129
 NFERR   = $E3B3 = 58291          nascom8krombasic.asm:475
-NMI     = $0C7E =  3198          nascom8k.inc:58
-NMIFLG  = $104C =  4172          nascom8k.inc:83
+NMI     = $0C7E =  3198          nascom8krombasic.inc:58
+NMIFLG  = $104C =  4172          nascom8krombasic.inc:83
 NOCHNG  = $E581 = 58753          nascom8krombasic.asm:743
 NOENED  = $FA7F = 64127          nascom8krombasic.asm:3940
 NOLIN   = $E88D = 59533          nascom8krombasic.asm:1189
@@ -5332,23 +5332,23 @@ NOSWAP  = $F5E7 = 62951          nascom8krombasic.asm:3163
 NOTSTR  = $EF65 = 61285          nascom8krombasic.asm:2154
 NOXOR   = $F467 = 62567          nascom8krombasic.asm:2961
 NSCFOR  = $EF75 = 61301          nascom8krombasic.asm:2162
-NULFLG  = $1044 =  4164          nascom8k.inc:78
+NULFLG  = $1044 =  4164          nascom8krombasic.inc:78
 NULL    = $E8B1 = 59569          nascom8krombasic.asm:1208
 NULLP   = $EB8D = 60301          nascom8krombasic.asm:1605
-NULLS   = $1041 =  4161          nascom8k.inc:75
+NULLS   = $1041 =  4161          nascom8krombasic.inc:75
 NUMASC  = $F9B8 = 63928          nascom8krombasic.asm:3823
 NXTARY  = $F02C = 61484          nascom8krombasic.asm:2275
 NXTBYT  = $E567 = 58727          nascom8krombasic.asm:728
 NXTCHR  = $E5A8 = 58792          nascom8krombasic.asm:768
-NXTDAT  = $10DC =  4316          nascom8k.inc:116
+NXTDAT  = $10DC =  4316          nascom8krombasic.inc:116
 NXTDTA  = $EA6F = 60015          nascom8krombasic.asm:1455
 NXTITM  = $EC31 = 60465          nascom8krombasic.asm:1685
-NXTOPR  = $10D0 =  4304          nascom8k.inc:110
+NXTOPR  = $10D0 =  4304          nascom8krombasic.inc:110
 NXTSTL  = $EA76 = 60022          nascom8krombasic.asm:1460
 NXTSTT  = $EA79 = 60025          nascom8krombasic.asm:1463
-OD      = $0006 =     6          nascom8k.inc:132
+OD      = $0006 =     6          nascom8krombasic.inc:132
 OKMSG   = $E34B = 58187          nascom8krombasic.asm:409
-OM      = $000C =    12          nascom8k.inc:135
+OM      = $000C =    12          nascom8krombasic.inc:135
 OMERR   = $E3A2 = 58274          nascom8krombasic.asm:466
 ON      = $EAE1 = 60129          nascom8krombasic.asm:1521
 ONGO    = $EAF0 = 60144          nascom8krombasic.asm:1529
@@ -5356,9 +5356,9 @@ ONGOLP  = $EAF1 = 60145          nascom8krombasic.asm:1530
 ONJMP   = $E81E = 59422          nascom8krombasic.asm:1122
 OPNPAR  = $ED56 = 60758          nascom8krombasic.asm:1841
 OPRND   = $EDD1 = 60881          nascom8krombasic.asm:1914
-OS      = $001A =    26          nascom8k.inc:142
+OS      = $001A =    26          nascom8krombasic.inc:142
 OTKLN   = $E5E9 = 58857          nascom8krombasic.asm:807
-OTPORT  = $1007 =  4103          nascom8k.inc:65
+OTPORT  = $1007 =  4103          nascom8krombasic.inc:65
 OUTBAD  = $F56B = 62827          nascom8krombasic.asm:3099
 OUTC    = $E69B = 59035          nascom8krombasic.asm:899
 OUTCHR  = $FCFD = 64765          nascom8krombasic.asm:4250
@@ -5366,9 +5366,9 @@ OUTEXP  = $FA70 = 64112          nascom8krombasic.asm:3930
 OUTIT   = $E67C = 59004          nascom8krombasic.asm:877
 OUTNBS  = $E682 = 59010          nascom8krombasic.asm:880
 OUTNCR  = $FFF4 = 65524          nascom8krombasic.asm:4702
-OUTSUB  = $1006 =  4102          nascom8k.inc:64
+OUTSUB  = $1006 =  4102          nascom8krombasic.inc:64
 OUTWRD  = $E725 = 59173          nascom8krombasic.asm:982
-OV      = $000A =    10          nascom8k.inc:134
+OV      = $000A =    10          nascom8krombasic.inc:134
 OVERR   = $E3BC = 58300          nascom8krombasic.asm:481
 OVTST1  = $F7EF = 63471          nascom8krombasic.asm:3512
 OVTST2  = $F7F4 = 63476          nascom8krombasic.asm:3515
@@ -5376,13 +5376,13 @@ OVTST3  = $F7F5 = 63477          nascom8krombasic.asm:3516
 PADD    = $F994 = 63892          nascom8krombasic.asm:3799
 PAND    = $EE81 = 61057          nascom8krombasic.asm:2010
 PASSA   = $F101 = 61697          nascom8krombasic.asm:2412
-PBUFF   = $10E9 =  4329          nascom8k.inc:122
+PBUFF   = $10E9 =  4329          nascom8krombasic.inc:122
 PEEK    = $F5A3 = 62883          nascom8krombasic.asm:3124
 PEND    = $E872 = 59506          nascom8krombasic.asm:1175
 PHLTFP  = $F851 = 63569          nascom8krombasic.asm:3575
 PLUCDE  = $F672 = 63090          nascom8krombasic.asm:3259
 PNORM   = $F640 = 63040          nascom8krombasic.asm:3225
-POINT   = $1051 =  4177          nascom8k.inc:86
+POINT   = $1051 =  4177          nascom8krombasic.inc:86
 POINT0  = $FF91 = 65425          nascom8krombasic.asm:4632
 POINTB  = $FF79 = 65401          nascom8krombasic.asm:4620
 POINTX  = $FF87 = 65415          nascom8krombasic.asm:4626
@@ -5393,7 +5393,7 @@ POPHRT  = $F754 = 63316          nascom8krombasic.asm:3406
 POPNOK  = $E3F7 = 58359          nascom8krombasic.asm:508
 POR     = $EE80 = 61056          nascom8krombasic.asm:2009
 POR1    = $EEA3 = 61091          nascom8krombasic.asm:2033
-PORT0   = $0C00 =  3072          nascom8k.inc:49
+PORT0   = $0C00 =  3072          nascom8krombasic.inc:49
 POS     = $F0FE = 61694          nascom8krombasic.asm:2411
 POSINT  = $E982 = 59778          nascom8krombasic.asm:1326
 POUT    = $F44D = 62541          nascom8krombasic.asm:2949
@@ -5411,13 +5411,13 @@ PRNTOK  = $E3F8 = 58360          nascom8krombasic.asm:510
 PRNTST  = $EB6D = 60269          nascom8krombasic.asm:1589
 PRNUMS  = $F20F = 61967          nascom8krombasic.asm:2574
 PROCES  = $E629 = 58921          nascom8krombasic.asm:835
-PROGND  = $10D6 =  4310          nascom8k.inc:113
-PROGST  = $10F9 =  4345          nascom8k.inc:124
+PROGND  = $10D6 =  4310          nascom8krombasic.inc:113
+PROGST  = $10F9 =  4345          nascom8krombasic.inc:124
 PROMPT  = $E4FC = 58620          nascom8krombasic.asm:671
 PRS     = $F210 = 61968          nascom8krombasic.asm:2575
 PRS1    = $F213 = 61971          nascom8krombasic.asm:2576
 PRSLP   = $F21A = 61978          nascom8krombasic.asm:2579
-PSET    = $1054 =  4180          nascom8k.inc:87
+PSET    = $1054 =  4180          nascom8krombasic.inc:87
 PSUB    = $F5C8 = 62920          nascom8krombasic.asm:3144
 PTRLP   = $E481 = 58497          nascom8krombasic.asm:588
 PUTBIT  = $FF4B = 65355          nascom8krombasic.asm:4590
@@ -5428,13 +5428,13 @@ QTSTLP  = $F1D5 = 61909          nascom8krombasic.asm:2544
 QTSTR   = $F1CF = 61903          nascom8krombasic.asm:2540
 QUARTR  = $FC4E = 64590          nascom8krombasic.asm:4172
 READ    = $EC2C = 60460          nascom8krombasic.asm:1682
-READFG  = $10CD =  4301          nascom8k.inc:108
+READFG  = $10CD =  4301          nascom8krombasic.inc:108
 REDO    = $EBD9 = 60377          nascom8krombasic.asm:1647
 REM     = $EA72 = 60018          nascom8krombasic.asm:1458
 RESCSA  = $FF4C = 65356          nascom8krombasic.asm:4591
 RESDIV  = $F7A1 = 63393          nascom8krombasic.asm:3457
 RESEED  = $FBEC = 64492          nascom8krombasic.asm:4128
-RESET   = $1057 =  4183          nascom8k.inc:88
+RESET   = $1057 =  4183          nascom8krombasic.inc:88
 RESETB  = $FF55 = 65365          nascom8krombasic.asm:4599
 RESTNL  = $E85B = 59483          nascom8krombasic.asm:1161
 RESTOR  = $E846 = 59462          nascom8krombasic.asm:1150
@@ -5448,10 +5448,10 @@ RETNUL  = $EFDF = 61407          nascom8krombasic.asm:2226
 RETNUM  = $EE1D = 60957          nascom8krombasic.asm:1946
 RETREL  = $F81C = 63516          nascom8krombasic.asm:3538
 RETURN  = $EA4B = 59979          nascom8krombasic.asm:1436
-RG      = $0004 =     4          nascom8k.inc:131
+RG      = $0004 =     4          nascom8krombasic.inc:131
 RIGHT   = $F3E2 = 62434          nascom8krombasic.asm:2874
 RIGHT1  = $F3B6 = 62390          nascom8krombasic.asm:2843
-RINPUT  = $104E =  4174          nascom8k.inc:85
+RINPUT  = $104E =  4174          nascom8krombasic.inc:85
 RLTLP   = $ED76 = 60790          nascom8krombasic.asm:1857
 RND     = $FB8B = 64395          nascom8krombasic.asm:4075
 RND1    = $FBC7 = 64455          nascom8krombasic.asm:4106
@@ -5483,7 +5483,7 @@ SCPTLP  = $EFF0 = 61424          nascom8krombasic.asm:2236
 SCRADR  = $FE11 = 65041          nascom8krombasic.asm:4416
 SCREEN  = $FDE6 = 64998          nascom8krombasic.asm:4391
 SEARCH  = $E555 = 58709          nascom8krombasic.asm:714
-SEED    = $1017 =  4119          nascom8k.inc:71
+SEED    = $1017 =  4119          nascom8krombasic.inc:71
 SETB    = $FF40 = 65344          nascom8krombasic.asm:4584
 SETIO   = $F471 = 62577          nascom8krombasic.asm:2968
 SETLIN  = $E733 = 59187          nascom8krombasic.asm:990
@@ -5495,7 +5495,7 @@ SFTENT  = $FD70 = 64880          nascom8krombasic.asm:4320
 SFTPRG  = $E446 = 58438          nascom8krombasic.asm:548
 SGN     = $F822 = 63522          nascom8krombasic.asm:3545
 SGNEXP  = $EE70 = 61040          nascom8krombasic.asm:1996
-SGNRES  = $10E8 =  4328          nascom8k.inc:121
+SGNRES  = $10E8 =  4328          nascom8krombasic.inc:121
 SHFTBT  = $FFBD = 65469          nascom8krombasic.asm:4661
 SHRITE  = $F6A1 = 63137          nascom8krombasic.asm:3300
 SHRLP   = $F6A4 = 63140          nascom8krombasic.asm:3302
@@ -5509,7 +5509,7 @@ SIXDIG  = $F9D5 = 63957          nascom8krombasic.asm:3837
 SMOTOR  = $FFD1 = 65489          nascom8krombasic.asm:4680
 SMPVAR  = $F275 = 62069          nascom8krombasic.asm:2629
 SMSER1  = $FB6A = 64362          nascom8krombasic.asm:4053
-SN      = $0002 =     2          nascom8k.inc:130
+SN      = $0002 =     2          nascom8krombasic.inc:130
 SNDARY  = $E91D = 59677          nascom8krombasic.asm:1270
 SNDHDR  = $E906 = 59654          nascom8krombasic.asm:1259
 SNERR   = $E3AD = 58285          nascom8krombasic.asm:471
@@ -5519,23 +5519,23 @@ SQR     = $FAAC = 64172          nascom8krombasic.asm:3965
 SRCHLN  = $E499 = 58521          nascom8krombasic.asm:607
 SRCHLP  = $E49C = 58524          nascom8krombasic.asm:608
 SSTSA   = $F33D = 62269          nascom8krombasic.asm:2761
-ST      = $001E =    30          nascom8k.inc:144
-STACK   = $1066 =  4198          nascom8k.inc:93
+ST      = $001E =    30          nascom8krombasic.inc:144
+STACK   = $1066 =  4198          nascom8krombasic.inc:93
 STAKFP  = $F844 = 63556          nascom8krombasic.asm:3565
 STALL   = $E866 = 59494          nascom8krombasic.asm:1169
 START   = $E000 = 57344          nascom8krombasic.asm:11 (unused)
 STARTB  = $E003 = 57347          nascom8krombasic.asm:12
 STKTHS  = $EDBA = 60858          nascom8krombasic.asm:1898
-STLOOK  = $115D =  4445          nascom8k.inc:125
-STMON   = $000D =    13          nascom8k.inc:39
+STLOOK  = $115D =  4445          nascom8krombasic.inc:125
+STMON   = $000D =    13          nascom8krombasic.inc:39
 STOP    = $E870 = 59504          nascom8krombasic.asm:1173
 STORED  = $E9ED = 59885          nascom8krombasic.asm:1383
 STPOOL  = $F2B8 = 62136          nascom8krombasic.asm:2666
 STR     = $F19A = 61850          nascom8krombasic.asm:2504
 STRADD  = $F2BB = 62139          nascom8krombasic.asm:2668
-STRBOT  = $10C3 =  4291          nascom8k.inc:102
+STRBOT  = $10C3 =  4291          nascom8krombasic.inc:102
 STRENT  = $EC83 = 60547          nascom8krombasic.asm:1729
-STRSPC  = $105A =  4186          nascom8k.inc:89
+STRSPC  = $105A =  4186          nascom8krombasic.inc:89
 STTLIN  = $EB74 = 60276          nascom8krombasic.asm:1593
 SUART   = $FD68 = 64872          nascom8krombasic.asm:4312
 SUBCDE  = $F5CA = 62922          nascom8krombasic.asm:3146
@@ -5546,34 +5546,34 @@ SUMSER  = $FB5B = 64347          nascom8krombasic.asm:4046
 SUPTLZ  = $FA54 = 64084          nascom8krombasic.asm:3914
 SVNAM2  = $EF49 = 61257          nascom8krombasic.asm:2141
 SVSTAD  = $F1C8 = 61896          nascom8krombasic.asm:2532
-T2DUMP  = $03D1 =   977          nascom8k.inc:42
-T4READ  = $070C =  1804          nascom8k.inc:44
-T4WR    = $0400 =  1024          nascom8k.inc:43
+T2DUMP  = $03D1 =   977          nascom8krombasic.inc:42
+T4READ  = $070C =  1804          nascom8krombasic.inc:44
+T4WR    = $0400 =  1024          nascom8krombasic.inc:43
 TAN     = $FC67 = 64615          nascom8krombasic.asm:4181
-TBRK    = $001C =    28          nascom8k.inc:30
+TBRK    = $001C =    28          nascom8krombasic.inc:30
 TBRK2   = $FD50 = 64848          nascom8krombasic.asm:4296
-TBS     = $001D =    29          nascom8k.inc:31
+TBS     = $001D =    29          nascom8krombasic.inc:31
 TCHINP  = $FE62 = 65122          nascom8krombasic.asm:4464
 TCLS    = $FD96 = 64918          nascom8krombasic.asm:4342
-TCR     = $001F =    31          nascom8k.inc:33
-TCS     = $001E =    30          nascom8k.inc:32
-TCUR    = $0C18 =  3096          nascom8k.inc:52
+TCR     = $001F =    31          nascom8krombasic.inc:33
+TCS     = $001E =    30          nascom8krombasic.inc:32
+TCUR    = $0C18 =  3096          nascom8krombasic.inc:52
 TESTOS  = $F247 = 62023          nascom8krombasic.asm:2608
 TESTR   = $F229 = 61993          nascom8krombasic.asm:2588
 THSFIL  = $F548 = 62792          nascom8krombasic.asm:3082
-TIN     = $0C4D =  3149          nascom8k.inc:56
+TIN     = $0C4D =  3149          nascom8krombasic.inc:56
 TLOAD   = $FE99 = 65177          nascom8krombasic.asm:4493
-TM      = $0018 =    24          nascom8k.inc:141
+TM      = $0018 =    24          nascom8krombasic.inc:141
 TMERR   = $E3BF = 58303          nascom8krombasic.asm:483
 TMFLP   = $FE42 = 65090          nascom8krombasic.asm:4445
 TMNCUR  = $FE04 = 65028          nascom8krombasic.asm:4408
 TMNOUT  = $FE4F = 65103          nascom8krombasic.asm:4454
-TMPSTR  = $10BF =  4287          nascom8k.inc:101
-TMSTPL  = $10B3 =  4275          nascom8k.inc:100
-TMSTPT  = $10B1 =  4273          nascom8k.inc:99
+TMPSTR  = $10BF =  4287          nascom8krombasic.inc:101
+TMSTPL  = $10B3 =  4275          nascom8krombasic.inc:100
+TMSTPT  = $10B1 =  4273          nascom8krombasic.inc:99
 TOPOOL  = $F3AE = 62382          nascom8krombasic.asm:2838
 TOSTRA  = $F346 = 62278          nascom8krombasic.asm:2770
-TOUT    = $0C4A =  3146          nascom8k.inc:55
+TOUT    = $0C4A =  3146          nascom8krombasic.inc:55
 TRYAGN  = $FA2F = 64047          nascom8krombasic.asm:3887
 TSALP   = $F347 = 62279          nascom8krombasic.asm:2771
 TSAVE   = $FE7F = 65151          nascom8krombasic.asm:4481
@@ -5587,28 +5587,28 @@ TSTREM  = $E5A2 = 58786          nascom8krombasic.asm:765
 TSTSGN  = $F813 = 63507          nascom8krombasic.asm:3533
 TSTSTR  = $ED45 = 60741          nascom8krombasic.asm:1828
 TTYLIN  = $E607 = 58887          nascom8krombasic.asm:820
-TYPE    = $10AD =  4269          nascom8k.inc:96
-UARTD   = $0001 =     1          nascom8k.inc:16
+TYPE    = $10AD =  4269          nascom8krombasic.inc:96
+UARTD   = $0001 =     1          nascom8krombasic.inc:16
 UARTOT  = $FD5F = 64863          nascom8krombasic.asm:4306
-UARTS   = $0002 =     2          nascom8k.inc:17
-UF      = $0022 =    34          nascom8k.inc:146
+UARTS   = $0002 =     2          nascom8krombasic.inc:17
+UF      = $0022 =    34          nascom8krombasic.inc:146
 UFERR   = $E3B9 = 58297          nascom8krombasic.asm:479
-UL      = $000E =    14          nascom8k.inc:136
+UL      = $000E =    14          nascom8krombasic.inc:136
 ULERR   = $EA46 = 59974          nascom8krombasic.asm:1433
 UNITY   = $F6B6 = 63158          nascom8krombasic.asm:3319
 UPDATA  = $E85C = 59484          nascom8krombasic.asm:1162
 URTOLP  = $FD61 = 64865          nascom8krombasic.asm:4307
-USR     = $1003 =  4099          nascom8k.inc:63
+USR     = $1003 =  4099          nascom8krombasic.inc:63
 VAL     = $F41C = 62492          nascom8krombasic.asm:2913
-VAREND  = $10D8 =  4312          nascom8k.inc:114
-VDU     = $0800 =  2048          nascom8k.inc:45
+VAREND  = $10D8 =  4312          nascom8krombasic.inc:114
+VDU     = $0800 =  2048          nascom8krombasic.inc:45
 WAIT    = $F453 = 62547          nascom8krombasic.asm:2952
 WAITLP  = $F468 = 62568          nascom8krombasic.asm:2962
 WARMST  = $E0AE = 57518          nascom8krombasic.asm:107
 WIDTH   = $FDA5 = 64933          nascom8krombasic.asm:4354
 WORDS   = $E143 = 57667          nascom8krombasic.asm:149
 WORDTB  = $E25A = 57946          nascom8krombasic.asm:235
-WRKSPC  = $1000 =  4096          nascom8k.inc:62
+WRKSPC  = $1000 =  4096          nascom8krombasic.inc:62
 WUART   = $F4BA = 62650          nascom8krombasic.asm:3008
 WUART2  = $F4B7 = 62647          nascom8krombasic.asm:3007
 XYPOS   = $FF96 = 65430          nascom8krombasic.asm:4635
@@ -5643,17 +5643,17 @@ ZTAB    = $00A5 =   165          nascom8krombasic.asm:284
 ZTHEN   = $00A9 =   169          nascom8krombasic.asm:288
 ZTIMES  = $00AE =   174          nascom8krombasic.asm:294
 ZTO     = $00A6 =   166          nascom8krombasic.asm:285
-_BLNK   = $7BDF = 31711          nascom8k.inc:5
-_INLN   = $63DF = 25567          nascom8k.inc:6
-_MFLP   = $5FDF = 24543          nascom8k.inc:7
-_MRET   = $5BDF = 23519          nascom8k.inc:8
-_READ   = $52DF = 21215          nascom8k.inc:9
-_RIN    = $62DF = 25311          nascom8k.inc:10
-_ROUT   = $00F7 =   247          nascom8k.inc:4
-_VRFY   = $56DF = 22239          nascom8k.inc:11
-_WRIT   = $57DF = 22495          nascom8k.inc:12
-_end    = $0000 = 65536          nascom8k.inc:2 (unused)
-_size   = $2000 =  8192          nascom8k.inc:2 (unused)
+_BLNK   = $7BDF = 31711          nascom8krombasic.inc:5
+_INLN   = $63DF = 25567          nascom8krombasic.inc:6
+_MFLP   = $5FDF = 24543          nascom8krombasic.inc:7
+_MRET   = $5BDF = 23519          nascom8krombasic.inc:8
+_READ   = $52DF = 21215          nascom8krombasic.inc:9
+_RIN    = $62DF = 25311          nascom8krombasic.inc:10
+_ROUT   = $00F7 =   247          nascom8krombasic.inc:4
+_VRFY   = $56DF = 22239          nascom8krombasic.inc:11
+_WRIT   = $57DF = 22495          nascom8krombasic.inc:12
+_end    = $0000 = 65536          nascom8krombasic.inc:2 (unused)
+_size   = $2000 =  8192          nascom8krombasic.inc:2 (unused)
 
 
 ; +++ used but undefined or unresolved labels +++
@@ -5662,5 +5662,5 @@ LOW     = ***undefined***
 HIGH    = ***undefined***
 
 
-total time: 0.0124 sec.
+total time: 0.0187 sec.
 2 errors
