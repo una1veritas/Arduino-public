@@ -35,7 +35,9 @@ int main(int argc, char *argv[]) {
     }
 
     char line[256]; // Assuming max line length
-    uint32_t base_address = 0;
+    uint32_t base_address = 0; // for > 16bit address
+    uint8_t xsum;
+
     fprintf(stdout, "reading hex file..\n");
     fflush(stdout);
 
@@ -50,11 +52,12 @@ int main(int argc, char *argv[]) {
         int byte_count = hex_to_int(&line[1], 2);
         uint32_t address = hex_to_int(&line[3], 4);
         int record_type = hex_to_int(&line[7], 2);
+        int chksum = hex_to_int(&line[9 + (byte_count << 1)], 2);
         // Calculate absolute address
         uint32_t current_address = base_address + address;
 
         // Process based on record type
-        printf("'%s' %d ", line, strlen(line));
+        printf("%s", line);
         if (record_type == 0x00) { // Data Record
             printf("Data Record: Address = 0x%04X, %d bytes, Data = \n", current_address, byte_count);
             for (int i = 0; i < byte_count; ++i) {
@@ -75,6 +78,11 @@ int main(int argc, char *argv[]) {
         // Add handling for other record types if needed
 
         // Checksum verification can be added here
+        xsum = 0;
+        for(int i = 0; i < byte_count + 5;++i) {
+        	xsum += hex_to_int(&line[1 + (i<<1)], 2);
+        }
+        printf("chksum =  %02X %02X\n", chksum, ~xsum );
     }
     fclose(fp);
     fprintf(stdout, "finished.\n");
