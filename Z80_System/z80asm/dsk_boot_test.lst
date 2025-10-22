@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "dsk_boot_test.asm"
-                        ; date: 2025-10-19 15:46:17
+                        ; date: 2025-10-22 01:29:32
                         ; --------------------------------------
 
 
@@ -10,7 +10,7 @@
                         ;
 0000:                   	ORG	0		;mem base of boot
                         
-1000:                   MON 	equ 	01000h
+0100:                   MON 	equ 	00100h
                         ;
 0040:                   MSIZE	EQU	64		;mem size in kbytes
                         ;
@@ -33,54 +33,55 @@ FA00:                   BOOT	EQU	BIOS
 000F:                   DMAL    EQU	15		;dma-port: dma address low
 0010:                   DMAH    EQU	16		;dma-port: dma address high
                         ;
-0000: C30010   [10]     	jp  MON     ;JP	COLD
+0000: C30001   [10]     	jp  MON     ;JP	COLD
                         ;
-0003: 424F4F54          ERRMSG:	DEFM	'BOOT: error booting'
-0007: 3A206572          
-000B: 726F7220          
-000F: 626F6F74          
-0013: 696E67            
-0016: 0D0A00            	DEFB	13,10,0
+                        	org 	0080h
+0080: 424F4F54          ERRMSG:	DEFM	'BOOT: error booting'
+0084: 3A206572          
+0088: 726F7220          
+008C: 626F6F74          
+0090: 696E67            
+0093: 0D0A00            	DEFB	13,10,0
                         ;
                         ;	begin the load operation
                         ;
-0019: 010200   [10]     COLD:	LD	BC,2		;b=track 0, c=sector 2
-001C: 1632     [17]     	LD	D,SECTS		;d=# sectors to load
-001E: 2100E4   [27]     	LD	HL,CCP		;base transfer address
-0021: 3E00     [34]     	LD	A,0		;select drive A
-0023: D30A     [45]     	OUT	(DRIVE),A
+0096: 010200   [10]     COLD:	LD	BC,2		;b=track 0, c=sector 2
+0099: 1632     [17]     	LD	D,SECTS		;d=# sectors to load
+009B: 2100E4   [27]     	LD	HL,CCP		;base transfer address
+009E: 3E00     [34]     	LD	A,0		;select drive A
+00A0: D30A     [45]     	OUT	(DRIVE),A
                         ;
                         ;	load the next sector
                         ;
-0025: 78       [ 4]     LSECT:	LD	A,B		;set track
-0026: D30B     [15]     	OUT	(TRACK),A
-0028: 79       [19]     	LD	A,C		;set sector
-0029: D30C     [30]     	OUT	(SECTOR),A
-002B: 7D       [34]     	LD	A,L		;set dma address low
-002C: D30F     [45]     	OUT	(DMAL),A
-002E: 7C       [49]     	LD	A,H		;set dma address high
-002F: D310     [60]     	OUT	(DMAH),A
-0031: AF       [64]     	XOR	A		;read sector
-0032: D30D     [75]     	OUT	(FDCOP),A
-0034: DB0E     [86]     	IN	A,(FDCST)	;get status of fdc
-0036: B7       [90]     	OR	A		;read successful ?
-0037: CA4C00   [100|100]	JP	Z,CONT		;yes, continue
-003A: 210300   [110]    	LD	HL,ERRMSG	;no, print error
-003D: 7E       [ 7]     PRTMSG:	LD	A,(HL)
-003E: B7       [11]     	OR	A
-003F: CA4800   [21|21]  	JP	Z,STOP
-0042: D301     [32]     	OUT	(CONDAT),A
-0044: 23       [38]     	INC	HL
-0045: C33D00   [48]     	JP	PRTMSG
-0048: F3       [ 4]     STOP:	DI
+00A2: 78       [ 4]     LSECT:	LD	A,B		;set track
+00A3: D30B     [15]     	OUT	(TRACK),A
+00A5: 79       [19]     	LD	A,C		;set sector
+00A6: D30C     [30]     	OUT	(SECTOR),A
+00A8: 7D       [34]     	LD	A,L		;set dma address low
+00A9: D30F     [45]     	OUT	(DMAL),A
+00AB: 7C       [49]     	LD	A,H		;set dma address high
+00AC: D310     [60]     	OUT	(DMAH),A
+00AE: AF       [64]     	XOR	A		;read sector
+00AF: D30D     [75]     	OUT	(FDCOP),A
+00B1: DB0E     [86]     	IN	A,(FDCST)	;get status of fdc
+00B3: B7       [90]     	OR	A		;read successful ?
+00B4: CAC900   [100|100]	JP	Z,CONT		;yes, continue
+00B7: 218000   [110]    	LD	HL,ERRMSG	;no, print error
+00BA: 7E       [ 7]     PRTMSG:	LD	A,(HL)
+00BB: B7       [11]     	OR	A
+00BC: CAC500   [21|21]  	JP	Z,STOP
+00BF: D301     [32]     	OUT	(CONDAT),A
+00C1: 23       [38]     	INC	HL
+00C2: C3BA00   [48]     	JP	PRTMSG
+00C5: F3       [ 4]     STOP:	DI
                         	;HALT			;and halt cpu
-0049: C30010   [14]     	jp 	MON
+00C6: C30001   [14]     	jp 	MON
                         ;
-004C:                   CONT:
+00C9:                   CONT:
                         				;go to next sector if load is incomplete
-004C: 15       [ 4]     	DEC	D		;sects=sects-1
-004D: CA0010   [14|14]  	jp 	Z, MON
-0050: CA00FA   [24|24]  	JP	Z,BOOT		;head for the bios
+00C9: 15       [ 4]     	DEC	D		;sects=sects-1
+00CA: CA0001   [14|14]  	jp 	Z, MON
+00CD: CA00FA   [24|24]  	JP	Z,BOOT		;head for the bios
                         	
                         ;
                         ;	more sectors to load
@@ -88,26 +89,26 @@ FA00:                   BOOT	EQU	BIOS
                         ;	we aren't using a stack, so use <sp> as scratch register
                         ;	to hold the load address increment
                         ;
-0053: 318000   [34]     	LD	SP,128		;128 bytes per sector
-0056: 39       [45]     	ADD	HL,SP		;<hl> = <hl> + 128
+00D0: 318000   [34]     	LD	SP,128		;128 bytes per sector
+00D3: 39       [45]     	ADD	HL,SP		;<hl> = <hl> + 128
                         ;
-0057: 0C       [49]     	INC	C		;sector = sector + 1
-0058: 79       [53]     	LD	A,C
-0059: FE1B     [60]     	CP	27		;last sector of track ?
-005B: DA2500   [70|70]  	JP	C,LSECT		;no, go read another
+00D4: 0C       [49]     	INC	C		;sector = sector + 1
+00D5: 79       [53]     	LD	A,C
+00D6: FE1B     [60]     	CP	27		;last sector of track ?
+00D8: DAA200   [70|70]  	JP	C,LSECT		;no, go read another
                         ;
                         ;	end of track, increment to next track
                         ;
-005E: 0E01     [77]     	LD	C,1		;sector = 1
-0060: 04       [81]     	INC	B		;track = track + 1
-0061: C32500   [91]     	JP	LSECT		;for another group
+00DB: 0E01     [77]     	LD	C,1		;sector = 1
+00DD: 04       [81]     	INC	B		;track = track + 1
+00DE: C3A200   [91]     	JP	LSECT		;for another group
                         ;
                         	END			;of boot loader
 
 
 ; +++ segments +++
 
-#CODE          = $0000 =     0,  size = $0064 =   100
+#CODE          = $0000 =     0,  size = $00E1 =   225
 
 ; +++ global symbols +++
 
@@ -116,26 +117,26 @@ BIOS    = $FA00 = 64000          dsk_boot_test.asm:13
 BIOSL   = $0300 =   768          dsk_boot_test.asm:14
 BOOT    = $FA00 = 64000          dsk_boot_test.asm:15
 CCP     = $E400 = 58368          dsk_boot_test.asm:12
-COLD    = $0019 =    25          dsk_boot_test.asm:37 (unused)
+COLD    = $0096 =   150          dsk_boot_test.asm:38 (unused)
 CONDAT  = $0001 =     1          dsk_boot_test.asm:21
-CONT    = $004C =    76          dsk_boot_test.asm:69
+CONT    = $00C9 =   201          dsk_boot_test.asm:70
 DMAH    = $0010 =    16          dsk_boot_test.asm:28
 DMAL    = $000F =    15          dsk_boot_test.asm:27
 DRIVE   = $000A =    10          dsk_boot_test.asm:22
-ERRMSG  = $0003 =     3          dsk_boot_test.asm:32
+ERRMSG  = $0080 =   128          dsk_boot_test.asm:33
 FDCOP   = $000D =    13          dsk_boot_test.asm:25
 FDCST   = $000E =    14          dsk_boot_test.asm:26
-LSECT   = $0025 =    37          dsk_boot_test.asm:45
-MON     = $1000 =  4096          dsk_boot_test.asm:7
+LSECT   = $00A2 =   162          dsk_boot_test.asm:46
+MON     = $0100 =   256          dsk_boot_test.asm:7
 MSIZE   = $0040 =    64          dsk_boot_test.asm:9
-PRTMSG  = $003D =    61          dsk_boot_test.asm:59
+PRTMSG  = $00BA =   186          dsk_boot_test.asm:60
 SECTOR  = $000C =    12          dsk_boot_test.asm:24
 SECTS   = $0032 =    50          dsk_boot_test.asm:17
 SIZE    = $1900 =  6400          dsk_boot_test.asm:16
-STOP    = $0048 =    72          dsk_boot_test.asm:65
+STOP    = $00C5 =   197          dsk_boot_test.asm:66
 TRACK   = $000B =    11          dsk_boot_test.asm:23
-_end    = $0064 =   100          dsk_boot_test.asm:5 (unused)
-_size   = $0064 =   100          dsk_boot_test.asm:5 (unused)
+_end    = $00E1 =   225          dsk_boot_test.asm:5 (unused)
+_size   = $00E1 =   225          dsk_boot_test.asm:5 (unused)
 
 
 total time: 0.0008 sec.

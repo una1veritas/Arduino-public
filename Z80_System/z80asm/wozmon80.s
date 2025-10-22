@@ -54,13 +54,14 @@ GETLINE:        ld      a, $0d          ; LDA #$8D        ; CR.
                 ld      l, 1            ; LDY #$01        ; Initialize text index.
 BACKSPACE:      dec     l               ; DEY             ; Back up text index.
                 jp      m, GETLINE      ; BMI GETLINE     ; Beyond start of line, reinitialize.
-NEXTCHAR:       LDA KBDCR       ; Key ready?
-                BPL NEXTCHAR    ; Loop until ready.
-                LDA KBD         ; Load character. B7 should be ‘1’.
-                STA IN,Y        ; Add to text buffer.
-                JSR ECHO        ; Display character.
-                CMP #$8D        ; CR?
-                BNE NOTCR       ; No.
+NEXTCHAR:       in      a, (CONSTA)     ; LDA KBDCR       ; Key ready?
+                and     a
+                jr      z, NEXTCHAR     ; BPL NEXTCHAR    ; Loop until ready.
+                in      a, (CONIO)      ; LDA KBD         ; Load character. B7 should be ‘1’.
+                ld      (hl), a         ; STA IN,Y        ; Add to text buffer.
+                out     (CONIO), a      ; JSR ECHO        ; Display character.
+                cp      $0d             ; CMP #$8D        ; CR?
+                jr      nz, NOTCR       ; BNE NOTCR       ; No.
                 LDY #$FF        ; Reset text index.
                 LDA #$00        ; For XAM mode.
                 TAX             ; 0->X.
@@ -154,6 +155,7 @@ PRHEX:          AND #$0F        ; Mask LSD for hex print.
                 CMP #$BA        ; Digit?
                 BCC ECHO        ; Yes, output it.
                 ADC #$06        ; Add offset for letter.
+
 ECHO:           BIT DSP         ; DA bit (B7) cleared yet?
                 BMI ECHO        ; No, wait for display.
                 STA DSP         ; Output character. Sets DA.

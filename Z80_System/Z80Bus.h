@@ -44,25 +44,26 @@ enum IO_Ports {
 struct DMA_Controller {
 	static const uint16_t blk_size_base = 128;
 
-	union {
-		uint16_t address;
-		struct {
-			uint8_t addr8[2];
-		};
-	};
+	uint16_t address;
 	uint16_t blk_size;
+	uint8_t page_buffer[256];
 
 	enum DMA_request {
-		NO_REQUEST = 0, READ_RAM = 1, WRITE_RAM = 0xff,
+		NO_REQUEST = 0,
+		READ_FROM_RAM = 1,  // from ram to page buffer
+		WRITE_TO_RAM = 2,  // from page buffer to ram
 	} transfer_mode;
 
-	uint8_t result;
+	enum DMA_status {
+		TRANSFER_OK = 0,
+		TRANSFER_FAILED = 0xff,
+	} result;
 
 	DMA_Controller() { init(); }
 
 	void init() {
 		address = 0;
-		blk_size = blk_size_base;
+		blk_size = (blk_size_base << 1);
 		transfer_mode = NO_REQUEST;
 		result = 0;
 	}
@@ -71,15 +72,22 @@ struct DMA_Controller {
 		address = addr16;
 	}
 	void set_address_low(uint8_t low8) {
-		addr8[0] = low8;
+		((uint8_t *)& address)[0] = low8;
 	}
 	void set_address_high(uint8_t hi8) {
-		addr8[1] = hi8;
+		((uint8_t *)& address)[1] = hi8;
 	}
 
 	void set_block_size(uint8_t n) {
 		blk_size = blk_size_base << n;
+		blk_size = blk_size > 256 ? 256 : blk_size;
 	}
+
+	void set_transfer_mode(uint8_t mode){
+		transfer_mode = mode;
+	}
+
+	uint8_t * buffer() { return page_buffer; }
 
 	uint16_t block_size() const {
 		return blk_size;
@@ -103,7 +111,8 @@ struct Disk_Controller {
 
 	enum FDCOP_CODE {
 		READ_SECTOR 	= 0,
-		WRITE_SECTOR 	= 0xff,
+		WRITE_SECTOR 	= 1,
+		NO_REQUEST = 0xff,
 	};
 	static const uint8_t nof_drives = 2;
 
@@ -120,7 +129,7 @@ struct Disk_Controller {
 
 	Disk_Controller() {
 		current_drive = 0;
-		opcode = READ_SECTOR;
+		opcode = NO_REQUEST;
 		for(uint8_t i = 0; i < nof_drives; ++i) {
 			drive().dskfile.close();
 		}
@@ -471,7 +480,7 @@ public:
   uint8_t DMA_requested() {
     return dma.transfer_mode != dma.NO_REQUEST;
   }
-
+/*
   uint8_t DMA_direction() {
     return (dma.transfer_mode == dma.WRITE_RAM ? OUTPUT : INPUT);
   }
@@ -485,7 +494,7 @@ public:
     dma.transfer_mode = dma.WRITE_RAM;  // issue request internaly
     DMA_exec(mem);
   }
-
+*/
   uint8_t DMA_block_size() {
     return dma.block_size();
   }
@@ -496,25 +505,25 @@ public:
 
   void DMA_exec(uint8_t mem[]) {
     if (dma.transfer_mode == dma.NO_REQUEST)
-      return 0x00;
+      dma.result = dma.TRANSFER_OK;
     if ( BUSACK() == HIGH ) {
       dma.transfer_mode = dma.NO_REQUEST;
       dma.result = 0xff;
       return;
     }
     //ram_enable();
-    if (dma.transfer_mode == dma.WRITE_RAM) {
+    if (dma.transfer_mode == dma.WRITE_TO_RAM) {
       for (uint16_t ix = 0; ix < dma.block_size(); ++ix) {
         ram_write(dma.address + ix, mem[ix]);
       }
-    } else if (dma.transfer_mode == dma.READ_RAM) {
+    } else if (dma.transfer_mode == dma.READ_FROM_RAM) {
       for (uint16_t ix = 0; ix < dma.block_size(); ++ix) {
         mem[ix] = ram_read(dma.address + ix);
       }
     }
     //ram_disable();
     dma.transfer_mode = dma.NO_REQUEST;
-    dma.result = 0x00;
+    dma.result = dma.TRANSFER_OK;
   }
 
 	void FDC_operate(uint8_t buffer[]) {
@@ -527,6 +536,15 @@ public:
 				buffer[i] = fdc.drive().dskfile.read();
 			}
 		}
+		if (fdc.opcode == fdc.READ_SECTOR) {
+			unsigned long pos = fdc.seek_position();
+			fdc.drive().dskfile.seek(pos);
+			for (uint16_t i = 0; i < fdc.drive().dtype.sector_size; ++i) {
+				if (pos + i >= fdc.drive().dskfile.size())
+					fdc.drive().dskfile.write(buffer[i]);
+			}
+		}
+		fdc.opcode = fdc.NO_REQUEST;
 	}
 
   void RESET(uint8_t val) {

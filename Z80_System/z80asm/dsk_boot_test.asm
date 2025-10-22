@@ -4,7 +4,7 @@
 ;
 	ORG	0		;mem base of boot
 
-MON 	equ 	01000h
+MON 	equ 	00100h
 ;
 MSIZE	EQU	64		;mem size in kbytes
 ;
@@ -29,6 +29,7 @@ DMAH    EQU	16		;dma-port: dma address high
 ;
 	jp  MON     ;JP	COLD
 ;
+	org 	0080h
 ERRMSG:	DEFM	'BOOT: error booting'
 	DEFB	13,10,0
 ;

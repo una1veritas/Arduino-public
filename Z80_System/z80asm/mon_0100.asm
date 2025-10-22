@@ -20,25 +20,16 @@ LED7SEG	equ 	129
 ; b  ... workspace reg. dnjz counter
 ; c  ... command
 ; de ... address
-; ix ...  mon_curr_addr, curr_addr + 2 == end_addr
 ;
 
 ; rom subroutines;
 ;
 
-; work space
-workspace   equ     00f00H
-lbuf	    equ 	workspace
-BUFSIZE     equ 	127
-addr	    equ		workspace + 80
-addr2	    equ 	addr+2
-;
-
-        org     01000h
+        org     00100h
 mon:            ;entry point
 		ld 		de, 0
-		ld 		(addr), de
-		ld 		(addr2), de
+		ld 		(OADDR), de
+		ld 		(CADDR), de
 read_line:
 		ld 		hl, lbuf 	; line buffer
 		ld 		c, BUFSIZE	; line buffer size (except null terminal)
@@ -61,7 +52,7 @@ read_line:
 ; specify start address and function
 		ld 		c, 4
 		call 	hexstr_de
-		ld 		(addr), de
+		ld 		(OADDR), de
 		;
 		ld 		a, (hl)
 		cp 		$0
@@ -75,22 +66,22 @@ read_line:
 		cp		'S'
 		jr 		z, clk_mode
 		call 	print_err_msg
-		jr 		mon		; addr and addr2 are possibly corrupted
+		jr 		mon		; OADDR and CADDR are possibly corrupted
 		;
 specify_end:
 		inc 	hl 		; next to '.'
 		ld 		c, 4
 		call 	hexstr_de
-		ld 		(addr2), de
+		ld 		(CADDR), de
 		ld 		a, (hl)
 		cp 		0
 		jr 		z, default_dump
 		call 	print_err_msg
-		jr 		mon		; addr and addr2 are possibly corrupted
+		jr 		mon		; OADDR and CADDR are possibly corrupted
 		;
 default_dump:
-		ld 		hl, (addr)
-		ld 		de, (addr2)
+		ld 		hl, (OADDR)
+		ld 		de, (CADDR)
 		ld 		a, h
 		cp 		d 
 		jr 		nz, $+4 
@@ -100,15 +91,15 @@ default_dump:
 		jr 		z, do_dump  ; start == end
 		ld 		de, $10
 		add 	hl, de
-		ld 		(addr2), hl
+		ld 		(CADDR), hl
 		;
 do_dump:
-		ld 		hl, (addr)
-		ld 		de, (addr2)
+		ld 		hl, (OADDR)
+		ld 		de, (CADDR)
 		call 	dump
-		ld 		(addr), hl
+		ld 		(OADDR), hl
 		ld 		de, 0
-		ld 		(addr2), de
+		ld 		(CADDR), de
 		jp 		read_line
         ;
 write_mode:
@@ -122,10 +113,10 @@ write_mode:
 		ld 		a, c 
 		cp 		a, 2
 		jr 		z, write_mode.exit	; no arg or illegal char
-		ld 		ix, (addr)
+		ld 		ix, (OADDR)
 		ld 		(ix), e
 		inc 	ix
-		ld 		(addr), ix
+		ld 		(OADDR), ix
 		ld 		a, (hl)
 		cp 		0
 		jr 		z, write_mode.exit
@@ -134,7 +125,7 @@ write_mode.exit
 		jp 		read_line
 ;
 run_mode:
-		ld 		hl, (addr)
+		ld 		hl, (OADDR)
 		jp 		(hl)
 ;;
 ;  clockspeed change by output number to port 128
@@ -291,7 +282,7 @@ str_endl:
 		db $0a, $0d, 0
 ;
 
-; dump : dump memory from addr to addr+2 (value)
+; dump : dump memory from OADDR to OADDR+2 (value)
 ; hl ... start address (will be trucated)
 ; de ... end address
 ;
@@ -412,60 +403,13 @@ clk_spd_change:
 		and 	$07
 		out		(CLKMODE), a
 		ret
-
-; arithmetic routines
-; dvi_hl_c stack in out wrapper
-; [ret addr] [dividiend] [divisor:low] 
-; --> [ret addr] [quotient] [reminder:low]
-div16_8:
-    ld      ix, 02
-    add     ix, sp
-    ld      hl, (ix)
-    ld      c, (ix+2)
-    call    div_hl_c
-    ld      (ix), hl
-    ld      (ix+2), a
-    ret
-
-; divides hl by c and places the quotient in hl 
-; and the remainder in a
-div_hl_c:
-   xor	a
-   ld	b, 16
-
-div_hl_c_loop:
-   add	hl, hl
-   rla
-   jr	c, $+5
-   cp	c
-   jr	c, $+4
-
-   sub	c
-   inc	l
-   
-   djnz	div_hl_c_loop
-   
-   ret
-
-
-; print the decimal integer in HL 
-print_hl_dec:
-	xor 	a
-	push 	af 		; terminal null char
-	ld 		c, 10 	; radix = 10
-
-print_hl_dec_loop0:
-	call 	div_hl_c 	; a = hl % 10, hl = hl / 10
-	add 	a, $30		; to ascii code between '0' and '9'
-	push 	af
-	ld 		a, h 		; check whether hl is empty
-	or 		l
-	jr 		z, print_hl_dec_output		; if z then conversion finished
-	jr 		print_hl_dec_loop0
-
-print_hl_dec_output:
-	pop 	af
-	and 	a
-	ret 	z
-	out 	(2), a
-	jr 		print_hl_dec_output
+;
+; work space
+			org 	0300h
+workspace:
+lbuf: 		ds 		128
+BUFSIZE 	EQU 	127
+OADDR:		DB		0, 0
+CADDR:		DB		0, 0
+STATE: 		DB 		0
+;

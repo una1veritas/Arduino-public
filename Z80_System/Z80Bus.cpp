@@ -88,7 +88,6 @@ uint32_t Z80Bus::io_rw() {
 	uint16_t port;
 	uint8_t data;
 	uint32_t result;
-	static uint8_t dma_buff[256];
 
 	// from Z80 side
 
@@ -103,7 +102,7 @@ uint32_t Z80Bus::io_rw() {
 		switch ( uint8_t(port & 0xff) ) {
 		case CONSTA:  //CONSTA
 			WAIT(LOW);
-			data = uint8_t(Serial.available()); //(Serial.available() ? 0xff : 0x00);
+			data = uint8_t( Serial.available() ? 0xff : 0x00 );
 			WAIT(HIGH);
 			break;
 		case CONIO:  // CONDAT/CON_IN
@@ -115,9 +114,9 @@ uint32_t Z80Bus::io_rw() {
 			data = fdc.status(); //fdc.status();
 			// not populated
 			break;
-		case DMAEXEC: // exec_dma
-			dma.transfer_mode = dma.READ_RAM;
-			data = 0;
+		case DMAEXEC: // exec_dma in read mode
+			dma.transfer_mode = dma.WRITE_TO_RAM;
+			data = 0; // dummy
 			BUSREQ(LOW);
 			while (BUSACK() == HIGH) ;
 			break;
@@ -145,22 +144,23 @@ uint32_t Z80Bus::io_rw() {
 			fdc.sel_drive(data);
 			break;
 		case FDCTRACK:       //11, fdc-port: # of track
-			//WAIT(LOW);
+			WAIT(LOW);
 			fdc.sel_track(data);
-			//Serial.print(" TRACK = ");
+			//Serial.print("SET TRK ");
 			//Serial.print(data, DEC);
-			//WAIT(HIGH);
+			//Serial.print(", ");
+			WAIT(HIGH);
 			break;
 		case FDCSECTOR:       //fdc-port: # of sector
-			//WAIT(LOW);
+			WAIT(LOW);
 			fdc.sel_sector(data);
-			//Serial.print(" SECTOR = ");
+			//Serial.print("SET SECT ");
 			//Serial.print(data, DEC);
-			//WAIT(HIGH);
+			//Serial.print(", ");
+			WAIT(HIGH);
 			break;
 		case FDCOP:       //fdc-port: command
-			fdc.set_opcode(data);
-			dma.transfer_mode = dma.WRITE_RAM;
+			fdc.set_opcode(data);	// triggers dma transfer
 			BUSREQ(LOW);
 			while (BUSACK() == HIGH) ;
 			break;
@@ -171,7 +171,7 @@ uint32_t Z80Bus::io_rw() {
 			dma.set_address_high(data);
 			break;
 		case DMAEXEC: // exec_dma
-			dma.transfer_mode = dma.WRITE_RAM;
+			dma.transfer_mode = dma.READ_FROM_RAM;
 			BUSREQ(LOW);
 			while (BUSACK() == HIGH) ;
 			break;
@@ -212,11 +212,26 @@ uint32_t Z80Bus::io_rw() {
 	while (IORQ() == LOW) {}
 	data_bus_mode_input();
 	if (BUSACK() == LOW) {
-		FDC_operate(dma_buff);
 		mem_bus_DMA_mode();
-		DMA_exec(dma_buff);
-		//Serial.print(" DMA dst = ");
-		//Serial.println(dma.address, HEX);
+		if ( fdc.opcode == fdc.READ_SECTOR ) {
+			FDC_operate(dma.buffer());
+			//Serial.print("read file write to ram ");
+			dma.set_block_size(0);
+			dma.set_transfer_mode(dma.WRITE_TO_RAM);
+			DMA_exec(dma.buffer());
+			//Serial.print("addr ");
+			//Serial.println(dma.address, HEX);
+		} else if ( fdc.opcode == fdc.WRITE_SECTOR ) {
+			Serial.print("FDC WRITE, ");
+			dma.set_block_size(0);
+			dma.set_transfer_mode(dma.READ_FROM_RAM);
+			DMA_exec(dma.buffer());
+			FDC_operate(dma.buffer());
+			Serial.print("DMA from addr ");
+			Serial.println(dma.address, HEX);
+		} else if ( dma.transfer_mode != dma.NO_REQUEST ) {
+			DMA_exec(dma.buffer());
+		}
 		mem_bus_Z80_mode();
 		BUSREQ(HIGH);
 	}
