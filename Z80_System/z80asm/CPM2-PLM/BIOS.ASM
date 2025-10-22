@@ -11,14 +11,15 @@ vers	equ	22	;version 2.2
 ;	California, 93950
 ;
 ;
-true	equ	0ffffh	;value of "true"
-false	equ	not true	;"false"
+		org 	0000h
+true	equ	 	(1 = 1)		; 0ffffh	;value of "true"
+false	equ		(1 = 0) 	; not true	;"false"
 test	equ	false	;true if test bios
 ;
 	if	test
 bias	equ	03400h	;base of CCP in test system
 	endif
-	if	not test
+	if	! test
 bias	equ	0000h	;generate relocatable cp/m system
 	endif
 ;
