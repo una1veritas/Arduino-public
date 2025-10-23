@@ -114,6 +114,14 @@ struct Disk_Controller {
 		WRITE_SECTOR 	= 1,
 		NO_REQUEST = 0xff,
 	};
+	enum {
+		RES_OK = 0,		/* 0: Successful */
+		RES_ERROR,		/* 1: R/W Error */
+		RES_WRPRT,		/* 2: Write Protected */
+		RES_NOTRDY,		/* 3: Not Ready */
+		RES_PARERR		/* 4: Invalid Parameter */
+	};
+
 	static const uint8_t nof_drives = 2;
 
 	struct Drive {
@@ -183,7 +191,7 @@ struct Disk_Controller {
 		return sects * drive().dtype.sector_size;
 	}
 
-	uint8_t status() { return 0; }
+	uint8_t status() { return RES_OK; }
 };
 
 struct Z80Bus {
@@ -193,7 +201,7 @@ public:
   static const uint8_t DATA_BUS_WIDTH = 8;
 
   static const uint8_t boot_0000[256] PROGMEM;
-  static const uint8_t mon_1000[768] PROGMEM;
+  static const uint8_t mon_0100[768] PROGMEM;
   static const uint8_t basic_0000[8192] PROGMEM;
 
 public:

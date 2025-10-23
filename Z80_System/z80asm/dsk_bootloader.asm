@@ -2,9 +2,10 @@
 ;
 ;	Copyright (C) 1988-2007 by Udo Munk
 ;
-	ORG	0		;mem base of boot
+	ORG	000h		;mem base of boot
 
-MON 	equ 	00100h
+TPA 	equ 	0100h
+MON 	equ 	TPA
 ;
 MSIZE	EQU	64		;mem size in kbytes
 ;
@@ -30,12 +31,10 @@ DMAH    EQU	16		;dma-port: dma address high
 	jp  MON     ;JP	COLD
 ;
 	org 	0080h
-ERRMSG:	DEFM	'BOOT: error booting'
-	DEFB	13,10,0
-;
 ;	begin the load operation
 ;
-COLD:	LD	BC,2		;b=track 0, c=sector 2
+COLD:	
+	LD	BC,2		;b=track 0, c=sector 2
 	LD	D,SECTS		;d=# sectors to load
 	LD	HL,CCP		;base transfer address
 	LD	A,0		;select drive A
@@ -43,7 +42,8 @@ COLD:	LD	BC,2		;b=track 0, c=sector 2
 ;
 ;	load the next sector
 ;
-LSECT:	LD	A,B		;set track
+LSECT:	
+	LD	A,B		;set track
 	OUT	(TRACK),A
 	LD	A,C		;set sector
 	OUT	(SECTOR),A
@@ -57,18 +57,19 @@ LSECT:	LD	A,B		;set track
 	OR	A		;read successful ?
 	JP	Z,CONT		;yes, continue
 	LD	HL,ERRMSG	;no, print error
-PRTMSG:	LD	A,(HL)
+PRTMSG:	
+	LD	A,(HL)
 	OR	A
 	JP	Z,STOP
 	OUT	(CONDAT),A
 	INC	HL
 	JP	PRTMSG
-STOP:	DI
+STOP:	
+	DI
 	;HALT			;and halt cpu
 	jp 	MON
 ;
-CONT:
-				;go to next sector if load is incomplete
+CONT:			;go to next sector if load is incomplete
 	DEC	D		;sects=sects-1
 	jp 	Z, MON
 	JP	Z,BOOT		;head for the bios
@@ -92,5 +93,10 @@ CONT:
 	LD	C,1		;sector = 1
 	INC	B		;track = track + 1
 	JP	LSECT		;for another group
+;
+ERRMSG:	
+	DEFM	'BOOT: error booting'
+	DEFB	13,10,0
+;
 ;
 	END			;of boot loader

@@ -62,9 +62,9 @@ NEXTCHAR:       in      a, (CONSTA)     ; LDA KBDCR       ; Key ready?
                 out     (CONIO), a      ; JSR ECHO        ; Display character.
                 cp      $0d             ; CMP #$8D        ; CR?
                 jr      nz, NOTCR       ; BNE NOTCR       ; No.
-                LDY #$FF        ; Reset text index.
-                LDA #$00        ; For XAM mode.
-                TAX             ; 0->X.
+                ld      hl, $ff         ; LDY #$FF        ; Reset text index.
+                ld      a, $00          ; LDA #$00        ; For XAM mode.
+                id      ix, 0000h       ; TAX             ; 0->X.
 SETSTOR:        ASL             ; Leaves $7B if setting STOR mode.
 SETMODE:        STA MODE        ; $00=XAM, $7B=STOR, $AE=BLOCK XAM.
 BLSKIP:         INY             ; Advance text index.

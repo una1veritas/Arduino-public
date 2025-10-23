@@ -32,7 +32,7 @@ mon:            ;entry point
 		ld 		(CADDR), de
 read_line:
 		ld 		hl, lbuf 	; line buffer
-		ld 		c, BUFSIZE	; line buffer size (except null terminal)
+		; ld 		c, BUFSIZE	; line buffer size (except null terminal)
 		call	getln
 		ld 		hl, lbuf
 		ld 		a, (hl)
@@ -153,18 +153,12 @@ getchar:
 ; c  .... buffer limit length
 getln:
 		ld 		(hl), 0
-		ld 		b, 0		; char count
 		call 	print_endl
 		ld 		a, '*'
 		out 	(CONIO), a
         ;
 getln_wait:
 		call 	getchar
-		;in 		a, (CONSTA)
-		;and 	a
-		;jr 		z, getln_wait
-		;in 		a, (CONIO)
-		; 
 		cp 		$08 	;backspace
 		jr 		z, getln_bkspc
 		cp 		$7f		; del
@@ -181,7 +175,7 @@ getln_wait:
 		jr 		getln_wait
 
 getln_bkspc:
-		ld 		a, b
+		ld 		a, l
 		and 	a
 		jr 		z, getln_wait
 		ld 		a, $08
@@ -190,9 +184,8 @@ getln_bkspc:
 		out 	(CONIO), a
 		ld 		a, $08
 		out 	(CONIO), a
-		dec 	hl
+		dec 	l
 		ld 		(hl), $0
-		dec 	b
 		jr 		getln_wait
 
 getln_escseq:
@@ -208,12 +201,11 @@ getln_echo_proceed:
 		out 	(CONIO), a 		; echo back
 		;
 		ld 		(hl),a		; *ptr++ = a
-		inc 	hl
+		inc 	l
 		ld 		(hl), $0	; *ptr = NULL
-		inc 	b
-		ld 		a, b
-		cp 		c
-		jr 		nc, getln_end  ; force terminate line
+		ld 		a, l
+		cp 		$ff
+		jr 		z, getln_end  ; force terminate line
 		jr 		getln_wait
 
 getln_end:	; parse lbuf

@@ -114,7 +114,7 @@ void setup() {
     if ( boot_media == DMA_IPL) {
       uint8_t res;
       res = z80bus.DMA_progmem_load(Z80Bus::boot_0000, 0x0000, 256);
-      res |= z80bus.DMA_progmem_load(Z80Bus::mon_1000, 0x1000, 256*3);
+      res |= z80bus.DMA_progmem_load(Z80Bus::mon_0100, 0x0100, 256*3);
       if (res != 0) {
         Serial.println("Something going wrong w/ sram/IPL read & write!");
       } else {

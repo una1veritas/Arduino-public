@@ -164,8 +164,8 @@ close:	;close the file given by d,e
     jp bdos_inr
 ;
 search:	;search for the file given by d,e
-	mvi c,searf		
-jmp bdos_inr
+	ld 	c, searf 	; mvi c,searf		
+	jp 	bdos_inr 	; jmp bdos_inr
 ;
 searchn:
 	;search for the next occurrence of the file given by d,e
@@ -319,16 +319,16 @@ jmp readcom0
 shld comaddr ;ready to scan to zero
 	ret
 ;
-break$key:
+break_key: 	; break$key:
 	;check for a character ready at the console
-	mvi c,breakf		
-call bdos
-	ora a		
-rz
-	mvi c,rcharf		
-call bdos ;character cleared
-	ora a		
-ret
+	ld 	c, breakf 	; mvi c,breakf		
+	call bdos
+	or 	a 	; ora a
+	ret z	; rz
+	ld 	c, rcharf 	; mvi c,rcharf		
+	call bdos ;character cleared
+	or 	a 	; ora a		
+	ret
 ;
 cselect:
 	;get the currently selected drive number to reg-A

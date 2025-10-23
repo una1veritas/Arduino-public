@@ -1,0 +1,150 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "dsk_bootloader.asm"
+                        ; date: 2025-10-23 21:36:11
+                        ; --------------------------------------
+
+
+                        ;	CP/M 2.2 boot-loader for Z80-Simulator
+                        ;
+                        ;	Copyright (C) 1988-2007 by Udo Munk
+                        ;
+0000:                   	ORG	000h		;mem base of boot
+                        
+0100:                   TPA 	equ 	0100h
+0100:                   MON 	equ 	TPA
+                        ;
+0040:                   MSIZE	EQU	64		;mem size in kbytes
+                        ;
+B000:                   BIAS	EQU	(MSIZE-20)*1024	;offset from 20k system
+E400:                   CCP	EQU	3400H+BIAS	;base of the ccp
+FA00:                   BIOS	EQU	CCP+1600H	;base of the bios
+0300:                   BIOSL	EQU	0300H		;length of the bios
+FA00:                   BOOT	EQU	BIOS
+1900:                   SIZE	EQU	BIOS+BIOSL-CCP	;size of cp/m system
+0032:                   SECTS	EQU	SIZE/128	;# of sectors to load
+                        ;
+                        ;	I/O ports
+                        ;
+0001:                   CONDAT	EQU	1		;console data port
+000A:                   DRIVE   EQU	10		;fdc-port: # of drive
+000B:                   TRACK   EQU	11		;fdc-port: # of track
+000C:                   SECTOR  EQU	12		;fdc-port: # of sector
+000D:                   FDCOP   EQU	13		;fdc-port: command
+000E:                   FDCST   EQU	14		;fdc-port: status
+000F:                   DMAL    EQU	15		;dma-port: dma address low
+0010:                   DMAH    EQU	16		;dma-port: dma address high
+                        ;
+0000: C30001   [10]     	jp  MON     ;JP	COLD
+                        ;
+                        	org 	0080h
+                        ;	begin the load operation
+                        ;
+0080:                   COLD:	
+0080: 010200   [10]     	LD	BC,2		;b=track 0, c=sector 2
+0083: 1632     [17]     	LD	D,SECTS		;d=# sectors to load
+0085: 2100E4   [27]     	LD	HL,CCP		;base transfer address
+0088: 3E00     [34]     	LD	A,0		;select drive A
+008A: D30A     [45]     	OUT	(DRIVE),A
+                        ;
+                        ;	load the next sector
+                        ;
+008C:                   LSECT:	
+008C: 78       [ 4]     	LD	A,B		;set track
+008D: D30B     [15]     	OUT	(TRACK),A
+008F: 79       [19]     	LD	A,C		;set sector
+0090: D30C     [30]     	OUT	(SECTOR),A
+0092: 7D       [34]     	LD	A,L		;set dma address low
+0093: D30F     [45]     	OUT	(DMAL),A
+0095: 7C       [49]     	LD	A,H		;set dma address high
+0096: D310     [60]     	OUT	(DMAH),A
+0098: AF       [64]     	XOR	A		;read sector
+0099: D30D     [75]     	OUT	(FDCOP),A
+009B: DB0E     [86]     	IN	A,(FDCST)	;get status of fdc
+009D: B7       [90]     	OR	A		;read successful ?
+009E: CAB300   [100|100]	JP	Z,CONT		;yes, continue
+00A1: 21CB00   [110]    	LD	HL,ERRMSG	;no, print error
+00A4:                   PRTMSG:	
+00A4: 7E       [ 7]     	LD	A,(HL)
+00A5: B7       [11]     	OR	A
+00A6: CAAF00   [21|21]  	JP	Z,STOP
+00A9: D301     [32]     	OUT	(CONDAT),A
+00AB: 23       [38]     	INC	HL
+00AC: C3A400   [48]     	JP	PRTMSG
+00AF:                   STOP:	
+00AF: F3       [ 4]     	DI
+                        	;HALT			;and halt cpu
+00B0: C30001   [14]     	jp 	MON
+                        ;
+00B3:                   CONT:			;go to next sector if load is incomplete
+00B3: 15       [ 4]     	DEC	D		;sects=sects-1
+00B4: CA0001   [14|14]  	jp 	Z, MON
+00B7: CA00FA   [24|24]  	JP	Z,BOOT		;head for the bios
+                        	
+                        ;
+                        ;	more sectors to load
+                        ;
+                        ;	we aren't using a stack, so use <sp> as scratch register
+                        ;	to hold the load address increment
+                        ;
+00BA: 318000   [34]     	LD	SP,128		;128 bytes per sector
+00BD: 39       [45]     	ADD	HL,SP		;<hl> = <hl> + 128
+                        ;
+00BE: 0C       [49]     	INC	C		;sector = sector + 1
+00BF: 79       [53]     	LD	A,C
+00C0: FE1B     [60]     	CP	27		;last sector of track ?
+00C2: DA8C00   [70|70]  	JP	C,LSECT		;no, go read another
+                        ;
+                        ;	end of track, increment to next track
+                        ;
+00C5: 0E01     [77]     	LD	C,1		;sector = 1
+00C7: 04       [81]     	INC	B		;track = track + 1
+00C8: C38C00   [91]     	JP	LSECT		;for another group
+                        ;
+00CB:                   ERRMSG:	
+00CB: 424F4F54          	DEFM	'BOOT: error booting'
+00CF: 3A206572          
+00D3: 726F7220          
+00D7: 626F6F74          
+00DB: 696E67            
+00DE: 0D0A00            	DEFB	13,10,0
+                        ;
+                        ;
+                        	END			;of boot loader
+
+
+; +++ segments +++
+
+#CODE          = $0000 =     0,  size = $00E1 =   225
+
+; +++ global symbols +++
+
+BIAS    = $B000 = 45056          dsk_bootloader.asm:12
+BIOS    = $FA00 = 64000          dsk_bootloader.asm:14
+BIOSL   = $0300 =   768          dsk_bootloader.asm:15
+BOOT    = $FA00 = 64000          dsk_bootloader.asm:16
+CCP     = $E400 = 58368          dsk_bootloader.asm:13
+COLD    = $0080 =   128          dsk_bootloader.asm:36 (unused)
+CONDAT  = $0001 =     1          dsk_bootloader.asm:22
+CONT    = $00B3 =   179          dsk_bootloader.asm:72
+DMAH    = $0010 =    16          dsk_bootloader.asm:29
+DMAL    = $000F =    15          dsk_bootloader.asm:28
+DRIVE   = $000A =    10          dsk_bootloader.asm:23
+ERRMSG  = $00CB =   203          dsk_bootloader.asm:97
+FDCOP   = $000D =    13          dsk_bootloader.asm:26
+FDCST   = $000E =    14          dsk_bootloader.asm:27
+LSECT   = $008C =   140          dsk_bootloader.asm:45
+MON     = $0100 =   256          dsk_bootloader.asm:8
+MSIZE   = $0040 =    64          dsk_bootloader.asm:10
+PRTMSG  = $00A4 =   164          dsk_bootloader.asm:60
+SECTOR  = $000C =    12          dsk_bootloader.asm:25
+SECTS   = $0032 =    50          dsk_bootloader.asm:18
+SIZE    = $1900 =  6400          dsk_bootloader.asm:17
+STOP    = $00AF =   175          dsk_bootloader.asm:67
+TPA     = $0100 =   256          dsk_bootloader.asm:7
+TRACK   = $000B =    11          dsk_bootloader.asm:24
+_end    = $00E1 =   225          dsk_bootloader.asm:5 (unused)
+_size   = $00E1 =   225          dsk_bootloader.asm:5 (unused)
+
+
+total time: 0.0008 sec.
+no errors

@@ -89,7 +89,7 @@ bdose:	;arrive here from user programs
 	ex 	de, hl		; xchg! 
 	ld 	(info), hl 	; shld info! 
 	ex 	de, hl		; xchg ;info=DE, DE=info
-	ld 	a, e 		; emov a,e!
+	ld 	a, e 		; mov a,e!
 	ld 	(linfo), a 	; sta linfo ;linfo = low(info) - don't equ
 	ld 	hl, 0 		; lxi h,0!
 	ld 	(aret), hl 	; shld aret ;return value defaults to 0000
@@ -177,45 +177,67 @@ errflg:
 ;	console handlers
 conin:
 	;read console character to A
-	lxi h,kbchar! mov a,m! mvi m,0! ora a! rnz
+	ld 	hl, kbchar 	; lxi h,kbchar!
+	ld 	a, (hl) 	; mov a,m!
+	ld 	(lh), 0 	; mvi m,0!
+	or 	a 			; ora a!
+	ret nz			; rnz
 	;no previous keyboard character ready
-	jmp coninf ;get character externally
+	jp 	coninf 		;get character externally
 	;ret
 ;
 conech:
 	;read character with echo
-	call conin! call echoc! rc ;echo character?
+	call conin! 
+	call echoc! 
+	rc ;echo character?
         ;character must be echoed before return
-	push psw! mov c,a! call tabout! pop psw
-	ret ;with character in A
+	push 	af 	; psw! 
+	mov c,a! 
+	call tabout! 
+	pop 	af 	; psw
+	ret 	;with character in A
 ;
 echoc:
 	;echo character if graphic
 	;cr, lf, tab, or backspace
-	cpi cr! rz ;carriage return?
-	cpi lf! rz ;line feed?
-	cpi tab! rz ;tab?
-	cpi ctlh! rz ;backspace?
-	cpi ' '! ret ;carry set if not graphic
+	cpi cr! 
+	rz ;carriage return?
+	cpi lf! 
+	rz ;line feed?
+	cpi tab! 
+	rz ;tab?
+	cpi ctlh! 
+	rz ;backspace?
+	cpi ' '! 
+	ret ;carry set if not graphic
 ;
 conbrk:	;check for character ready
-	lda kbchar! ora a! jnz conb1 ;skip if active kbchar
+	lda kbchar!
+	ora a! 
+	jnz conb1 ;skip if active kbchar
 		;no active kbchar, check external break
-		call constf! ani 1! rz ;return if no char ready
+	call constf! 
+	ani 1! 
+	rz ;return if no char ready
 		;character ready, read it
-		call coninf ;to A
-		cpi ctls! jnz conb0 ;check stop screen function
+	call coninf ;to A
+	cpi ctls! 
+	jnz conb0 ;check stop screen function
 		;found ctls, read next character
-		call coninf ;to A
-		cpi ctlc! jz reboot ;ctlc implies re-boot
+	call coninf ;to A
+	cpi ctlc! 
+	jz reboot ;ctlc implies re-boot
 		;not a reboot, act as if nothing has happened
-		xra a! ret ;with zero in accumulator
-	conb0:
+	xra a! 
+	ret ;with zero in accumulator
+conb0:
 		;character in accum, save it
-		sta kbchar
-	conb1:
+	sta kbchar
+conb1:
 		;return with true set in accumulator
-		mvi a,1! ret
+	mvi a,1! 
+	ret
 ;
 conout:
 	;compute character position/write console char from C
