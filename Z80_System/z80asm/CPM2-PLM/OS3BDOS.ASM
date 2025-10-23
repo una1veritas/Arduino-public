@@ -86,21 +86,37 @@ roferr:	dw	rofsub	;ro file error subroutine
 ;
 ;
 bdose:	;arrive here from user programs
-	xchg! shld info! xchg ;info=DE, DE=info
-	mov a,e! sta linfo ;linfo = low(info) - don't equ
-	lxi h,0! shld aret ;return value defaults to 0000
+	ex 	de, hl		; xchg! 
+	ld 	(info), hl 	; shld info! 
+	ex 	de, hl		; xchg ;info=DE, DE=info
+	ld 	a, e 		; emov a,e!
+	ld 	(linfo), a 	; sta linfo ;linfo = low(info) - don't equ
+	ld 	hl, 0 		; lxi h,0!
+	ld 	(aret), hl 	; shld aret ;return value defaults to 0000
 	;save user's stack pointer, set to local stack
-	dad sp! shld entsp ;entsp = stackptr
-	lxi sp,lstack ;local stack setup
-	xra a! sta fcbdsk! sta resel ;fcbdsk,resel=false
-	lxi h,goback ;return here after all functions
-	push h ;jmp goback equivalent to ret
-	mov a,c! cpi nfuncs! rnc ;skip if invalid #
-	mov c,e ;possible output character to C
-	lxi h,functab! mov e,a! mvi d,0 ;DE=func, HL=.ciotab
-	dad d! dad d! mov e,m! inx h! mov d,m ;DE=functab(func)
-		lhld info	;info in DE for later xchg	
-	xchg! pchl ;dispatched
+	add hl, sp 		; dad sp!
+	ld 	(entsp), hl ; shld entsp ;entsp = stackptr
+	ld 	sp, lstack 	; lxi sp,lstack ;local stack setup
+	xor a 			; xra a!
+	ld 	(fcbdsk), a ; sta fcbdsk!
+	ld 	(resel), a 	; sta resel ;fcbdsk,resel=false
+	ld 	hl, goback 	; lxi h,goback ;return here after all functions
+	push hl 		;jmp goback equivalent to ret
+	ld 	a, c 		; mov a,c! 
+	cp 	nfuncs 		; cpi nfuncs! 
+	ret nc			: rnc ;skip if invalid #
+	ld 	c, e 		; mov c,e ;possible output character to C
+	ld 	hl, functab ;lxi h,functab! 
+	ld 	e, a 		; mov e,a! 
+	ld 	d, 0 		; mvi d,0 ;DE=func, HL=.ciotab
+	add hl, de 		; dad d! 
+	add hl, de 		; dad d! 
+	ld 	e, (hl) 	; mov e,m! 
+	inc hl 			; inx h! 
+	ld 	d, (hl) 	; mov d,m ;DE=functab(func)
+	ld 	hl, (info)	; lhld info	;info in DE for later xchg	
+	ex 	de, hl 		; xchg! 
+	jp 	(hl)		; pchl ;dispatched
 ;
 ;	dispatch table for functions
 functab:
