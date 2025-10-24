@@ -108,6 +108,8 @@ uint32_t Z80Bus::io_rw() {
 		case CONIO:  // CONDAT/CON_IN
 			WAIT(LOW);
 			data = Serial.read();
+			if ( data == 0xff )
+				data = 0;
 			WAIT(HIGH);
 			break;
 		case FDCST:       //fdc-port: status
@@ -135,7 +137,7 @@ uint32_t Z80Bus::io_rw() {
 
 		switch ( uint8_t(port & 0xff) ) {
 		case CONIO:  // CONDAT/CON_IN
-		case CON_OUT:  // CON_OUT
+		case CONOUT:  // CON_OUT
 			WAIT(LOW);
 			Serial.print((char) data);
 			WAIT(HIGH);
