@@ -19,12 +19,13 @@
 
 enum IO_Ports {
     CONSTA = 0,  //console status port
-    CONDAT = 1,      //console data in/out port
+    CONDAT = 1,      // CONIN, console data in/out port
 	CONIO = 1,
 	CONOUT = 2,
-    PRTSTA,
-    PRTDAT,
-    AUXDAT = 5,		// aux data port
+	KEYSCAN = 3,
+    // PRTSTA,
+    // PRTDAT,
+    // AUXDAT = 7,		// aux data port
     // FDCD = 8,  	//fdc-port:
     FDCDRIVE = 10,  //fdc-port: # of drive
     FDCTRACK,       //fdc-port: # of track

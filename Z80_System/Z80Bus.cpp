@@ -107,6 +107,16 @@ uint32_t Z80Bus::io_rw() {
 			break;
 		case CONIO:  // CONDAT/CON_IN
 			WAIT(LOW);
+			for ( ;; ) {
+				if ( Serial.available() > 0 ) {
+					data = Serial.read();
+					break;
+				}
+			}
+			WAIT(HIGH);
+			break;
+		case KEYSCAN:  // NON-BLOCKING
+			WAIT(LOW);
 			data = Serial.read();
 			if ( data == 0xff )
 				data = 0;
