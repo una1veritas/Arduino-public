@@ -60,7 +60,7 @@ void setup() {
   // put your setup code here, to run once:
   //lcdt.print(0,0, "System Starting.");
 
-  Serial.begin(115200);
+  Serial.begin(38400);
   while (! Serial) {}
   Serial.println("Z80 system stareding. ");
 
@@ -73,7 +73,7 @@ void setup() {
   if (! SD.begin(SS) ) {
 	  Serial.println("Failed to initialize SD card interface.");
   } else {
-    const char filename[] = "/cpmboot.dsk";
+    const char filename[] = "/DSK/drivea.dsk";
     z80bus.fdc.drive().dskfile = SD.open(filename);
     if (!z80bus.fdc.drive().dskfile) {
 	    Serial.print("Failed to open path/file ");

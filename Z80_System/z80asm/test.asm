@@ -1,46 +1,55 @@
-#include "lib_rom_mon.inc"
+;#include "lib_rom_mon.inc"
 
 CONSTA  equ     $00
 CONIO   equ     $01
 
         org     01000h
-vt_test:
-        ld      hl , wrkspc
-        call    print_str_hl
-        call    print_endl
-        jp      mon
+
+        ld      hl, crlf
+        call    print_hl
+        ld      b, 7
+        ld      d, 2
+start:  in      a, (CONSTA)
+        and     a
+        jr      z, start
+        out     (CONIO), a
+        ld      hl, startmsg
+        call    print_hl
+
+repeat: in      a, (CONIO)
+        ld      c, a
+        rlc     c
+        rlc     c
+        rlc     c
+        rlc     c
+        ld      a, $0f
+        and     c
+        add     '0'
+        out     (CONIO), a
+        rlc     c
+        rlc     c
+        rlc     c
+        rlc     c
+        ld      a, $0f
+        and     c
+        add     '0'
+        out     (CONIO), a
+        ld      hl, crlf
+        call    print_hl
+        djnz    repeat
+
+        jp      0100h
+        
 
 
-        org 01020h
-wrkspc:
-        db $0a, $0d
+print_hl:
+        ld      a, (hl)
+        and     a
+        ret     z
+        out     (CONIO), a
+        inc     hl
+        jr      print_hl
 
-        db "Hello, my friends!!!"
-        ; db  $08, $08, $08, $07, $07
-        db $1b, "[D", $1b, "[D", $1b, "[D", $1b, "[D", $1b, "[D"
-        db  $1b, "[P", $1b, "[P"
-        db 0
-
-        org  01050h
-; ASCII CONTROL CODE
-BACKSPACE:
-        db  $08
-BEEP:   db  $07
-DELETE: db  $7f
-
-; VT100 ESC sequences
-;
-CLRSCRN:
-        db  $1b, "[H", $1b, "2J", 0
-HOMEPOS:
-        db  $1b, "[H", 0
-CURSORL:
-        db  $1b, "[D"
-DELCHAR:
-        db  $1b, "[P"
-DELLEND:
-        db  $1b, "[k"
-INSTSPC:
-        db  $1b, "[@"
-INSTLIN:
-        db  $1b, "[L"
+crlf:   db      $0d, $0a, 0
+startmsg:
+        db      "start", $0d, $0a, 0
