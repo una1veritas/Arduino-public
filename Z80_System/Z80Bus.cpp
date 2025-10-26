@@ -66,12 +66,12 @@ void Z80Bus::clock_mode_select(const uint8_t mode) {
 		clock_set(2, 2000);
 		clock_mode = 3;
 	  break;
-	case 4 : // 5 kHz
-		clock_set(2, 200);
+	case 4 : // 8 kHz
+		clock_set(2, 125);
 		clock_mode = 4;
 	  break;
-	case 5 :	// 40kHz
-		clock_set(1, 200);
+	case 5 :	// 50kHz
+		clock_set(1, 160);
 		clock_mode = 5;
 	  break;
 	case 2 :
@@ -84,7 +84,7 @@ void Z80Bus::clock_mode_select(const uint8_t mode) {
 
 //uint8_t Z80Bus::io_rw(const uint8_t &port, const uint8_t &val, const uint8_t &inout) {
 
-uint32_t Z80Bus::io_rw() {
+void Z80Bus::io_rw() {
 	uint16_t port;
 	uint8_t data;
 	uint32_t result;
@@ -92,45 +92,38 @@ uint32_t Z80Bus::io_rw() {
 	// from Z80 side
 
 	if (IORQ() == HIGH)
-		return 0;
+		return;
 	port = address_bus16_get();
-	//Serial.print("port: ");
-	//Serial.print(port, HEX);
 	if (RD() == LOW) {
-		//io_mode = IN;
+		WAIT(LOW);
 		data_bus_mode_output();
+
 		switch ( uint8_t(port & 0xff) ) {
 		case CONSTA:  //CONSTA
-			WAIT(LOW);
 			data = uint8_t( Serial.available() ? 0xff : 0x00 );
-			WAIT(HIGH);
 			break;
-		case CONIO:  // CONDAT/CON_IN
-			WAIT(LOW);
+		case CONIO:  // CONDAT/CONIN, blocking input
 			for ( ;; ) {
 				if ( Serial.available() > 0 ) {
 					data = Serial.read();
 					break;
 				}
 			}
-			WAIT(HIGH);
 			break;
-		case KEYSCAN:  // NON-BLOCKING
-			WAIT(LOW);
-			data = Serial.read();
-			if ( data == 0xff )
+		case KEYSCAN:  // non-blocking input
+			if ( Serial.available() > 0 ) {
+				data = Serial.read();
+			} else {
 				data = 0;
-			WAIT(HIGH);
+			}
 			break;
 		case FDCST:       //fdc-port: status
 			data = fdc.status(); //fdc.status();
-			// not populated
 			break;
 		case DMAEXEC: // exec_dma in read mode
 			dma.transfer_mode = dma.WRITE_TO_RAM;
 			data = 0; // dummy
 			BUSREQ(LOW);
-			while (BUSACK() == HIGH) ;
 			break;
 		case DMARES: // dma_rs
 			data = dma.result;
@@ -139,42 +132,29 @@ uint32_t Z80Bus::io_rw() {
 			data = 0;
 		}
 		data_bus_set(data);
-		((uint8_t *) & result)[1] = 'i';
+		WAIT(HIGH);
 	} else if (WR() == LOW) {
-		//io_mode = OUT;
 		data_bus_mode_input();
 		data = data_bus_get();
+		WAIT(LOW);
 
 		switch ( uint8_t(port & 0xff) ) {
 		case CONIO:  // CONDAT/CON_IN
 		case CONOUT:  // CON_OUT
-			WAIT(LOW);
 			Serial.print((char) data);
-			WAIT(HIGH);
 			break;
 		case FDCDRIVE:  //10, fdc-port: # of drive
 			fdc.sel_drive(data);
 			break;
 		case FDCTRACK:       //11, fdc-port: # of track
-			WAIT(LOW);
 			fdc.sel_track(data);
-			//Serial.print("SET TRK ");
-			//Serial.print(data, DEC);
-			//Serial.print(", ");
-			WAIT(HIGH);
 			break;
 		case FDCSECTOR:       //fdc-port: # of sector
-			WAIT(LOW);
 			fdc.sel_sector(data);
-			//Serial.print("SET SECT ");
-			//Serial.print(data, DEC);
-			//Serial.print(", ");
-			WAIT(HIGH);
 			break;
 		case FDCOP:       //fdc-port: command
 			fdc.set_opcode(data);	// triggers dma transfer
 			BUSREQ(LOW);
-			while (BUSACK() == HIGH) ;
 			break;
 		case DMAL: // dma adr_L
 			dma.set_dst_address_low(data);
@@ -185,7 +165,6 @@ uint32_t Z80Bus::io_rw() {
 		case DMAEXEC: // exec_dma
 			dma.transfer_mode = dma.READ_FROM_RAM;
 			BUSREQ(LOW);
-			while (BUSACK() == HIGH) ;
 			break;
 		case DMABLKSIZE:
 			dma.set_blk_size_factor(data);  // 128 * 2^n : default n = 0 -> 128 bytes
@@ -194,14 +173,11 @@ uint32_t Z80Bus::io_rw() {
 			clock_mode_select(data);
 			break;
 		case LED7SEG:
-			WAIT(LOW);
 			digitalWrite(21, LOW);
 			shiftOut(19, 20, MSBFIRST, ascii7seg(data));
 			digitalWrite(21, HIGH);
-			WAIT(HIGH);
 			break;
 		case FDINSERT:
-			WAIT(LOW);
 			if (! SD.begin(SS) ) {
 				Serial.println("Failed to initialize SD card interface.");
 			} else {
@@ -214,16 +190,16 @@ uint32_t Z80Bus::io_rw() {
 				    Serial.println(filename);
 			    }
 			}
-			WAIT(HIGH);
 			break;
 		}
-		((uint8_t *) & result)[1] = 'o';
+		WAIT(HIGH);
 	} else
-		return 0;
+		return;
 
 	while (IORQ() == LOW) {}
 	data_bus_mode_input();
-	if (BUSACK() == LOW) {
+	if (BUSREQ() == LOW) {
+		while ( BUSACK() == HIGH ) { }
 		mem_bus_DMA_mode();
 		if ( fdc.opcode == fdc.READ_SECTOR ) {
 			FDC_operate(dma.buffer());
@@ -247,9 +223,9 @@ uint32_t Z80Bus::io_rw() {
 		mem_bus_Z80_mode();
 		BUSREQ(HIGH);
 	}
-	((uint16_t *) & result)[1] = port;
-	((uint8_t *) & result)[0] = data;
-	return result;
+	//((uint16_t *) & result)[1] = port;
+	//((uint8_t *) & result)[0] = data;
+	return; // result;
 }
 
 void Z80Bus::emulate_rom() {

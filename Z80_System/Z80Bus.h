@@ -540,22 +540,24 @@ public:
   }
 
 	void FDC_operate(uint8_t buffer[]) {
-		if (fdc.opcode == fdc.READ_SECTOR) {
-			unsigned long pos = fdc.seek_position();
-			fdc.drive().dskfile.seek(pos);
-			for (uint16_t i = 0; i < fdc.drive().dtype.sector_size; ++i) {
-				if (pos + i >= fdc.drive().dskfile.size())
-					break;
-				buffer[i] = fdc.drive().dskfile.read();
-			}
+		int res;
+		unsigned long pos = fdc.seek_position();
+		unsigned long nbytes;
+		if ( fdc.drive().dskfile.size() <= pos ) {
+			fdc.drive().status = fdc.RES_ERROR;
+			return;
 		}
+		nbytes = fdc.drive().dtype.sector_size;
+		if ( fdc.drive().dskfile.size() < pos + nbytes ) {
+			nbytes = fdc.drive().dskfile.size() - pos;
+		}
+		fdc.drive().dskfile.seek(pos);
 		if (fdc.opcode == fdc.READ_SECTOR) {
-			unsigned long pos = fdc.seek_position();
-			fdc.drive().dskfile.seek(pos);
-			for (uint16_t i = 0; i < fdc.drive().dtype.sector_size; ++i) {
-				if (pos + i >= fdc.drive().dskfile.size())
-					fdc.drive().dskfile.write(buffer[i]);
-			}
+			if ( fdc.drive().dskfile.read(buffer, nbytes) < 0 )
+				fdc.drive().status = fdc.RES_ERROR;
+		} else if (fdc.opcode == fdc.WRITE_SECTOR) {
+			if ( fdc.drive().dskfile.write(buffer, nbytes) < 0 )
+				fdc.drive().status = fdc.RES_ERROR;
 		}
 		fdc.opcode = fdc.NO_REQUEST;
 	}
@@ -633,7 +635,7 @@ public:
   }
 
   uint8_t BUSREQ() {
-    digitalRead(_BUSREQ);
+    return digitalRead(_BUSREQ);
   }
 
   bool bus_request() {
@@ -649,7 +651,7 @@ public:
   }
 
   //  uint8_t io_rw(const uint8_t & port, const uint8_t & val, const uint8_t & inout);
-  uint32_t io_rw(void);
+  void io_rw(void);
   void emulate_rom(void);
   uint8_t ascii7seg(char);
 };

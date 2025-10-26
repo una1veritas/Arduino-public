@@ -60,7 +60,7 @@ void setup() {
   // put your setup code here, to run once:
   //lcdt.print(0,0, "System Starting.");
 
-  Serial.begin(38400);
+  Serial.begin(115200);
   while (! Serial) {}
   Serial.println("Z80 system stareding. ");
 
@@ -152,35 +152,38 @@ void loop() {
   uint8_t data, bus_mode;
 
   //z80bus.clock_wait_rising_edge();
-   if ( !z80bus.MREQ() ) {
+   if ( !z80bus.MREQ() ) {/*
     if ( ! z80bus.RD() ) {
-      addr = z80bus.address_bus16_get();
+      //addr = z80bus.address_bus16_get();
       //z80bus.clock_wait_rising_edge();
-      data = z80bus.data_bus_get();
+      //data = z80bus.data_bus_get();
       //val = z80bus.mem_rw();
       bus_mode = 'r';      
     } else if ( ! z80bus.WR() ) {
-      addr = z80bus.address_bus16_get();
+      //addr = z80bus.address_bus16_get();
       //z80bus.clock_wait_rising_edge();
-      data = z80bus.data_bus_get();
+      //data = z80bus.data_bus_get();
       //val = z80bus.mem_rw();
       bus_mode = 'u';
     } // else RFSH
+    */
   } else if ( !z80bus.IORQ() ) {
-    if ( ! z80bus.RD() ) {
-      val = z80bus.io_rw();
-    } else if ( ! z80bus.WR() ) {
-      val = z80bus.io_rw();
-    } 
-    data = ((uint8_t *) &val)[0];
-    bus_mode = ((uint8_t *) &val)[1];
-    addr = ((uint16_t *) &val)[1];
+    //if ( ! z80bus.RD() ) {
+      //val =
+    z80bus.io_rw();
+    //} else if ( ! z80bus.WR() ) {
+    //  val = z80bus.io_rw();
+    //} 
+    //data = ((uint8_t *) &val)[0];
+    //bus_mode = ((uint8_t *) &val)[1];
+    //addr = ((uint16_t *) &val)[1];
   }
 
+/*
   if (z80bus.clock_mode_current() < 4) {
     dfr7seg.show_digits(addr, data, bus_mode);
   }
-
+*/
   if ( ! z80bus.HALT() ) {
     Serial.println("Halted.");
     z80bus.clock_stop();

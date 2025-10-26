@@ -103,6 +103,7 @@ struct Disk_Controller {
 		current_drive = 0;
 		opcode = NO_REQUEST;
 		for(uint8_t i = 0; i < nof_drives; ++i) {
+			drive().status = RES_OK;
 			drive().dskfile.close();
 		}
 	}
@@ -160,7 +161,9 @@ struct Disk_Controller {
 		return sects * drive().dtype.sector_size;
 	}
 
-	uint8_t status() { return RES_OK; }
+	uint8_t status() {
+		return drive().status;
+	}
 };
 
 #endif
