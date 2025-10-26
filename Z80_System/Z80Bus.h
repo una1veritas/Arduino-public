@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <SD.h>
 
+#include "Z80Bus_DMA_FDC.h"
+
 #define ADDR_OUT_L PORTA
 #define ADDR_OUT_H PORTC
 #define ADDR_IN_L PINA
@@ -41,6 +43,7 @@ enum IO_Ports {
 	FDINSERT = 135, // re-mount SD
 };
 
+/*
 struct DMA_Controller {
 	static const uint16_t blk_size_base = 128;
 
@@ -115,11 +118,11 @@ struct Disk_Controller {
 		NO_REQUEST = 0xff,
 	};
 	enum {
-		RES_OK = 0,		/* 0: Successful */
-		RES_ERROR,		/* 1: R/W Error */
-		RES_WRPRT,		/* 2: Write Protected */
-		RES_NOTRDY,		/* 3: Not Ready */
-		RES_PARERR		/* 4: Invalid Parameter */
+		RES_OK = 0,		// 0: Successful
+		RES_ERROR,		// 1: R/W Error
+		RES_WRPRT,		// 2: Write Protected
+		RES_NOTRDY,		// 3: Not Ready
+		RES_PARERR		// 4: Invalid Parameter
 	};
 
 	static const uint8_t nof_drives = 2;
@@ -193,6 +196,7 @@ struct Disk_Controller {
 
 	uint8_t status() { return RES_OK; }
 };
+*/
 
 struct Z80Bus {
 public:
@@ -508,7 +512,7 @@ public:
   }
 
   void DMA_address(const uint16_t& addr) {
-    dma.address = addr;
+    dma.dst_address = addr;
   }
 
   void DMA_exec(uint8_t mem[]) {
@@ -522,11 +526,11 @@ public:
     //ram_enable();
     if (dma.transfer_mode == dma.WRITE_TO_RAM) {
       for (uint16_t ix = 0; ix < dma.block_size(); ++ix) {
-        ram_write(dma.address + ix, mem[ix]);
+        ram_write(dma.dst_address + ix, mem[ix]);
       }
     } else if (dma.transfer_mode == dma.READ_FROM_RAM) {
       for (uint16_t ix = 0; ix < dma.block_size(); ++ix) {
-        mem[ix] = ram_read(dma.address + ix);
+        mem[ix] = ram_read(dma.dst_address + ix);
       }
     }
     //ram_disable();

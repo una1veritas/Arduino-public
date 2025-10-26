@@ -167,10 +167,10 @@ uint32_t Z80Bus::io_rw() {
 			while (BUSACK() == HIGH) ;
 			break;
 		case DMAL: // dma adr_L
-			dma.set_address_low(data);
+			dma.set_dst_address_low(data);
 			break;
 		case DMAH: // dma adr_H
-			dma.set_address_high(data);
+			dma.set_dst_address_high(data);
 			break;
 		case DMAEXEC: // exec_dma
 			dma.transfer_mode = dma.READ_FROM_RAM;
@@ -178,7 +178,7 @@ uint32_t Z80Bus::io_rw() {
 			while (BUSACK() == HIGH) ;
 			break;
 		case DMABLKSIZE:
-			dma.set_block_size(data);  // 128 * 2^n : default n = 0 -> 128 bytes
+			dma.set_blk_size_factor(data);  // 128 * 2^n : default n = 0 -> 128 bytes
 			break;
 		case CLKMODE: // set/change clock mode
 			clock_mode_select(data);
@@ -218,19 +218,19 @@ uint32_t Z80Bus::io_rw() {
 		if ( fdc.opcode == fdc.READ_SECTOR ) {
 			FDC_operate(dma.buffer());
 			//Serial.print("read file write to ram ");
-			dma.set_block_size(0);
+			dma.set_blk_size_factor(0);
 			dma.set_transfer_mode(dma.WRITE_TO_RAM);
 			DMA_exec(dma.buffer());
 			//Serial.print("addr ");
 			//Serial.println(dma.address, HEX);
 		} else if ( fdc.opcode == fdc.WRITE_SECTOR ) {
 			Serial.print("FDC WRITE, ");
-			dma.set_block_size(0);
+			dma.set_blk_size_factor(0);
 			dma.set_transfer_mode(dma.READ_FROM_RAM);
 			DMA_exec(dma.buffer());
 			FDC_operate(dma.buffer());
 			Serial.print("DMA from addr ");
-			Serial.println(dma.address, HEX);
+			Serial.println(dma.dst_address, HEX);
 		} else if ( dma.transfer_mode != dma.NO_REQUEST ) {
 			DMA_exec(dma.buffer());
 		}
