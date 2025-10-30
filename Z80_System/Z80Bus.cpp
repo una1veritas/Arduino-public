@@ -74,6 +74,10 @@ void Z80Bus::clock_mode_select(const uint8_t mode) {
 		clock_set(1, 160);
 		clock_mode = 5;
 	  break;
+	case 6 :	// 80kHz
+		clock_set(1, 100);
+		clock_mode = 5;
+	  break;
 	case 2 :
 	default: // 100Hz
 		clock_set(3, 1250);
@@ -111,11 +115,7 @@ void Z80Bus::io_rw() {
 			}
 			break;
 		case KEYSCAN:  // non-blocking input
-			if ( Serial.available() > 0 ) {
-				data = Serial.read();
-			} else {
-				data = 0;
-			}
+			data = Serial.read();
 			break;
 		case FDCST:       //fdc-port: status
 			data = fdc.status(); //fdc.status();
@@ -134,9 +134,9 @@ void Z80Bus::io_rw() {
 		data_bus_set(data);
 		WAIT(HIGH);
 	} else if (WR() == LOW) {
+		WAIT(LOW);
 		data_bus_mode_input();
 		data = data_bus_get();
-		WAIT(LOW);
 
 		switch ( uint8_t(port & 0xff) ) {
 		case CONIO:  // CONDAT/CON_IN

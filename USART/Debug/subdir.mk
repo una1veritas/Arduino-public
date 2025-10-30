@@ -4,13 +4,20 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../main.c 
+../atmega2560_usart.c \
+../example_main.c 
+
+O_SRCS += \
+../atmega2560_usart.o \
+../example_main.o 
 
 OBJS += \
-./main.o 
+./atmega2560_usart.o \
+./example_main.o 
 
 C_DEPS += \
-./main.d 
+./atmega2560_usart.d \
+./example_main.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

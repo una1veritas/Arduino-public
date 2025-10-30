@@ -183,11 +183,12 @@ void loop() {
   if (z80bus.clock_mode_current() < 4) {
     dfr7seg.show_digits(addr, data, bus_mode);
   }
-*/
+
   if ( ! z80bus.HALT() ) {
     Serial.println("Halted.");
     z80bus.clock_stop();
     Serial.println("Z80 Clock stopped.");
     while (true);
   }
+  */
 }

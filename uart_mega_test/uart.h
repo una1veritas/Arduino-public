@@ -7,6 +7,7 @@
 #define _UART_H_
 
 #include <avr/io.h>
+#include "uart.h"
 
 void uart_init(unsigned long baud);
 unsigned char uart_tx(unsigned char);
