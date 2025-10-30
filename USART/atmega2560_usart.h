@@ -10,8 +10,10 @@
 #define F_CPU 16000000UL
 #endif
 
+#define UBRR_VALUE(b) ((F_CPU / (16UL * b)) - 1UL)
+
 /* API (USART0 primary console). */
-void usart0_init(uint32_t baud);
+void usart0_init(uint16_t ubrr);
 void usart0_tx(uint8_t b);
 bool usart0_tx_ready(void);
 uint8_t usart0_rx_blocking(void);
@@ -27,7 +29,7 @@ void usart0_rx_disable_interrupt(void);
 uint8_t usart0_rx_available(void);
 
  /* Simple USART1 init/send example (polling) */
-void usart1_init(uint32_t baud);
+void usart1_init(uint16_t ubrr);
 void usart1_tx(uint8_t b);
 
 #endif /* ATMEGA2560_USART_H */

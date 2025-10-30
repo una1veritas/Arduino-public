@@ -2,7 +2,7 @@ MCU = atmega2560
 F_CPU = 16000000UL
 CC = /opt/homebrew/bin/avr-gcc
 OBJCOPY = /opt/homebrew/bin/avr-objcopy
-CFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -save-temps -Wall -Wextra
+CFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -Wall -Wextra
 TARGET = usart_demo
 SRCS = atmega2560_usart.c example_main.c
 OBJS = $(SRCS:.c=.o)
