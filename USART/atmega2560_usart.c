@@ -101,7 +101,6 @@ uint8_t usart0_rx_available(void) {
 }
 
 /* -------------------- USART1 (example second port, polled) -------------------- */
-
 /* RX1 */
 static volatile uint8_t rx1_buf[RX_BUF_SIZE];
 static volatile uint8_t rx1_head = 0;
@@ -124,15 +123,6 @@ void usart1_rx_disable_interrupt(void) {
     UCSR1B &= ~(1 << RXCIE1);
 }
 
-void usart1_tx(uint8_t b) {
-    while (!(UCSR1A & (1 << UDRE1)));
-    UDR1 = b;
-}
-
-bool usart1_tx_ready(void) {
-    return (UCSR0A & (1 << UDRE0)) != 0;
-}
-
 /* Non-blocking getchar (returns 1 if a byte was available) */
 int usart1_getchar_nb(uint8_t *out) {
     if (rx1_head == rx1_tail) return 0; /* empty */
@@ -147,6 +137,15 @@ uint8_t usart1_rx_blocking(void) {
     uint8_t ch;
     while (!usart1_getchar_nb(&ch));
     return ch;
+}
+
+void usart1_tx(uint8_t b) {
+    while (!(UCSR1A & (1 << UDRE1)));
+    UDR1 = b;
+}
+
+bool usart1_tx_ready(void) {
+    return (UCSR0A & (1 << UDRE0)) != 0;
 }
 
 void usart1_send_string(const char *s) {
@@ -175,6 +174,15 @@ ISR(USART1_RX_vect) {
     rx1_buf[rx1_head] = data;
     rx1_head = next;
 }
+
+/* TX ring buffer */
+#define TX_BUF_SIZE (1<<7)
+#define TX_BUF_SIZE_MASK (TX_BUF_SIZE - 1)
+
+/* TX ring buffer state (shared with ISR) */
+static volatile uint8_t tx_buf[TX_BUF_SIZE];
+static volatile uint8_t tx_head; /* index where next byte will be written */
+static volatile uint8_t tx_tail; /* index of next byte to send */
 /*
  * 0x004
 A
@@ -183,51 +191,12 @@ jmp USART1_UDRE ; USART1,UDR Empty Handler
 C
 jmp USART1_TXC ; USART1 TX Complete Handler
  */
-ISR(USART1_TX_vect)
-{
+
+ISR(USART1_TX_vect) {
 	if (next != rx1_tail) {
 		data = tx1_buf[tx1_head];
 		usart1_tx(data);
 	}
-
-}
-
-/* --- */
-/* ---------- Configuration ---------- */
-#define TX_BAUD 9600U
-/* Buffer size must be a power of two for the mask arithmetic below */
-#define TX_BUF_SIZE 64U
-#if (TX_BUF_SIZE & (TX_BUF_SIZE - 1)) != 0
-#error "TX_BUF_SIZE must be a power of two"
-#endif
-#define TX_BUF_MASK (TX_BUF_SIZE - 1U)
-/* ----------------------------------- */
-
-/* TX ring buffer state (shared with ISR) */
-static volatile uint8_t tx_buf[TX_BUF_SIZE];
-static volatile uint8_t tx_head; /* index where next byte will be written */
-static volatile uint8_t tx_tail; /* index of next byte to send */
-
-/* Initialize USART0 for async 8N1 and enable TX + UDRE interrupt only when data */
-void usart0_init(uint32_t baud)
-{
-    uint16_t ubrr = (uint16_t)(F_CPU / 16UL / baud - 1UL);
-
-    /* Set baud rate */
-    UBRR0H = (uint8_t)(ubrr >> 8);
-    UBRR0L = (uint8_t)(ubrr & 0xFF);
-
-    /* Set frame format: 8 data bits, 1 stop bit */
-    UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
-
-    /* Enable transmitter (don't enable UDRIE0 yet - only when we have data) */
-    UCSR0B = (1 << TXEN0);
-
-    /* initialize buffer indexes */
-    tx_head = tx_tail = 0;
-
-    /* enable global interrupts (caller may prefer to do this) */
-    sei();
 }
 
 /* Return 0 on success, -1 if buffer full (non-blocking) */
