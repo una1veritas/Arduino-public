@@ -13,7 +13,7 @@ CONSTA 	equ 	0
 CONIO 	equ 	1
 ;CONOUT equ 	2
 CLKMODE	equ 	128
-LED7SEG	equ 	129
+;LED7SEG	equ 	129
 ;
 ;
 ; a  ... workspace reg.

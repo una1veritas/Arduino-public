@@ -2,17 +2,19 @@
 #define _Z80BUS_DMA_FDC_H_
 
 
+
 struct DMA_Controller {
 	static const uint16_t blk_size_base = 128;
 
-	uint16_t dst_address;
+	uint16_t tgt_address;
 	uint16_t blk_size;
 	uint8_t page_buffer[256];
+	uint8_t xhead, xtail;
 
 	enum DMA_request {
 		NO_REQUEST = 0,
-		READ_FROM_RAM = 1,  // from ram to page buffer
-		WRITE_TO_RAM = 2,  // from page buffer to ram
+		FROM_RAM_TO_BUFFER = 1,  // from ram to page buffer
+		FROM_BUFFER_TO_RAM = 2,  // from page buffer to ram
 	} transfer_mode;
 
 	enum DMA_status {
@@ -23,23 +25,30 @@ struct DMA_Controller {
 	DMA_Controller() { init(); }
 
 	void init() {
-		dst_address = 0;
+		tgt_address = 0;
 		blk_size = (blk_size_base << 1);
 		transfer_mode = NO_REQUEST;
 		result = 0;
+		xhead = 0;
+		xtail = 0;
 	}
 
-	void set_dst_address(uint16_t addr16) {
-		dst_address = addr16;
-	}
-	void set_dst_address_low(uint8_t low8) {
-		((uint8_t *)& dst_address)[0] = low8;
-	}
-	void set_dst_address_high(uint8_t hi8) {
-		((uint8_t *)& dst_address)[1] = hi8;
+	uint16_t target_address() const {
+		return tgt_address;
 	}
 
-	void set_blk_size_factor(uint8_t n) {
+	void set_target_address(uint16_t addr16) {
+		tgt_address = addr16;
+	}
+	void set_target_address_low(uint8_t low8) {
+		((uint8_t *)& tgt_address)[0] = low8;
+	}
+
+	void set_target_address_high(uint8_t hi8) {
+		((uint8_t *)& tgt_address)[1] = hi8;
+	}
+
+	void set_block_size_factor(uint8_t n) {
 		blk_size = blk_size_base << n;
 		blk_size = blk_size > 256 ? 256 : blk_size;
 	}
@@ -52,6 +61,33 @@ struct DMA_Controller {
 
 	uint16_t block_size() const {
 		return blk_size;
+	}
+
+	uint8_t xstream_in(char c) {
+		if ( xtail == xhead + 1 ) {
+			// buffer overflow error
+			xtail += 1;
+			return 0xff;
+		}
+		page_buffer[xhead++] = c;
+		return 0;
+	}
+
+	uint8_t xstream_out(char & c) {
+		if ( xtail == xhead ) {
+			// buffer empty error
+			return 0xff;
+		}
+		c = page_buffer[xtail++];
+		return 0;
+	}
+
+	uint8_t xstream_status() {
+		return (xhead - xtail);
+	}
+
+	void xstream_clear() {
+		xtail = xhead;
 	}
 };
 

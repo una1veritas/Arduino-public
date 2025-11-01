@@ -5,6 +5,7 @@
 #include <SD.h>
 
 #include "Z80Bus_DMA_FDC.h"
+#include "Z80Bus_SIO.h"
 
 #define ADDR_OUT_L PORTA
 #define ADDR_OUT_H PORTC
@@ -22,7 +23,7 @@ enum IO_Ports {
     CONDAT = 1,      // CONIN, console data in/out port
 	CONIO = 1,
 	CONOUT = 2,
-	KEYSCAN = 3,
+	CONSCAN = 3,
     // PRTSTA,
     // PRTDAT,
     // AUXDAT = 7,		// aux data port
@@ -34,14 +35,17 @@ enum IO_Ports {
     FDCST,       //fdc-port: status
     DMAL = 15,   //dma-port: dma address low
     DMAH,        //dma-port: dma address high
+	DMABLKSIZE,
 	DMAEXEC,
 	DMARES,
-	DMABLKSIZE,
+
+	XSTREAMST = 24, 	// aux stream I/O status
+	XSTREAMDAT, 		// aux stream I/O
 
 	CLKMODE = 128,
 	LED7SEG  = 129,
 
-	FDINSERT = 135, // re-mount SD
+	FILECHG = 135, // re-mount SD
 };
 
 
@@ -71,6 +75,13 @@ public:
 
   Disk_Controller fdc;
   DMA_Controller dma;
+
+  const char registered_filepath[4][32] = {
+		  "/DSK/drivea.dsk",
+		  "/EMUZ80BASIC.hex",
+		  "",
+		  "",
+  };
   
   uint8_t clock_mode;
   //uint8_t bus_mode;
@@ -147,7 +158,7 @@ public:
 
     dma.init();
     fdc.init();
-
+    usart1_init(57600);
     //set_rom_page(rom_mon_F000, 0x0f);
   }
 
@@ -253,10 +264,10 @@ public:
   }
 
   void address_bus16_set(uint16_t addr) {
-    ADDR_OUT_L = ((uint8_t *) & addr)[0];
+    ADDR_OUT_L = (uint8_t) addr;
     //digitalWrite(29,(addr>>7) & 0x0001 ? HIGH : LOW);
     // ^ to solve PORTA 7th bit missing problem (reason unknown)
-    ADDR_OUT_H = ((uint8_t *) & addr)[1];
+    ADDR_OUT_H = (uint8_t) (addr >> 8);
   }
 
   void data_bus_mode_input() {
@@ -336,32 +347,6 @@ public:
     return (errcount > 0xff ? 0xff : (uint8_t)errcount);
   }
 
-  uint8_t DMA_requested() {
-    return dma.transfer_mode != dma.NO_REQUEST;
-  }
-/*
-  uint8_t DMA_direction() {
-    return (dma.transfer_mode == dma.WRITE_RAM ? OUTPUT : INPUT);
-  }
-
-  void DMA_read(uint8_t mem[]) {
-    dma.transfer_mode = dma.READ_RAM;  // issue request internaly
-    DMA_exec(mem);
-  }
-
-  void DMA_write(uint8_t mem[]) {
-    dma.transfer_mode = dma.WRITE_RAM;  // issue request internaly
-    DMA_exec(mem);
-  }
-*/
-  uint8_t DMA_block_size() {
-    return dma.block_size();
-  }
-
-  void DMA_address(const uint16_t& addr) {
-    dma.dst_address = addr;
-  }
-
   void DMA_exec(uint8_t mem[]) {
     if (dma.transfer_mode == dma.NO_REQUEST)
       dma.result = dma.TRANSFER_OK;
@@ -371,13 +356,13 @@ public:
       return;
     }
     //ram_enable();
-    if (dma.transfer_mode == dma.WRITE_TO_RAM) {
+    if (dma.transfer_mode == dma.FROM_BUFFER_TO_RAM) {
       for (uint16_t ix = 0; ix < dma.block_size(); ++ix) {
-        ram_write(dma.dst_address + ix, mem[ix]);
+        ram_write(dma.target_address() + ix, mem[ix]);
       }
-    } else if (dma.transfer_mode == dma.READ_FROM_RAM) {
+    } else if (dma.transfer_mode == dma.FROM_RAM_TO_BUFFER) {
       for (uint16_t ix = 0; ix < dma.block_size(); ++ix) {
-        mem[ix] = ram_read(dma.dst_address + ix);
+        mem[ix] = ram_read(dma.target_address() + ix);
       }
     }
     //ram_disable();

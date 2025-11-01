@@ -46,7 +46,7 @@ char buf[32];
 uint8_t dma_buff[256];
 File dskfile;
 
-DFR7segarray dfr7seg(19, 20, 21);
+//DFR7segarray dfr7seg(19, 20, 21);
 const int LCD_RS = 14, LCD_EN = 15, LCD_D4 = 16, LCD_D5 = 17, LCD_D6 = 18, LCD_D7 = 19;
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
@@ -85,7 +85,7 @@ void setup() {
     }
   }
 
-  dfr7seg.clear();
+  //dfr7seg.clear();
   // nop test
   //z80bus.mem_disable();
   z80bus.clock_mode_select(4); 

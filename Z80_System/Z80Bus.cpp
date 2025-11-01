@@ -1,6 +1,8 @@
 #include <SPI.h>
 #include "Z80Bus.h"
+#include "Z80Bus_SIO.h"
 #include "DFR7segarray.h"
+
 
 void Z80Bus::clock_set(uint8_t presc, uint16_t top) {
 	const uint8_t WGM_CTC_OCR1A = B0100;
@@ -105,29 +107,40 @@ void Z80Bus::io_rw() {
 
 		switch ( uint8_t(port & 0xff) ) {
 		case CONSTA:  //CONSTA
-			data = uint8_t( Serial.available() ? 0xff : 0x00 );
+			//data = uint8_t( Serial.available() ? 0xff : 0x00 );
+			data = (usart1_rx_available() ? 0xff : 0x00);
 			break;
 		case CONIO:  // CONDAT/CONIN, blocking input
+			/*
 			for ( ;; ) {
 				if ( Serial.available() > 0 ) {
 					data = Serial.read();
 					break;
 				}
 			}
+			*/
+			data = usart1_rx();
 			break;
-		case KEYSCAN:  // non-blocking input
-			data = Serial.read();
+		case CONSCAN:  // non-blocking input
+			//data = Serial.read();
+			usart1_rx_buffered(&data);
 			break;
 		case FDCST:       //fdc-port: status
 			data = fdc.status(); //fdc.status();
 			break;
 		case DMAEXEC: // exec_dma in read mode
-			dma.transfer_mode = dma.WRITE_TO_RAM;
+			dma.transfer_mode = dma.FROM_BUFFER_TO_RAM;
 			data = 0; // dummy
 			BUSREQ(LOW);
 			break;
 		case DMARES: // dma_rs
 			data = dma.result;
+			break;
+		case XSTREAMST: //
+			data = dma.xstream_status();
+			break;
+		case XSTREAMDAT://
+			dma.xstream_in(data);
 			break;
 		default:
 			data = 0;
@@ -140,7 +153,8 @@ void Z80Bus::io_rw() {
 		switch ( uint8_t(port & 0xff) ) {
 		case CONIO:  // CONDAT/CON_IN
 		case CONOUT:  // CON_OUT
-			Serial.print((char) data);
+			//Serial.print((char) data);
+			usart1_tx_buffered(data);
 			break;
 		case FDCDRIVE:  //10, fdc-port: # of drive
 			fdc.sel_drive(data);
@@ -156,17 +170,26 @@ void Z80Bus::io_rw() {
 			BUSREQ(LOW);
 			break;
 		case DMAL: // dma adr_L
-			dma.set_dst_address_low(data);
+			dma.set_target_address_low(data);
 			break;
 		case DMAH: // dma adr_H
-			dma.set_dst_address_high(data);
-			break;
-		case DMAEXEC: // exec_dma
-			dma.transfer_mode = dma.READ_FROM_RAM;
-			BUSREQ(LOW);
+			dma.set_target_address_high(data);
 			break;
 		case DMABLKSIZE:
-			dma.set_blk_size_factor(data);  // 128 * 2^n : default n = 0 -> 128 bytes
+			dma.set_block_size_factor(data);  // 128 * 2^n : default n = 0 -> 128 bytes
+			break;
+		case DMAEXEC: // exec_dma
+			Serial.println("DMAEXEC request.");
+			dma.transfer_mode = dma.FROM_RAM_TO_BUFFER;
+			BUSREQ(LOW);
+			break;
+		case XSTREAMST: //
+			if ( data == 0 ) {
+				dma.xstream_clear();
+			}
+			break;
+		case XSTREAMDAT://
+			dma.xstream_in(data);
 			break;
 		case CLKMODE: // set/change clock mode
 			clock_mode_select(data);
@@ -176,17 +199,16 @@ void Z80Bus::io_rw() {
 			shiftOut(19, 20, MSBFIRST, ascii7seg(data));
 			digitalWrite(21, HIGH);
 			break;
-		case FDINSERT:
+		case FILECHG:
 			if (! SD.begin(SS) ) {
 				Serial.println("Failed to initialize SD card interface.");
 			} else {
-			    const char filename[] = "/cpmboot.dsk";
 			    if (fdc.drive().dskfile)
 			    	fdc.drive().dskfile.close();
-			    fdc.drive().dskfile = SD.open(filename);
+			    fdc.drive().dskfile = SD.open(registered_filepath[data]);
 			    if (!fdc.drive().dskfile) {
 				    Serial.print("Failed to open path/file ");
-				    Serial.println(filename);
+				    Serial.println(registered_filepath[data]);
 			    }
 			}
 			break;
@@ -201,21 +223,31 @@ void Z80Bus::io_rw() {
 		if ( fdc.opcode == fdc.READ_SECTOR ) {
 			FDC_operate(dma.buffer());
 			//Serial.print("read file write to ram ");
-			dma.set_blk_size_factor(0);
-			dma.set_transfer_mode(dma.WRITE_TO_RAM);
+			dma.set_block_size_factor(0);
+			dma.set_transfer_mode(dma.FROM_BUFFER_TO_RAM);
 			DMA_exec(dma.buffer());
 			//Serial.print("addr ");
 			//Serial.println(dma.address, HEX);
 		} else if ( fdc.opcode == fdc.WRITE_SECTOR ) {
 			Serial.print("FDC WRITE, ");
-			dma.set_blk_size_factor(0);
-			dma.set_transfer_mode(dma.READ_FROM_RAM);
+			dma.set_block_size_factor(0);
+			dma.set_transfer_mode(dma.FROM_RAM_TO_BUFFER);
 			DMA_exec(dma.buffer());
 			FDC_operate(dma.buffer());
 			Serial.print("DMA from addr ");
-			Serial.println(dma.dst_address, HEX);
+			Serial.println(dma.target_address(), HEX);
 		} else if ( dma.transfer_mode != dma.NO_REQUEST ) {
 			DMA_exec(dma.buffer());
+			Serial.print(dma.target_address(), HEX);
+			uint16_t addr = dma.target_address();
+			for (uint16_t bytecount = 0; bytecount < dma.block_size(); ++bytecount) {
+				if ( (bytecount & 0x0f) == 0 ) {
+					Serial.println();
+				}
+				Serial.print(dma.buffer()[bytecount]>>4, HEX);
+				Serial.print(dma.buffer()[bytecount]&0x0f, HEX);
+				Serial.print(' ');
+			}
 		}
 		mem_bus_Z80_mode();
 		BUSREQ(HIGH);

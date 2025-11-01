@@ -143,7 +143,7 @@ uint8_t usart1_rx(void) {
 
 uint8_t usart1_rx_available(void) {
 	// rx head = 13, rx tail = 119, (13 - 119) & 127 = 22 = 13 + 128 - 119
-    return (uint8_t)((rx0_head - rx0_tail) & RX_BUF_SIZE_MASK);
+    return (uint8_t)((rx1_head - rx1_tail) & RX_BUF_SIZE_MASK);
 }
 
 /* RX ISR - push received byte into ring buffer */
@@ -196,7 +196,7 @@ inline bool usart1_tx_ready(void) {
 inline int usart1_putchar_printf(char c, FILE *stream) {
     (void)stream;
     if (c == '\n') usart1_tx('\r'); /* CRLF */
-    usart0_tx((uint8_t)c);
+    usart1_tx((uint8_t)c);
     return 0;
 }
 
