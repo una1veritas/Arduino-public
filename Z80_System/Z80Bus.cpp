@@ -94,12 +94,13 @@ void Z80Bus::io_rw() {
 	uint32_t result;
 
 	// from Z80 side
-
+	/*
 	if (IORQ() == HIGH)
 		return;
+	*/
+	WAIT(LOW);
 	port = address_bus16_get();
 	if (RD() == LOW) {
-		WAIT(LOW);
 		data_bus_mode_output();
 
 		switch ( uint8_t(port & 0xff) ) {
@@ -132,9 +133,7 @@ void Z80Bus::io_rw() {
 			data = 0;
 		}
 		data_bus_set(data);
-		WAIT(HIGH);
 	} else if (WR() == LOW) {
-		WAIT(LOW);
 		data_bus_mode_input();
 		data = data_bus_get();
 
@@ -192,12 +191,10 @@ void Z80Bus::io_rw() {
 			}
 			break;
 		}
-		WAIT(HIGH);
-	} else
-		return;
-
-	while (IORQ() == LOW) {}
+	}
 	data_bus_mode_input();
+	WAIT(HIGH);
+
 	if (BUSREQ() == LOW) {
 		while ( BUSACK() == HIGH ) { }
 		mem_bus_DMA_mode();
@@ -222,9 +219,9 @@ void Z80Bus::io_rw() {
 		}
 		mem_bus_Z80_mode();
 		BUSREQ(HIGH);
+	} else {
+		while (IORQ() == LOW) {}
 	}
-	//((uint16_t *) & result)[1] = port;
-	//((uint8_t *) & result)[0] = data;
 	return; // result;
 }
 

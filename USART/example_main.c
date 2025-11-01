@@ -9,8 +9,8 @@
 #endif
 
 /* Default baud rates used by examples */
-#define USART0_BAUD 57600UL
-#define USART1_BAUD 9600UL
+#define USART0_BAUD 115200UL
+#define USART1_BAUD 19200UL
 
 /* Provide FILE stream for stdout using usart0_putchar_printf */
 static FILE usart0_stdout = FDEV_SETUP_STREAM(usart0_putchar_printf, NULL, _FDEV_SETUP_WRITE);
@@ -23,10 +23,11 @@ int main(void) {
     stdout = &usart0_stdout;
 
     /* Initialize USART1 for a device at 9600 (example) */
+    /* Enable RX interrupt for USART0 and global interrupts */
     usart1_init(UBRR_VALUE(USART1_BAUD));
 
-    /* Enable RX interrupt for USART0 and global interrupts */
-    usart0_rx_enable_interrupt();
+    usart0_rx_interrupt_enable();
+    usart1_rx_interrupt_enable();
     sei();
 
     printf("ATmega2560 USART0 test\r\n");
@@ -36,8 +37,9 @@ int main(void) {
     /* Example: echo bytes received on USART0 back and forward to USART1 */
     for (;;) {
         uint8_t ch;
-        if (usart0_getchar_nb(&ch)) {
+        if (usart0_rx_buffered(&ch)) {
             /* echo back on console */
+            usart1_tx(ch);
         	if (isalpha(ch)) {
         		ch = toupper(ch);
         		if (ch == 'Z') {
@@ -48,7 +50,9 @@ int main(void) {
         	}
             usart0_tx(ch);
             /* forward to USART1 */
-            //usart1_tx(ch + 1);
+        }
+        if (usart1_rx_buffered(&ch)) {
+        	usart0_tx(ch);
         }
         /* ... other tasks ... */
     }
