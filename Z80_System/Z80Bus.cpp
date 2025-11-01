@@ -140,7 +140,9 @@ void Z80Bus::io_rw() {
 			data = dma.xstream_status();
 			break;
 		case XSTREAMDAT://
-			dma.xstream_in(data);
+			dma.xstream_out(&data);
+			Serial.print("read ");
+			Serial.println((char)data);
 			break;
 		default:
 			data = 0;
@@ -189,6 +191,8 @@ void Z80Bus::io_rw() {
 			}
 			break;
 		case XSTREAMDAT://
+			Serial.print("write ");
+			Serial.println((char)data);
 			dma.xstream_in(data);
 			break;
 		case CLKMODE: // set/change clock mode

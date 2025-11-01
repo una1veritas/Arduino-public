@@ -1,27 +1,32 @@
 ; dma test 0080
             org     1000h
-DMAL        equ      15
+;
+CONSTA      equ     0
+CONIO       equ     1
+DMAL        equ     15
+XSTREAMST   equ     24
+XSTREAMDAT  equ     25
 ;
             ld      hl, FILENAME
-            ld      bc, DMAL
-            ld      a, l
-            out     (c), a
-            inc     c  ; DMAH
-            ld      a, h
-            out     (c), a 
-            inc     c  ; DMABLKSIZE
-            ld      a, 0
-            out     (c), a
-            inc     c   ; DMAEXEC
-            ld      a, 1
-            out     (c), a  ; exec dma from ram to buffer
-            inc     c       ; DMARES
-            in      a, (c)
-            ld      (DMARES), a
+_xout_loop:
+            ld      a, (hl)
+            out     (XSTREAMDAT), a
+            and     a
+            jr      z, _xin_loop
+            out     (CONIO), a
+            inc     hl
+            jr      _xout_loop
+_xin_loop:
+            in      a,  (XSTREAMDAT)
+            and     a
+            jr      z, _ending
+            out     (CONIO), a
+            inc     hl
+            jr      _xin_loop
+_ending:
             jp      0100h
 
-
 DMARES:     db      0
-FILENAME:   db      "EMUZ80BASIC.rom", 0
-
+FILENAME:   db      "EMUZ80BASIC.rom"
+CRLF:       db      13, 10, 0
             end

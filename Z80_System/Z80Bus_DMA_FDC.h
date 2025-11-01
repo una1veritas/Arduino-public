@@ -2,7 +2,6 @@
 #define _Z80BUS_DMA_FDC_H_
 
 
-
 struct DMA_Controller {
 	static const uint16_t blk_size_base = 128;
 
@@ -63,8 +62,8 @@ struct DMA_Controller {
 		return blk_size;
 	}
 
-	uint8_t xstream_in(char c) {
-		if ( xtail == xhead + 1 ) {
+	uint8_t xstream_in(const char c) {
+		if ( xhead + 1 == xtail ) {
 			// buffer overflow error
 			xtail += 1;
 			return 0xff;
@@ -73,12 +72,12 @@ struct DMA_Controller {
 		return 0;
 	}
 
-	uint8_t xstream_out(char & c) {
+	uint8_t xstream_out(char * c) {
 		if ( xtail == xhead ) {
 			// buffer empty error
 			return 0xff;
 		}
-		c = page_buffer[xtail++];
+		*c = page_buffer[xtail++];
 		return 0;
 	}
 
