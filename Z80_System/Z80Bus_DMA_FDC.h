@@ -85,8 +85,9 @@ struct DMA_Controller {
 		return (xhead - xtail);
 	}
 
-	void xstream_clear() {
-		xtail = xhead;
+	void xstream_reset() {
+		xtail = 0;
+		xhead = 0;
 	}
 };
 

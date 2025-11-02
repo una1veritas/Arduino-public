@@ -47,7 +47,6 @@ read_line:
 		jr 		z, specify_end
 		cp 		':'		; begins with :
 		jr 		z, write_mode
-        cp      'S'
 		;
 ; specify start address and function
 		ld 		c, 4
@@ -63,8 +62,10 @@ read_line:
 		jr 		z, write_mode
 		cp		'R'
 		jr 		z, run_mode
+		cp		'J'
+		jr 		z, run_mode
 		cp		'S'
-		jr 		z, clk_mode
+		jp 		z, clk_mode
 		call 	print_err_msg
 		jr 		mon		; OADDR and CADDR are possibly corrupted
 		;
@@ -125,6 +126,12 @@ write_mode.exit
 		jp 		read_line
 ;
 run_mode:
+		cp 		'J'
+		jr 		z, $+4
+		ld 		de, read_line
+		push 	de
+		;
+		call 	print_endl
 		ld 		hl, (OADDR)
 		jp 		(hl)
 ;;
@@ -135,6 +142,7 @@ clk_mode:
 		jp 		read_line
 ;
 mon_halt:
+		call 	print_endl
 		halt
 
 
@@ -397,11 +405,12 @@ clk_spd_change:
 		ret
 ;
 ; work space
-			org 	0300h
 workspace:
-lbuf: 		ds 		128
-BUFSIZE 	EQU 	127
 OADDR:		DB		0, 0
 CADDR:		DB		0, 0
 STATE: 		DB 		0
+
+			org 	0400h
+BUFSIZE 	EQU 	255
+lbuf: 		ds 		256
 ;

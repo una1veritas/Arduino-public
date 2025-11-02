@@ -37,6 +37,7 @@ const int SPI_CS = 53;//latchPin = 53; --- must be controlled by user
 //const int SPI_CLK = 52; //clockPin = 52; --- controlled by SPI module.
 //const int SPI_COPI = 51; //dataPin = 51; --- controlled by SPI module.
 
+void list_dir(const char * rootpath, int idx = -1, char * filename = NULL);
 
 //uint16_t addr;
 //uint8_t data;
@@ -45,10 +46,11 @@ long prev_millis;
 char buf[32];
 uint8_t dma_buff[256];
 File dskfile;
+File root;
 
 //DFR7segarray dfr7seg(19, 20, 21);
-const int LCD_RS = 14, LCD_EN = 15, LCD_D4 = 16, LCD_D5 = 17, LCD_D6 = 18, LCD_D7 = 19;
-LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+//const int LCD_RS = 14, LCD_EN = 15, LCD_D4 = 16, LCD_D5 = 17, LCD_D6 = 18, LCD_D7 = 19;
+//LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
 // boot/ipl source
 enum BOOT_PROGRAM {
@@ -73,7 +75,13 @@ void setup() {
   if (! SD.begin(SS) ) {
 	  Serial.println("Failed to initialize SD card interface.");
   } else {
-    const char filename[] = "/DSK/drivea.dsk";
+    Serial.println("--- root dir of SD ---");
+    list_dir("/");
+    Serial.println("----------------------");
+    
+    char filename[16];
+    list_dir("/", 15, filename);
+    Serial.println(filename);
     z80bus.fdc.drive().dskfile = SD.open(filename);
     if (!z80bus.fdc.drive().dskfile) {
 	    Serial.print("Failed to open path/file ");
@@ -191,4 +199,28 @@ void loop() {
     while (true);
   }
   */
+}
+
+void list_dir(const char * rootpath, int idx = -1, char * filename = NULL) {
+  int fidx = 0;
+  File entry;
+  char buf[16];
+  root = SD.open(rootpath);
+  root.rewindDirectory();
+  for(fidx = 0; (entry =  root.openNextFile()) ; ++fidx, entry.close()) {
+    if ( ! String(entry.name()).startsWith("_") and ! entry.isDirectory() ) {
+      if ( idx == -1 ) {
+        Serial.print(fidx);
+        Serial.print("\t");
+        strcpy(buf, entry.name());
+        Serial.print(buf);
+        // files have sizes, directories do not
+        Serial.print("\t\t");
+        Serial.println(entry.size(), DEC);
+      } else if (idx == fidx) {
+        strcpy(filename, entry.name());
+      }
+    }
+  }
+  root.close();
 }

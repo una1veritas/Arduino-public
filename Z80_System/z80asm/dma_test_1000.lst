@@ -13,24 +13,24 @@ _xout_loop:
             out     (XSTREAMDAT), a
             and     a
             jr      z, _xin_loop
-            out     (CONIO), a
             inc     hl
             jr      _xout_loop
 _xin_loop:
-            in      a,  (XSTREAMDAT)
+            in      a, (XSTREAMDAT)
             and     a
             jr      z, _ending
             out     (CONIO), a
             inc     hl
             jr      _xin_loop
 _ending:
-            jp      0100h
+            ret
 
 DMARES:     db      0
 FILENAME:   db      "EMUZ80BASIC.rom"
+            db      "very very long word."
 CRLF:       db      13, 10, 0
             end
 
 
-total time: 0.0003 sec.
+total time: 0.0005 sec.
 no errors

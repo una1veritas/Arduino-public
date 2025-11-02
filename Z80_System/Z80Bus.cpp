@@ -111,14 +111,6 @@ void Z80Bus::io_rw() {
 			data = (usart1_rx_available() ? 0xff : 0x00);
 			break;
 		case CONIO:  // CONDAT/CONIN, blocking input
-			/*
-			for ( ;; ) {
-				if ( Serial.available() > 0 ) {
-					data = Serial.read();
-					break;
-				}
-			}
-			*/
 			data = usart1_rx();
 			break;
 		case CONSCAN:  // non-blocking input
@@ -141,8 +133,6 @@ void Z80Bus::io_rw() {
 			break;
 		case XSTREAMDAT://
 			dma.xstream_out(&data);
-			Serial.print("read ");
-			Serial.println((char)data);
 			break;
 		default:
 			data = 0;
@@ -187,12 +177,10 @@ void Z80Bus::io_rw() {
 			break;
 		case XSTREAMST: //
 			if ( data == 0 ) {
-				dma.xstream_clear();
+				dma.xstream_reset();
 			}
 			break;
 		case XSTREAMDAT://
-			Serial.print("write ");
-			Serial.println((char)data);
 			dma.xstream_in(data);
 			break;
 		case CLKMODE: // set/change clock mode
