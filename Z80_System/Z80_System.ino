@@ -14,7 +14,7 @@ enum Mega_pin_assign {
   _NMI    = 4,  // in
   _HALT   = 5, // output on Z80
   _MREQ   = 39, // out
-  _IORQ   = 6, // out 
+  _IORQ   = 38, // out 
   _RD     = 40, // out
   _WR     = 41, // out
   _BUSACK =  7,  // out
@@ -25,13 +25,14 @@ enum Mega_pin_assign {
   _RFSH   = 12,  // out
 
   // sram
-  SRAMEN   = 38, // E2 (positive neable)
+  SRAM_EN   = 2, // CE2 (positive neable)
+  SRAM_A16  = 6, // A16 (the 17th address bit)
 };
 
 Z80Bus z80bus(
   _INT, _NMI, _HALT, _MREQ, _IORQ, 
   _RD, _WR, _BUSACK, _WAIT, _BUSREQ, _RESET, _M1, _RFSH,
-  SRAMEN);
+  SRAM_EN, SRAM_A16);
 
 const int SPI_CS = 53;//latchPin = 53; --- must be controlled by user
 //const int SPI_CLK = 52; //clockPin = 52; --- controlled by SPI module.
@@ -159,6 +160,7 @@ void loop() {
   uint16_t addr;
   uint8_t data, bus_mode;
 
+  /*
   //z80bus.clock_wait_rising_edge();
    if ( !z80bus.MREQ() ) {/*
     if ( ! z80bus.RD() ) {
@@ -174,8 +176,8 @@ void loop() {
       //val = z80bus.mem_rw();
       bus_mode = 'u';
     } // else RFSH
-    */
-  } else if ( !z80bus.IORQ() ) {
+  } else { */
+  if ( !z80bus.IORQ() ) {
     //if ( ! z80bus.RD() ) {
       //val =
     z80bus.io_rw();
@@ -191,14 +193,14 @@ void loop() {
   if (z80bus.clock_mode_current() < 4) {
     dfr7seg.show_digits(addr, data, bus_mode);
   }
-
+*/
   if ( ! z80bus.HALT() ) {
     Serial.println("Halted.");
     z80bus.clock_stop();
     Serial.println("Z80 Clock stopped.");
     while (true);
   }
-  */
+  
 }
 
 void list_dir(const char * rootpath, int idx = -1, char * filename = NULL) {

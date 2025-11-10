@@ -67,7 +67,7 @@ public:
   const uint8_t _INT, _NMI, _WAIT, _BUSREQ, _RESET;                        // z80 input
   const uint8_t _RD, _WR;                                                  // z80 out, sram in
   const uint8_t _HALT, _MREQ, _IORQ, /* _RD, _WR, */ _BUSACK, _M1, _RFSH;  // z80 output
-  const uint8_t SRAM_EN;
+  const uint8_t SRAM_EN, SRAM_A16;
   //volatile uint8_t * DATA   = PORTL;
   const uint8_t CLK_OUT = 13;  // PB7 (OC1C)
 
@@ -116,11 +116,11 @@ public:
          const uint8_t& mreq, const uint8_t& iorq, const uint8_t& rd, const uint8_t& wr,
          const uint8_t& busack, const uint8_t& wait, const uint8_t& busreq,
          const uint8_t& reset, const uint8_t& m1, const uint8_t& rfsh,
-         const uint8_t& memen)
+         const uint8_t& memen, const uint8_t & mem_A16)
     : _INT(intr), _NMI(nmi), _HALT(halt), _MREQ(mreq), _IORQ(iorq),
       _RD(rd), _WR(wr), _BUSACK(busack), _WAIT(wait),
       _BUSREQ(busreq), _RESET(reset), _M1(m1), _RFSH(rfsh),
-      SRAM_EN(memen) {
+      SRAM_EN(memen), SRAM_A16(mem_A16) {
     init();
   }
 
@@ -133,6 +133,7 @@ public:
     pinMode(_RD, INPUT);
     pinMode(_WR, INPUT);
     pinMode(SRAM_EN, OUTPUT);
+    pinMode(SRAM_A16, OUTPUT);
     ram_enable();
 
     // z80/memory inputs, temporary set input mode.
