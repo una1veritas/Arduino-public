@@ -11,11 +11,12 @@ else:
     with f:
         count = 0
         while (b := f.read(1)):
-            #print(type(b))
+            if (count & 0x0f == 0):
+                print(': ',end='')
             print('{:02x} '.format(int.from_bytes(b, "big")), end='')
             count += 1
-            if count % 16 == 0 :
+            if count & 0x0f == 0 :
                 print() 
-            if count % 256 == 0 :
+            if count & 0xff == 0 :
                 print()
 print()

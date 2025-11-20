@@ -1,6 +1,8 @@
 #include <SPI.h>
 #include "Z80Bus.h"
+#include "Z80Bus_SIO.h"
 #include "DFR7segarray.h"
+
 
 void Z80Bus::clock_set(uint8_t presc, uint16_t top) {
 	const uint8_t WGM_CTC_OCR1A = B0100;
@@ -59,19 +61,23 @@ void Z80Bus::clock_mode_select(const uint8_t mode) {
 		clock_mode = 0;
 	  break;
 	case 1 : // 10 Hz
-		clock_set(4, 3125); //
+		clock_set(4, 2500); //
 		clock_mode = 1;
 	  break;
-	case 3 : // 1 kHz
-		clock_set(2, 1000);
+	case 3 : // 500 Hz
+		clock_set(2, 2000);
 		clock_mode = 3;
 	  break;
-	case 4 : // 10 kHz
-		clock_set(2, 200);
+	case 4 : // 8 kHz
+		clock_set(2, 125);
 		clock_mode = 4;
 	  break;
-	case 5 :	// 20kHz
-		clock_set(1, 400);
+	case 5 :	// 50kHz
+		clock_set(1, 160);
+		clock_mode = 5;
+	  break;
+	case 6 :	// 80kHz
+		clock_set(1, 100);
 		clock_mode = 5;
 	  break;
 	case 2 :
@@ -84,164 +90,192 @@ void Z80Bus::clock_mode_select(const uint8_t mode) {
 
 //uint8_t Z80Bus::io_rw(const uint8_t &port, const uint8_t &val, const uint8_t &inout) {
 
-uint32_t Z80Bus::io_rw() {
+void Z80Bus::io_rw() {
 	uint16_t port;
 	uint8_t data;
-	uint8_t dma_buff[256];
+	uint32_t result;
 
-	enum IO_MODE {
-		IN = 0, OUT = 1,
-	};
 	// from Z80 side
-	uint8_t io_mode = IN;
-
+	/*
 	if (IORQ() == HIGH)
-		return 0;
+		return;
+	*/
+	WAIT(LOW);
 	port = address_bus16_get();
-	//Serial.print("port: ");
-	//Serial.print(port, HEX);
 	if (RD() == LOW) {
-		io_mode = IN;
 		data_bus_mode_output();
+
+		switch ( uint8_t(port & 0xff) ) {
+		case CONSTA:  //CONSTA
+			//data = uint8_t( Serial.available() ? 0xff : 0x00 );
+			data = (usart1_rx_available() ? 0xff : 0x00);
+			break;
+		case CONIO:  // CONDAT/CONIN, blocking input
+			data = usart1_rx();
+			break;
+		case CONSCAN:  // non-blocking input
+			//data = Serial.read();
+			usart1_rx_buffered(&data);
+			break;
+		case FDCST:       //fdc-port: status
+			data = fdc.status(); //fdc.status();
+			break;
+		case DMAEXEC: // exec_dma in read mode
+			dma.transfer_mode = dma.FROM_BUFFER_TO_RAM;
+			data = 0; // dummy
+			BUSREQ(LOW);
+			break;
+		case DMARES: // dma_rs
+			data = dma.result;
+			break;
+		case XSTREAMST: //
+			data = dma.xstream_status();
+			break;
+		case XSTREAMDAT://
+			dma.xstream_out(&data);
+			break;
+		default:
+			data = 0;
+		}
+		data_bus_set(data);
 	} else if (WR() == LOW) {
-		io_mode = OUT;
 		data_bus_mode_input();
-	} else
-		return 0;
+		data = data_bus_get();
 
-	switch ( uint8_t(port & 0xff) ) {
-	case CONSTA:  //CONSTA
-		if (io_mode == IN ) {
-			data = uint8_t(Serial.available()); //(Serial.available() ? 0xff : 0x00);
-			data_bus_set(data);
-		}
-		break;
-	case CONIO:  // CONDAT/CON_IN
-		if (io_mode == IN ) {
-			data = Serial.read();
-			data_bus_set(data);
-		} // else if io_mode = OUT then join together in the next case
-	case CON_OUT:  // CON_OUT
-		if (io_mode == OUT ) {
-			data = data_bus_get();
-			Serial.print((char) data);
-		}
-		break;
-	case FDCDRIVE:  //10, fdc-port: # of drive
-	case FDCTRACK:       //11, fdc-port: # of track
-	case FDCSECTOR:       //fdc-port: # of sector
-	case FDCOP:       //fdc-port: command
-	case FDCST:       //fdc-port: status
-		// not populated
-		break;
-	case 16: // track_sel_h
-		break;
-	case 17: // track_sel_l
-		break;
-	case 18: // sector_sel
-		break;
-	case 20: // dma adr_L
-		if (io_mode == OUT) {
-			data = data_bus_get();
-			dma_address = (dma_address & 0xff00) | data;
-		}
-		break;
-	case 21: // dma adr_H
-		if (io_mode == OUT) {
-			data = data_bus_get();
-			dma_address = (dma_address & 0x00ff) | (data << 8);
-		}
-		break;
-	case 22: // exec_dma
-		DMA_mode();
-		if (io_mode == IN) {
-			dma_transfer_mode = READ_RAM;
-			ram_enable();
-			DMA_exec(dma_buff);
-
-			data_bus_set(1);
-		} else if (io_mode == OUT) {
-			dma_transfer_mode = WRITE_RAM;
-			ram_enable();
-			DMA_exec(dma_buff);
-		}
-		MMC_mode();
-		break;
-	case 23: // dma_rs
-		if (io_mode == IN) {
-			data = dma_result;
-			data_bus_set(data);
-		}
-		break;
-	case CLKMODE: // set/change clock mode
-		if ( io_mode == OUT ) {
-			data = data_bus_get();
+		switch ( uint8_t(port & 0xff) ) {
+		case CONIO:  // CONDAT/CON_IN
+		case CONOUT:  // CON_OUT
+			//Serial.print((char) data);
+			usart1_tx_buffered(data);
+			break;
+		case FDCDRIVE:  //10, fdc-port: # of drive
+			fdc.sel_drive(data);
+			break;
+		case FDCTRACK:       //11, fdc-port: # of track
+			fdc.sel_track(data);
+			break;
+		case FDCSECTOR:       //fdc-port: # of sector
+			fdc.sel_sector(data);
+			break;
+		case FDCOP:       //fdc-port: command
+			fdc.set_opcode(data);	// triggers dma transfer
+			BUSREQ(LOW);
+			break;
+		case DMAL: // dma adr_L
+			dma.set_target_address_low(data);
+			break;
+		case DMAH: // dma adr_H
+			dma.set_target_address_high(data);
+			break;
+		case DMABLKSIZE:
+			dma.set_block_size_factor(data);  // 128 * 2^n : default n = 0 -> 128 bytes
+			break;
+		case DMAEXEC: // exec_dma
+			Serial.println("DMAEXEC request.");
+			dma.transfer_mode = dma.FROM_RAM_TO_BUFFER;
+			BUSREQ(LOW);
+			break;
+		case XSTREAMST: //
+			if ( data == 0 ) {
+				dma.xstream_reset();
+			}
+			break;
+		case XSTREAMDAT://
+			dma.xstream_in(data);
+			break;
+		case CLKMODE: // set/change clock mode
 			clock_mode_select(data);
-		}
-		break;
-	case LED7SEG:
-		if (io_mode == OUT) {
-			data = data_bus_get();
-			WAIT(LOW);
+			break;
+		case LED7SEG:
 			digitalWrite(21, LOW);
 			shiftOut(19, 20, MSBFIRST, ascii7seg(data));
 			digitalWrite(21, HIGH);
-			WAIT(HIGH);
+			break;
+		case FILECHG:
+			if (! SD.begin(SS) ) {
+				Serial.println("Failed to initialize SD card interface.");
+			} else {
+			    if (fdc.drive().dskfile)
+			    	fdc.drive().dskfile.close();
+			    fdc.drive().dskfile = SD.open(registered_filepath[data]);
+			    if (!fdc.drive().dskfile) {
+				    Serial.print("Failed to open path/file ");
+				    Serial.println(registered_filepath[data]);
+			    }
+			}
+			break;
 		}
-		break;
-	default:
-		data = 0;
 	}
-	while (IORQ() == LOW) {}
-	return (uint32_t(port) << 16) | data;
+	data_bus_mode_input();
+	WAIT(HIGH);
+
+	if (BUSREQ() == LOW) {
+		while ( BUSACK() == HIGH ) { }
+		mem_bus_DMA_mode();
+		if ( fdc.opcode == fdc.READ_SECTOR ) {
+			FDC_operate(dma.buffer());
+			//Serial.print("read file write to ram ");
+			dma.set_block_size_factor(0);
+			dma.set_transfer_mode(dma.FROM_BUFFER_TO_RAM);
+			DMA_exec(dma.buffer());
+			//Serial.print("addr ");
+			//Serial.println(dma.address, HEX);
+		} else if ( fdc.opcode == fdc.WRITE_SECTOR ) {
+			Serial.print("FDC WRITE, ");
+			dma.set_block_size_factor(0);
+			dma.set_transfer_mode(dma.FROM_RAM_TO_BUFFER);
+			DMA_exec(dma.buffer());
+			FDC_operate(dma.buffer());
+			Serial.print("DMA from addr ");
+			Serial.println(dma.target_address(), HEX);
+		} else if ( dma.transfer_mode != dma.NO_REQUEST ) {
+			DMA_exec(dma.buffer());
+			Serial.print(dma.target_address(), HEX);
+			uint16_t addr = dma.target_address();
+			for (uint16_t bytecount = 0; bytecount < dma.block_size(); ++bytecount) {
+				if ( (bytecount & 0x0f) == 0 ) {
+					Serial.println();
+				}
+				Serial.print(dma.buffer()[bytecount]>>4, HEX);
+				Serial.print(dma.buffer()[bytecount]&0x0f, HEX);
+				Serial.print(' ');
+			}
+		}
+		mem_bus_Z80_mode();
+		BUSREQ(HIGH);
+	} else {
+		while (IORQ() == LOW) {}
+	}
+	return; // result;
 }
 
-uint32_t Z80Bus::mem_rw() {
-	uint16_t addr;
+void Z80Bus::emulate_rom() {
+	uint16_t address;
 	uint8_t data;
-	enum RW_MODE {
-		READ = 0, WRITE,
-	};
-	//Z80's mode
-	uint8_t rw_mode = READ;
 	uint8_t page = 0;
 
-	if (MREQ() == HIGH or ram_is_enabled())
-		return 0;
-	addr = address_bus16_get();
-	page = (addr >> 12) & 0x0f;
-	if ( pages[page] == NULL ) {
-		// sram
-		ram_enable();
-		data_bus_mode_input();
-		clock_wait_rising_edge();
-		data = data_bus_get();
+	if ( MREQ() == HIGH )
+		return;
+	address = address_bus16_get();
+	page = (((uint8_t *)&address)[1] >> 4) & 0x0f;
+	if ( pages[page] == NULL )
+		return;
+	// address is in rom area
+	ram_disable();
+	if (RD() == LOW) {
+		data_bus_mode_output();
+		data = pgm_read_byte_near(pages[page] + (address & 0x0fff));
+		data_bus_set(data);
+		while ( RD() == LOW ) {}
 	} else {
-		// rom area
-		if (RD() == LOW) {
-			rw_mode = READ;
-			data_bus_mode_output();
-		} else if (WR() == LOW) {
-			rw_mode = WRITE;
-			data_bus_mode_input(); // for observation
-		}
-		if (rw_mode == READ) {
-			data = pgm_read_byte_near(pages[page] + (addr & 0x0fff));
-			data_bus_set(data);
-			while (RD() == LOW)
-				;
-		} else if (rw_mode == WRITE) {
-			data_bus_mode_input();
-			while (WR() == LOW)
-				;
-			data = data_bus_get();
-			Serial.println("write rom area error.");
-		}
+		data_bus_mode_input();
+		while (WR() == LOW) {}
+		data = data_bus_get();
+		Serial.println("write rom area error.");
 	}
 	while (MREQ() == LOW)
 		;
-	ram_disable();
-	return (uint32_t(addr) << 16) | data;
+	ram_enable();
 }
 
 

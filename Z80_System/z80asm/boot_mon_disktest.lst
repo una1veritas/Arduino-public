@@ -1,0 +1,111 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "boot_mon_disktest.asm"
+                        ; date: 2025-10-19 15:31:28
+                        ; --------------------------------------
+
+
+                        ;
+0F80:                   SBOTTOM equ 	00f80h
+1000:                   MONITOR equ     01000h
+                        ;
+0000:                   	    org 	0000h
+0000:                   RST_00: 	; Resetr/Power on
+0000: 31800F   [10]     	    ld 		sp, SBOTTOM
+0003: C30010   [20]     	    jp  	MONITOR
+                        ;
+                        ;		org 	0038h
+                        ;RST_38:		; Mode 1 interrupt service routine
+                        ;
+                        ;		org 	0066h
+                        ;RST_66: 	; NMI interrupt service routine
+                        
+                        ;
+0040:                   MSIZE	EQU	64		;mem size in kbytes
+                        ;
+B000:                   BIAS	EQU	(MSIZE-20)*1024	;offset from 20k system
+E400:                   CCP	EQU	3400H+BIAS	;base of the ccp
+FA00:                   BIOS	EQU	CCP+1600H	;base of the bios
+0300:                   BIOSL	EQU	0300H		;length of the bios
+FA00:                   BOOT	EQU	BIOS
+1900:                   SIZE	EQU	BIOS+BIOSL-CCP	;size of cp/m system
+0032:                   SECTS	EQU	SIZE/128	;# of sectors to load
+                        ;
+                        ;	I/O ports
+                        ;
+0001:                   CONDAT	EQU	1		;console data port
+000A:                   DRIVE   EQU	10		;fdc-port: # of drive
+000B:                   TRACK   EQU	11		;fdc-port: # of track
+000C:                   SECTOR  EQU	12		;fdc-port: # of sector
+000D:                   FDCOP   EQU	13		;fdc-port: command
+000E:                   FDCST   EQU	14		;fdc-port: status
+000F:                   DMAL    EQU	15		;dma-port: dma address low
+0010:                   DMAH    EQU	16		;dma-port: dma address high
+                        ;
+                                org     00040h
+0040: 010200   [30]             ld  bc, 0002h
+0043: 210008   [40]             ld  hl, 0800h
+0046: 78       [ 4]     LSECT:	LD	A,B		;set track
+0047: D30B     [15]     	    OUT	(TRACK),A
+0049: 79       [19]     	    LD	A,C		;set sector
+004A: D30C     [30]             OUT	(SECTOR),A
+004C: 7D       [34]             LD	A,L		;set dma address low
+004D: D30F     [45]             OUT	(DMAL),A
+004F: 7C       [49]             LD	A,H		;set dma address high
+0050: D310     [60]             OUT	(DMAH),A
+0052: AF       [64]             XOR	A		;read sector
+0053: D30D     [75]             OUT	(FDCOP),A
+0055: DB0E     [86]             IN	A,(FDCST)	;get status of fdc
+0057: B7       [90]             OR	A		;read successful ?
+0058: CA0010   [100|100]        JP	Z, MONITOR		;yes, continue
+005B: 216C00   [110]            LD	HL,ERRMSG	;no, print error
+005E: 7E       [ 7]     PRTMSG:	LD	A,(HL)
+005F: B7       [11]             OR	A
+0060: CA6900   [21|21]          JP	Z,STOP
+0063: D301     [32]             OUT	(CONDAT),A
+0065: 23       [38]             INC	HL
+0066: C35E00   [48]             JP	PRTMSG
+0069: C30010   [10]     STOP:	JP  MONITOR
+                        
+006C: 424F4F54          ERRMSG:	DEFM	'BOOT: error booting'
+0070: 3A206572          
+0074: 726F7220          
+0078: 626F6F74          
+007C: 696E67            
+007F: 0D0A00            	    DEFB	13,10,0
+
+
+; +++ segments +++
+
+#CODE          = $0000 =     0,  size = $0082 =   130
+
+; +++ global symbols +++
+
+BIAS    = $B000 = 45056          boot_mon_disktest.asm:19
+BIOS    = $FA00 = 64000          boot_mon_disktest.asm:21
+BIOSL   = $0300 =   768          boot_mon_disktest.asm:22
+BOOT    = $FA00 = 64000          boot_mon_disktest.asm:23 (unused)
+CCP     = $E400 = 58368          boot_mon_disktest.asm:20
+CONDAT  = $0001 =     1          boot_mon_disktest.asm:29
+DMAH    = $0010 =    16          boot_mon_disktest.asm:36
+DMAL    = $000F =    15          boot_mon_disktest.asm:35
+DRIVE   = $000A =    10          boot_mon_disktest.asm:30 (unused)
+ERRMSG  = $006C =   108          boot_mon_disktest.asm:63
+FDCOP   = $000D =    13          boot_mon_disktest.asm:33
+FDCST   = $000E =    14          boot_mon_disktest.asm:34
+LSECT   = $0046 =    70          boot_mon_disktest.asm:41 (unused)
+MONITOR = $1000 =  4096          boot_mon_disktest.asm:3
+MSIZE   = $0040 =    64          boot_mon_disktest.asm:17
+PRTMSG  = $005E =    94          boot_mon_disktest.asm:55
+RST_00  = $0000 =     0          boot_mon_disktest.asm:6 (unused)
+SBOTTOM = $0F80 =  3968          boot_mon_disktest.asm:2
+SECTOR  = $000C =    12          boot_mon_disktest.asm:32
+SECTS   = $0032 =    50          boot_mon_disktest.asm:25 (unused)
+SIZE    = $1900 =  6400          boot_mon_disktest.asm:24
+STOP    = $0069 =   105          boot_mon_disktest.asm:61
+TRACK   = $000B =    11          boot_mon_disktest.asm:31
+_end    = $0082 =   130          boot_mon_disktest.asm:5 (unused)
+_size   = $0082 =   130          boot_mon_disktest.asm:5 (unused)
+
+
+total time: 0.0008 sec.
+no errors

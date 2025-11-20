@@ -3,116 +3,77 @@
 
 
 ; Page 0 Variables
-; + $100
 
-XAML            = $24 + $100           ;  Last "opened" location Low
-XAMH            = $25 + $100          ;  Last "opened" location High
-STL             = $26 + $100          ;  Store address Low
-STH             = $27 + $100          ;  Store address High
-L               = $28 + $100          ;  Hex value parsing Low
-H               = $29 + $100          ;  Hex value parsing High
-YSAV            = $2A + $100          ;  Used to see if hex value is given
-MODE            = $2B + $100          ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
+XAML            = $24           ;  Last "opened" location Low
+XAMH            = $25           ;  Last "opened" location High
+STL             = $26           ;  Store address Low
+STH             = $27           ;  Store address High
+L               = $28           ;  Hex value parsing Low
+H               = $29           ;  Hex value parsing High
+YSAV            = $2A           ;  Used to see if hex value is given
+MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
 
 
 ; Other Variables
 
-;IN              = $0200         ;  Input buffer to $027F
-IN_BUFF          = $200
-;KBD             = $D010         ;  PIA.A keyboard input
-;KBDCR           ; ??= $D011         ;  PIA.A keyboard control register
-;DSP             = CONIO         ; $D012         ;  PIA.B display output register
-;DSPCR           ; ??= $D013         ;  PIA.B display control register
+IN              = $0200         ;  Input buffer to $027F
+KBD             = $D010         ;  PIA.A keyboard input
+KBDCR           = $D011         ;  PIA.A keyboard control register
+DSP             = $D012         ;  PIA.B display output register
+DSPCR           = $D013         ;  PIA.B display control register
 
-               .org     $fa00  ;$FF00
-               .export  RESET
-                      ^ ***ERROR*** unknown instruction
+               .org $FF00
+               .export RESET
 
-RESET:          ; CLD       N.A.      ; Clear decimal arithmetic mode.
-                ; EI  ; CLI
-                ; LDY #$7F        ; Mask for DSP data direction register.
-                ; STY DSP         ; Set it up.
-                ; LDA #$A7        ; KBD and DSP control register mask.
-                ; STA KBDCR       ; Enable interrupts, set CA1, CB1, for
-                ; STA DSPCR       ;  positive edge sense/output mode.
-                ld      sp, $200
-                ei
-                ld      hl, IN_BUFF ; h = 2, l = 0
-NOTCR:          
-                call    getchar
-                cp      $08             ; CMP #'_'+$80    ; "_"?
-                jr      z, BACKSPACE    ; BEQ BACKSPACE   ; Yes.
-                cp      $1B             ; CMP #$9B        ; ESC?
-                jr      z, ESCAPE       ; BEQ ESCAPE      ; Yes.
-                inc     l               ; INY             ; Advance text index.
-                jp      p, NEXTCHAR     ; BPL NEXTCHAR    ; Auto ESC if > 127.
-ESCAPE:         ; LDA #'\'+$80    ; "\".
-                ; JSR ECHO              ; Output it.
-GETLINE:        ld      a, $0d          ; LDA #$8D        ; CR.
-                out     (CONIO), a      ; JSR ECHO        ; Output it.
-                ld      a, $0a 
-                out     (CONIO), a
-                ld      l, 1            ; LDY #$01        ; Initialize text index.
-BACKSPACE:      dec     l               ; DEY             ; Back up text index.
-                jp      m, GETLINE      ; BMI GETLINE     ; Beyond start of line, reinitialize.
+RESET:          CLD             ; Clear decimal arithmetic mode.
+                CLI
+                LDY #$7F        ; Mask for DSP data direction register.
+                STY DSP         ; Set it up.
+                LDA #$A7        ; KBD and DSP control register mask.
+                STA KBDCR       ; Enable interrupts, set CA1, CB1, for
+                STA DSPCR       ;  positive edge sense/output mode.
+NOTCR:          CMP #'_'+$80    ; "_"?
+                BEQ BACKSPACE   ; Yes.
+                CMP #$9B        ; ESC?
+                BEQ ESCAPE      ; Yes.
+                INY             ; Advance text index.
+                BPL NEXTCHAR    ; Auto ESC if > 127.
+ESCAPE:         LDA #'\'+$80    ; "\".
+                JSR ECHO        ; Output it.
+GETLINE:        LDA #$8D        ; CR.
+                JSR ECHO        ; Output it.
+                LDY #$01        ; Initialize text index.
+BACKSPACE:      DEY             ; Back up text index.
+                BMI GETLINE     ; Beyond start of line, reinitialize.
 NEXTCHAR:       LDA KBDCR       ; Key ready?
-                   ^ ***ERROR*** unknown instruction
                 BPL NEXTCHAR    ; Loop until ready.
-                   ^ ***ERROR*** unknown instruction
                 LDA KBD         ; Load character. B7 should be ‘1’.
-                   ^ ***ERROR*** unknown instruction
                 STA IN,Y        ; Add to text buffer.
-                   ^ ***ERROR*** unknown instruction
                 JSR ECHO        ; Display character.
-                   ^ ***ERROR*** unknown instruction
                 CMP #$8D        ; CR?
-                   ^ ***ERROR*** unknown instruction
                 BNE NOTCR       ; No.
-                   ^ ***ERROR*** unknown instruction
                 LDY #$FF        ; Reset text index.
-                   ^ ***ERROR*** unknown instruction
                 LDA #$00        ; For XAM mode.
-                   ^ ***ERROR*** unknown instruction
                 TAX             ; 0->X.
-                   ^ ***ERROR*** unknown instruction
 SETSTOR:        ASL             ; Leaves $7B if setting STOR mode.
-                   ^ ***ERROR*** unknown instruction
 SETMODE:        STA MODE        ; $00=XAM, $7B=STOR, $AE=BLOCK XAM.
-                   ^ ***ERROR*** unknown instruction
 BLSKIP:         INY             ; Advance text index.
-                   ^ ***ERROR*** unknown instruction
 NEXTITEM:       LDA IN,Y        ; Get character.
-                   ^ ***ERROR*** unknown instruction
                 CMP #$8D        ; CR?
-                   ^ ***ERROR*** unknown instruction
                 BEQ GETLINE     ; Yes, done this line.
-                   ^ ***ERROR*** unknown instruction
                 CMP #'.'+$80    ; "."?
-                   ^ ***ERROR*** unknown instruction
                 BCC BLSKIP      ; Skip delimiter.
-                   ^ ***ERROR*** unknown instruction
                 BEQ SETMODE     ; Set BLOCK XAM mode.
-                   ^ ***ERROR*** unknown instruction
                 CMP #':'+$80    ; ":"?
-                   ^ ***ERROR*** unknown instruction
                 BEQ SETSTOR     ; Yes. Set STOR mode.
-                   ^ ***ERROR*** unknown instruction
                 CMP #'R'+$80    ; "R"?
-                   ^ ***ERROR*** unknown instruction
                 BEQ RUN         ; Yes. Run user program.
-                   ^ ***ERROR*** unknown instruction
                 STX L           ; $00->L.
-                   ^ ***ERROR*** unknown instruction
                 STX H           ;  and H.
-                   ^ ***ERROR*** unknown instruction
                 STY YSAV        ; Save Y for comparison.
-                   ^ ***ERROR*** unknown instruction
 NEXTHEX:        LDA IN,Y        ; Get character for hex test.
-                   ^ ***ERROR*** unknown instruction
                 EOR #$B0        ; Map digits to $0-9.
-                   ^ ***ERROR*** unknown instruction
                 CMP #$0A        ; Digit?
-                   ^ ***ERROR*** unknown instruction
                 BCC DIG         ; Yes.
                 ADC #$88        ; Map letter "A"-"F" to $FA-FF.
                 CMP #$FA        ; Hex letter?
@@ -197,7 +158,3 @@ ECHO:           BIT DSP         ; DA bit (B7) cleared yet?
                 .WORD $0F00     ; NMI
                 .WORD RESET     ; RESET
                 .WORD $0000     ; BRK/IRQ
-
-
-total time: 0.0015 sec.
-30 errors

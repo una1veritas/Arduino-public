@@ -26,7 +26,6 @@ IN_BUFF          = $200
 
                .org     $fa00  ;$FF00
                .export  RESET
-                      ^ ***ERROR*** unknown instruction
 
 RESET:          ; CLD       N.A.      ; Clear decimal arithmetic mode.
                 ; EI  ; CLI
@@ -55,64 +54,36 @@ GETLINE:        ld      a, $0d          ; LDA #$8D        ; CR.
                 ld      l, 1            ; LDY #$01        ; Initialize text index.
 BACKSPACE:      dec     l               ; DEY             ; Back up text index.
                 jp      m, GETLINE      ; BMI GETLINE     ; Beyond start of line, reinitialize.
-NEXTCHAR:       LDA KBDCR       ; Key ready?
-                   ^ ***ERROR*** unknown instruction
-                BPL NEXTCHAR    ; Loop until ready.
-                   ^ ***ERROR*** unknown instruction
-                LDA KBD         ; Load character. B7 should be ‘1’.
-                   ^ ***ERROR*** unknown instruction
-                STA IN,Y        ; Add to text buffer.
-                   ^ ***ERROR*** unknown instruction
-                JSR ECHO        ; Display character.
-                   ^ ***ERROR*** unknown instruction
-                CMP #$8D        ; CR?
-                   ^ ***ERROR*** unknown instruction
-                BNE NOTCR       ; No.
-                   ^ ***ERROR*** unknown instruction
-                LDY #$FF        ; Reset text index.
-                   ^ ***ERROR*** unknown instruction
-                LDA #$00        ; For XAM mode.
-                   ^ ***ERROR*** unknown instruction
-                TAX             ; 0->X.
-                   ^ ***ERROR*** unknown instruction
+NEXTCHAR:       in      a, (CONSTA)     ; LDA KBDCR       ; Key ready?
+                and     a
+                jr      z, NEXTCHAR     ; BPL NEXTCHAR    ; Loop until ready.
+                in      a, (CONIO)      ; LDA KBD         ; Load character. B7 should be ‘1’.
+                ld      (hl), a         ; STA IN,Y        ; Add to text buffer.
+                out     (CONIO), a      ; JSR ECHO        ; Display character.
+                cp      $0d             ; CMP #$8D        ; CR?
+                jr      nz, NOTCR       ; BNE NOTCR       ; No.
+                ld      hl, $ff         ; LDY #$FF        ; Reset text index.
+                ld      a, $00          ; LDA #$00        ; For XAM mode.
+                id      ix, 0000h       ; TAX             ; 0->X.
 SETSTOR:        ASL             ; Leaves $7B if setting STOR mode.
-                   ^ ***ERROR*** unknown instruction
 SETMODE:        STA MODE        ; $00=XAM, $7B=STOR, $AE=BLOCK XAM.
-                   ^ ***ERROR*** unknown instruction
 BLSKIP:         INY             ; Advance text index.
-                   ^ ***ERROR*** unknown instruction
 NEXTITEM:       LDA IN,Y        ; Get character.
-                   ^ ***ERROR*** unknown instruction
                 CMP #$8D        ; CR?
-                   ^ ***ERROR*** unknown instruction
                 BEQ GETLINE     ; Yes, done this line.
-                   ^ ***ERROR*** unknown instruction
                 CMP #'.'+$80    ; "."?
-                   ^ ***ERROR*** unknown instruction
                 BCC BLSKIP      ; Skip delimiter.
-                   ^ ***ERROR*** unknown instruction
                 BEQ SETMODE     ; Set BLOCK XAM mode.
-                   ^ ***ERROR*** unknown instruction
                 CMP #':'+$80    ; ":"?
-                   ^ ***ERROR*** unknown instruction
                 BEQ SETSTOR     ; Yes. Set STOR mode.
-                   ^ ***ERROR*** unknown instruction
                 CMP #'R'+$80    ; "R"?
-                   ^ ***ERROR*** unknown instruction
                 BEQ RUN         ; Yes. Run user program.
-                   ^ ***ERROR*** unknown instruction
                 STX L           ; $00->L.
-                   ^ ***ERROR*** unknown instruction
                 STX H           ;  and H.
-                   ^ ***ERROR*** unknown instruction
                 STY YSAV        ; Save Y for comparison.
-                   ^ ***ERROR*** unknown instruction
 NEXTHEX:        LDA IN,Y        ; Get character for hex test.
-                   ^ ***ERROR*** unknown instruction
                 EOR #$B0        ; Map digits to $0-9.
-                   ^ ***ERROR*** unknown instruction
                 CMP #$0A        ; Digit?
-                   ^ ***ERROR*** unknown instruction
                 BCC DIG         ; Yes.
                 ADC #$88        ; Map letter "A"-"F" to $FA-FF.
                 CMP #$FA        ; Hex letter?
@@ -184,6 +155,7 @@ PRHEX:          AND #$0F        ; Mask LSD for hex print.
                 CMP #$BA        ; Digit?
                 BCC ECHO        ; Yes, output it.
                 ADC #$06        ; Add offset for letter.
+
 ECHO:           BIT DSP         ; DA bit (B7) cleared yet?
                 BMI ECHO        ; No, wait for display.
                 STA DSP         ; Output character. Sets DA.
@@ -197,7 +169,3 @@ ECHO:           BIT DSP         ; DA bit (B7) cleared yet?
                 .WORD $0F00     ; NMI
                 .WORD RESET     ; RESET
                 .WORD $0000     ; BRK/IRQ
-
-
-total time: 0.0015 sec.
-30 errors
