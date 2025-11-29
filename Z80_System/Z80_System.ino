@@ -7,16 +7,19 @@
 
 //#define BUS_DEBUG
 
-enum Mega_pin_assign {
+enum Mega_digital_pin_assign {
   // z80
   CLK     = 13, // input on Z80
   _INT    = 3,  // in
-  _NMI    = 4,  // in
+  _NMI    = 2, 	// in 4,  // in
   _HALT   = 5, // output on Z80
-  _MREQ   = 39, // out
-  _IORQ   = 38, // out 
-  _RD     = 40, // out
-  _WR     = 41, // out
+
+  // fix to PG
+  _IORQ   = 4,  // out 	PG5  38, // out 	PD7
+  _MREQ   = 39, // out	PG2
+  _RD     = 40, // out	PG1
+  _WR     = 41, // out 	PG0
+
   _BUSACK =  7,  // out
   _WAIT   =  8,  // in
   _BUSREQ =  9,  // in 
@@ -25,8 +28,8 @@ enum Mega_pin_assign {
   _RFSH   = 12,  // out
 
   // sram
-  SRAM_EN   = 2, // CE2 (positive neable)
-  SRAM_A16  = 6, // A16 (the 17th address bit)
+  SRAM_EN   = 14, // CE2 (positive eable)
+  SRAM_A16  = 15, // A16 (the 17th address bit)
 };
 
 Z80Bus z80bus(

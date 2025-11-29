@@ -17,6 +17,15 @@
 #define DATA_IN PINL
 #define DATA_OUT PORTL
 
+#define IO_CONTROL_OUT 	PORTG
+#define IO_CONTROL_IN 	PING
+#define IO_CONTROL_DIR 	DDRG
+#define IO_CONTROL_MASK (1<<PG0 | 1<<PG1 | 1<<PG2 | 1<<PG5)
+#define IO_CONTROL_RD (1<<PG1)
+#define IO_CONTROL_WR (1<<PG0)
+#define IO_CONTROL_MREQ (1<<PG2)
+#define IO_CONTROL_IORQ (1<<PG5)
+
 
 enum IO_Ports {
     CONSTA = 0,  //console status port
@@ -60,13 +69,13 @@ public:
   static const uint8_t basic_0000[8192] PROGMEM;
 
 public:
-  //const uint8_t_RD = 40; // PG1 (RD)
-  //const uint8_t_WR = 41; // PG0 (WR)
-  //const uint8_t_ALE = 39; // PG2 (ALE)
+  //const uint8_t _RD = 40; // PG1 (RD)
+  //const uint8_t _WR = 41; // PG0 (WR)
+  //const uint8_t _MREQ = 39; // PG2 (ALE)
+  //const uint8_t _IORQ = 4; // PG5 (ALE)
 
   const uint8_t _INT, _NMI, _WAIT, _BUSREQ, _RESET;                        // z80 input
-  const uint8_t _RD, _WR;                                                  // z80 out, sram in
-  const uint8_t _HALT, _MREQ, _IORQ, /* _RD, _WR, */ _BUSACK, _M1, _RFSH;  // z80 output
+  const uint8_t _HALT, /* _MREQ, _IORQ, _RD, _WR, */ _BUSACK, _M1, _RFSH;  // z80 output
   const uint8_t SRAM_EN, SRAM_A16;
   //volatile uint8_t * DATA   = PORTL;
   const uint8_t CLK_OUT = 13;  // PB7 (OC1C)
@@ -113,13 +122,13 @@ public:
 
 public:
   Z80Bus(const uint8_t& intr, const uint8_t& nmi, const uint8_t& halt,
-         const uint8_t& mreq, const uint8_t& iorq, const uint8_t& rd, const uint8_t& wr,
+         /* const uint8_t& mreq, const uint8_t& iorq, const uint8_t& rd, const uint8_t& wr, */
          const uint8_t& busack, const uint8_t& wait, const uint8_t& busreq,
          const uint8_t& reset, const uint8_t& m1, const uint8_t& rfsh,
          const uint8_t& memen, const uint8_t & mem_A16)
-    : _INT(intr), _NMI(nmi), _HALT(halt), _MREQ(mreq), _IORQ(iorq),
-      _RD(rd), _WR(wr), _BUSACK(busack), _WAIT(wait),
-      _BUSREQ(busreq), _RESET(reset), _M1(m1), _RFSH(rfsh),
+    : _INT(intr), _NMI(nmi), _HALT(halt),
+	  /* _MREQ(mreq), _IORQ(iorq),_RD(rd), _WR(wr), */
+	  _BUSACK(busack), _WAIT(wait),_BUSREQ(busreq), _RESET(reset), _M1(m1), _RFSH(rfsh),
       SRAM_EN(memen), SRAM_A16(mem_A16) {
     init();
   }
@@ -130,15 +139,16 @@ public:
     //
     address_bus16_mode(INPUT);
     data_bus_mode_input();
-    pinMode(_RD, INPUT);
-    pinMode(_WR, INPUT);
+    // z80/memory inputs, temporary set input mode.
+    //pinMode(_MREQ, INPUT);
+    //pinMode(_IORQ, INPUT);
+    //pinMode(_RD, INPUT);
+    //pinMode(_WR, INPUT);
+    IO_CONTROL_DIR &= ~IO_CONTROL_MASK;
     pinMode(SRAM_EN, OUTPUT);
     pinMode(SRAM_A16, OUTPUT);
     ram_enable();
 
-    // z80/memory inputs, temporary set input mode.
-    pinMode(_MREQ, INPUT);
-    pinMode(_IORQ, INPUT);
     // z80 inputs, fixed to input mode.
     pinMode(_INT, OUTPUT);
     digitalWrite(_INT, HIGH);
@@ -215,9 +225,10 @@ public:
     }
     ram_disable();
     address_bus16_mode(OUTPUT);
-    pinMode(_MREQ, OUTPUT);
-    pinMode(_RD, OUTPUT);
-    pinMode(_WR, OUTPUT);
+    //pinMode(_MREQ, OUTPUT);
+    //pinMode(_RD, OUTPUT);
+    //pinMode(_WR, OUTPUT);
+    IO_CONTROL_DIR |= (IO_CONTROL_MREQ | IO_CONTROL_WR | IO_CONTROL_RD);
     MREQ(HIGH);
     ram_enable();
     return true;
@@ -233,9 +244,10 @@ public:
     ram_disable();  // ram/rom is controlled by atmega100
     address_bus16_mode(INPUT);
     data_bus_mode_input();
-    pinMode(_MREQ, INPUT);
-    pinMode(_RD, INPUT);
-    pinMode(_WR, INPUT);
+    //pinMode(_MREQ, INPUT);
+    //pinMode(_RD, INPUT);
+    //pinMode(_WR, INPUT);
+    IO_CONTROL_DIR &= ~(IO_CONTROL_MREQ | IO_CONTROL_WR | IO_CONTROL_RD);
     ram_enable();
     if (BUSREQ() == LOW)
       BUSREQ(HIGH);
@@ -243,6 +255,7 @@ public:
       RESET(HIGH);
     while (BUSACK() == LOW)
       ;
+    return true;
   }
 
   void address_bus16_mode(uint8_t in_out) {
@@ -400,7 +413,7 @@ public:
   }
 
   uint8_t RESET() {
-    digitalRead(_RESET);
+    return digitalRead(_RESET);
   }
 
   void cpu_reset() {
@@ -414,31 +427,50 @@ public:
   }
 
   uint8_t MREQ() {
-    return digitalRead(_MREQ);
+    return (IO_CONTROL_IN & IO_CONTROL_MREQ) != 0; //digitalRead(_MREQ);
   }
 
-  uint8_t MREQ(uint8_t hilo) {
-    digitalWrite(_MREQ, hilo);
+  void MREQ(uint8_t hilo) {
+	  if (hilo) {
+		  IO_CONTROL_OUT |= IO_CONTROL_MREQ;
+	  } else {
+		  IO_CONTROL_OUT &= ~IO_CONTROL_MREQ;
+	  }
+	  //digitalWrite(_MREQ, hilo);
   }
 
   uint8_t IORQ() {
-    return digitalRead(_IORQ);
+    return (IO_CONTROL_IN & IO_CONTROL_IORQ) != 0; //digitalRead(_IORQ);
   }
 
   uint8_t RD() {
-    return digitalRead(_RD);
+    return (IO_CONTROL_IN & IO_CONTROL_RD) != 0; //digitalRead(_RD);
   }
 
-  uint8_t RD(uint8_t hilo) {
-    digitalWrite(_RD, hilo);
+  void RD(uint8_t hilo) {
+	  if (hilo) {
+		  IO_CONTROL_OUT |= IO_CONTROL_RD;
+	  } else {
+		  IO_CONTROL_OUT &= ~IO_CONTROL_RD;
+	  }
+    //digitalWrite(_RD, hilo);
   }
 
   uint8_t WR() {
-    return digitalRead(_WR);
+    return (IO_CONTROL_IN & IO_CONTROL_WR) != 0; //digitalRead(_WR);
   }
 
-  uint8_t WR(uint8_t hilo) {
-    digitalWrite(_WR, hilo);
+  void WR(uint8_t hilo) {
+	  if (hilo) {
+		  IO_CONTROL_OUT |= IO_CONTROL_WR;
+	  } else {
+		  IO_CONTROL_OUT &= ~IO_CONTROL_WR;
+	  }
+	  //digitalWrite(_WR, hilo);
+  }
+
+  inline uint8_t MIORW() {
+	  return (IO_CONTROL_IN & IO_CONTROL_MASK);
   }
 
   uint8_t M1() {
