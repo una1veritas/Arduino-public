@@ -1,7 +1,7 @@
 #include <SPI.h>
-#include <MCP23S08.h>
+#include <MCP23S17.h>
 
-MCP23S08 ioxt(9);
+MCP23S17 ioxt(9);
 
 
 void setup() {
