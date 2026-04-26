@@ -34,8 +34,6 @@ SPISRAM spisram(CS_23LC1024, SPISRAM::BUS_MBits); // CS pin
 #define SERIAL_BAUD 115200
 #define MAX_HEX_LINE_LENGTH 256
 
-#define WRITE_START_ADDR 0
-
 // Intel HEX Record Types
 #define HEX_DATA 0x00
 #define HEX_END_OF_FILE 0x01
@@ -260,11 +258,23 @@ bool validateChecksum(uint8_t byteCount, uint16_t address, uint8_t recordType,
  * Returns 0 if invalid
  */
 uint8_t hexToInt(String hex) {
-  if (hex.length() != 2) {
-    return 0;
+  uint8_t val = 0;
+  for(int i = 0; i < 2; ++i) {
+    char c = hex[i];
+    if ( c < '0' ) 
+      return 0;
+    if ( c <= '9' ) {
+      val = c - '0';
+    } else {
+      c = toupper(c);
+      if ( c >= 'A' && c <= 'F' ) {
+        val = c - 'A' + 10;
+      } else {
+        return 0;
+      }
+    }
+    val <<= 8;
   }
-  
-  char buffer[3];
-  hex.toCharArray(buffer, 3);
-  return (uint8_t)strtol(buffer, NULL, 16);
+  return val;
 }
+
