@@ -45,12 +45,17 @@ unsigned int extendedLinearAddress = 0;
 unsigned long bytesWritten = 0;
 unsigned long checksumErrors = 0;
 
+char buf[128];
+
 void setup() {
   Serial.begin(SERIAL_BAUD);
   delay(500);
   Serial.println("Intel HEX Programmer Ready");
   Serial.println("Send Intel HEX data (e.g., from avrdude)");
   Serial.println("---");
+
+  SPI.begin();
+  spisram.begin();
 }
 
 void loop() {
@@ -95,10 +100,12 @@ void processHexRecord(String line) {
   // Validate line length: :LL + AAAA + TT + DD*2 + CC
   int expectedLength = 11 + (byteCount * 2);
   if (line.length() != expectedLength) {
-    Serial.print("ERROR: Line length mismatch. Expected: ");
-    Serial.print(expectedLength);
-    Serial.print(" Got: ");
-    Serial.println(line.length());
+    // Serial.print("ERROR: Line length mismatch. Expected: ");
+    // Serial.print(expectedLength);
+    // Serial.print(" Got: ");
+    // Serial.println(line.length());
+    snprintf(buf, 127, "ERROR: Line length mismatch. Expected: %d Got: %d\n", expectedLength, line.length());
+    Serial.print(buf);
     return;
   }
   
@@ -168,17 +175,30 @@ void handleDataRecord(uint16_t address, uint8_t byteCount, uint8_t* data) {
     return;
   }
   
+  // Serial.print("OK: Wrote ");
+  // Serial.print(byteCount);
+  // Serial.print(" bytes at 0x");
+  // Serial.println(fullAddress, HEX);
+  snprintf(buf, 127, "DATA RECORD %04X : ", fullAddress);
+  Serial.print(buf);
+  for (int i = 0; i < byteCount; i++) {
+    snprintf(buf, 127, "%02X ", data[i]);
+    Serial.print(buf);
+  }
+  snprintf(buf, 127, " (%d bytes)\n", byteCount);
+  Serial.print(buf);
+  
   // Write data to EEPROM
   for (int i = 0; i < byteCount; i++) {
     spisram.write(fullAddress + i, data[i]);
   }
-  
+
   bytesWritten += byteCount;
   
-  Serial.print("OK: Wrote ");
-  Serial.print(byteCount);
-  Serial.print(" bytes at 0x");
-  Serial.println(fullAddress, HEX);
+  // Serial.print("OK: Wrote ");
+  // Serial.print(byteCount);
+  // Serial.print(" bytes at 0x");
+  // Serial.println(fullAddress, HEX);
 }
 
 /*
