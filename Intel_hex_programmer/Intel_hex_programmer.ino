@@ -47,7 +47,7 @@ unsigned long checksumErrors = 0;
 
 void setup() {
   Serial.begin(SERIAL_BAUD);
-  delay(100);
+  delay(500);
   Serial.println("Intel HEX Programmer Ready");
   Serial.println("Send Intel HEX data (e.g., from avrdude)");
   Serial.println("---");
@@ -59,7 +59,11 @@ void loop() {
     line.trim();
     
     // Skip empty lines and comments
-    if (line.length() == 0 || line[0] != ':') {
+    if (line.length() == 0 ) {
+      return;
+    } else if (line[0] != ':') {
+      Serial.print("comment: ");
+      Serial.println(line);
       return;
     }
     
@@ -257,24 +261,39 @@ bool validateChecksum(uint8_t byteCount, uint16_t address, uint8_t recordType,
  * Convert two hex characters to integer
  * Returns 0 if invalid
  */
+ /*
+uint8_t hexToInt(String hex) {
+  if (hex.length() != 2) {
+    return 0;
+  }
+  
+  char buffer[3];
+  hex.toCharArray(buffer, 3);
+  return (uint8_t)strtol(buffer, NULL, 16);
+}
+*/
+
 uint8_t hexToInt(String hex) {
   uint8_t val = 0;
+  char c;
+  //Serial.println(hex);
   for(int i = 0; i < 2; ++i) {
-    char c = hex[i];
+    val <<= 4;
+    c = toupper(hex[i]);
+    //Serial.println((char) c);
     if ( c < '0' ) 
       return 0;
     if ( c <= '9' ) {
-      val = c - '0';
+      val |= c - '0';
     } else {
-      c = toupper(c);
       if ( c >= 'A' && c <= 'F' ) {
-        val = c - 'A' + 10;
+        val |= c - 'A' + 10;
       } else {
         return 0;
       }
     }
-    val <<= 8;
   }
+  //Serial.print("result = ");Serial.println(val, HEX);
   return val;
 }
 
