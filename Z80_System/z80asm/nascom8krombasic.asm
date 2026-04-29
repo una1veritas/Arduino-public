@@ -453,7 +453,7 @@ CHKSTK: PUSH    HL              ; Save code string address
         ADD     HL,BC
         DB      3EH             ; Skip "PUSH HL"                ; ld a, $e5
 ENFMEM: PUSH    HL              ; Save code string address      ; $e5
-        LD      A,LOW -48       ; 48 Bytes minimum RAM
+        LD      A, LOW-48       ; 48 Bytes minimum RAM
         SUB     L                 
         LD      L,A                                     ; L <- (LOW - 48) - L 
         LD      A,HIGH -48      ; 48 Bytes minimum RAM
