@@ -52,6 +52,7 @@ HexRecord hexrecord;
 AddressContext addrcontext = { 0, 0, 0 };
 
 unsigned long idleStart;
+String line = "";
 
 bool processRecord(String & line) {
     if (line[0] == ':') {
@@ -75,9 +76,6 @@ void setup() {
   Serial.begin(SERIAL_BAUD);
   delay(500);
   printWelcome();
-  Serial.println("Intel HEX Programmer Ready");
-  Serial.println("Send Intel HEX data (e.g., from avrdude)");
-  Serial.println("---");
 
   SPI.begin();
   spisram.begin();
@@ -87,7 +85,23 @@ void setup() {
 
 void loop() {
   if (Serial.available()) {
-    String line = Serial.readStringUntil('\n');
+    if ( wstatus.loadInProgress ) {
+      line = Serial.readStringUntil('\n');
+    } else {
+      char c;
+      while ( Serial.available() ) {
+        c = (char) Serial.read();
+        if ( c == '\n' )
+          break;
+        line += c;
+        Serial.print(c);
+      }
+      if ( c == '\n' ) {
+        Serial.println();
+      } else {
+        return;
+      }
+    }
     line.trim();
     // Skip empty lines
     if (line.length() == 0 ) {
@@ -111,10 +125,12 @@ void loop() {
   		  clearWriterStatus();
         idleStart = millis();
       }
+      line = "";
     } else {
       processRecord(line);
       wstatus.loadInProgress = true;
     	idleStart = millis();
+      line = "";
     }
   }
   // Timeout after 30 seconds of inactivity
@@ -127,10 +143,10 @@ void loop() {
 
 void printWelcome() {
   Serial.println(F("\n========================================"));
-  Serial.println(F("   Arduino S19 Format Loader v1.0"));
+  Serial.println(F("   Arduino ihex/s19 Format Loader 202604"));
   Serial.println(F("========================================"));
   Serial.println(F("Commands:"));
-  Serial.println(F("  !L - Load S19 data from UART"));
+  Serial.println(F("  !L - Wait and load hex data from UART"));
   Serial.println(F("  !P - Show statistics"));
   Serial.println(F("  !V - Verify loaded data"));
   Serial.println(F("  !C - Clear statistics"));

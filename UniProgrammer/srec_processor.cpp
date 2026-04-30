@@ -105,41 +105,40 @@ boolean processS19Record(const String& line, HexRecord & hexrecord) {
   
   // Process based on record type
   switch (hexrecord.type) {
-    case SREC_HEADER:
+  // start record
+    case SREC_HEADER: 	// type 0
 	  // S0 header: S0 + count + address(2) + data + checksum
 	  // Typically contains manufacturer info, can extract and display
     	hexrecord.datalength = hexrecord.byteCount - 3;  // Subtract address (2) and checksum (1)
       return processHeader(line, hexrecord); //byteCount);
     
-    case SREC_DATA_16:
-    	 // Subtract the number of bytes for address and checksum
-    	  hexrecord.datalength = hexrecord.byteCount - 2 - 1;
-      return processDataRecord(line, hexrecord, 2); //byteCount, 2);  // 2 bytes address
-    case SREC_DATA_24:
-    	hexrecord.datalength = hexrecord.byteCount - 3 - 1;
-      return processDataRecord(line, hexrecord, 3); //byteCount, 3);  // 3 bytes address
-    
-    case SREC_DATA_32:
-    	hexrecord.datalength = hexrecord.byteCount - 4 - 1;
-      return processDataRecord(line, hexrecord, 4); //byteCount, 4);  // 4 bytes address
-    
+    // data record
+    case SREC_DATA_16: 	// type 1
+    case SREC_DATA_24:	// type 2
+    case SREC_DATA_32: 	// type 3
+    	// Subtract the number of bytes for address and checksum
+    	// hexrecord.byteCount - (hexrecord.type + 1) - 1;
+    	hexrecord.datalength = hexrecord.byteCount - hexrecord.type;
+      return processDataRecord(line, hexrecord, hexrecord.type + 1); //byteCount, 2);  // 2 bytes address
+
+    // data record count (not official)
     case SREC_COUNT_16:
     case SREC_COUNT_24:
       // Count records are informational, can be ignored
       return true;
     
+      // start address (declare the termination)
     case SREC_START_32:
-    	hexrecord.datalength = hexrecord.byteCount - 4 - 1;
+    	hexrecord.datalength = 0; //hexrecord.byteCount - 4 - 1;
       return processStartAddress(line, 4);  // 4 bytes address
-    
     case SREC_START_24:
-    	hexrecord.datalength = hexrecord.byteCount - 3 - 1;
+    	hexrecord.datalength = 0; //hexrecord.byteCount - 3 - 1;
       return processStartAddress(line, 3);  // 3 bytes address
-    
     case SREC_START_16:
-    	hexrecord.datalength = hexrecord.byteCount - 2 - 1;
+    	hexrecord.datalength = 0; //hexrecord.byteCount - 2 - 1;
       return processStartAddress(line,  2);  // 2 bytes address
     
+      // unknown type. error
     default:
       Serial.print(F("Unknown record type: S"));
       Serial.println(hexrecord.type, DEC);
