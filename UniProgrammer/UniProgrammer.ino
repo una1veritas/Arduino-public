@@ -145,6 +145,9 @@ void printWelcome() {
   Serial.println(F("\n========================================"));
   Serial.println(F("   Arduino ihex/s19 Format Loader 202604"));
   Serial.println(F("========================================"));
+}
+
+void printHelp() {
   Serial.println(F("Commands:"));
   Serial.println(F("  !L - Wait and load hex data from UART"));
   Serial.println(F("  !P - Show statistics"));
@@ -152,15 +155,6 @@ void printWelcome() {
   Serial.println(F("  !C - Clear statistics"));
   Serial.println(F("  !H - Help"));
   Serial.println(F("========================================\n"));
-}
-
-void printHelp() {
-  Serial.println(F("\nS19 Loader Help:"));
-  Serial.println(F("1. Send 'L' to enter load mode"));
-  Serial.println(F("2. Send S-records (S0, S1, S2, S3, S5, S6, S7, S8, S9)"));
-  Serial.println(F("3. Loader ends on first error or EOF marker"));
-  Serial.println(F("\nS-record format: S<type><count><address><data><checksum>"));
-  Serial.println(F("Example: S1138000F3A0AAFBF34000F14A0A0A0000A0A0\n"));
 }
 
 void printStatus() {
