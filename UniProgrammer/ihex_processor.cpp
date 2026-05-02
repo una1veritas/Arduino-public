@@ -29,7 +29,8 @@ void processHexRecord(String line, HexRecord & hexrecord) {
   // Validate minimum length (:LLAAAATTCC = 11 chars)
   if (line.length() < 11) {
 	  wstatus.errorCount += 1;
-	  Serialsnprintln("ERROR: Invalid line length: %d", line.length());
+	  Serial.print("ERROR: Invalid line length: ");
+	  Serial.println(line.length(), DEC);
 	  return;
   }
 
@@ -45,8 +46,21 @@ void processHexRecord(String line, HexRecord & hexrecord) {
     // Serial.print(" Got: ");
     // Serial.println(line.length());
 	  wstatus.errorCount += 1;
-	  Serialsnprintln("ERROR: Line length mismatch. Expected: %d Got: %d", expectedLength, line.length());
-	  Serialsnprintln("Line: %s", line);
+	  Serial.print(F("ERROR: Line length mismatch. Expected: "));
+	  Serial.print(expectedLength);
+	  Serial.print(F(" Got: "));
+	  Serial.println(line.length());
+	  for(int i = 0; i < line.length(); ++i) {
+		  if ( isprint(line[i]) ) {
+			  Serial.print(line[i]);
+		  } else {
+			  Serial.print('[');
+			  Serial.print(line[i]>>4, HEX);
+			  Serial.print(line[i]&0x0f, HEX);
+			  Serial.print(']');
+		  }
+	  }
+	  Serial.println();
 	  return;
   }
 
@@ -56,7 +70,7 @@ void processHexRecord(String line, HexRecord & hexrecord) {
   hexrecord.address = ( uint16_t(hexToUint8(line, 3)) << 8) | hexToUint8(line, 5);
   // Extract record type
   //uint8_t recordType
-  hexrecord.type = hexToUint8(line.substring(7, 9));
+  hexrecord.type = hexToUint8(line, 7); //line.substring(7, 9));
 
   // Extract data bytes
   //uint8_t data[256];
@@ -66,10 +80,11 @@ void processHexRecord(String line, HexRecord & hexrecord) {
 
   // Extract and validate checksum
   //uint8_t checksum =
-  hexrecord.checksum = hexToUint8(line, 9 + (hexrecord.datalength<<1));
+  hexrecord.checksum = hexToUint8(line, 9 + (hexrecord.datalength << 1));
 
   if ( !validateChecksum(hexrecord) ) {
-    Serialsnprintln("ERROR: Checksum validation failed for line: %d", line);
+    Serial.println(F("ERROR: Checksum validation failed for line:"));
+    Serial.println(line);
     wstatus.checksumErrors++;
     return;
   }
@@ -93,7 +108,8 @@ void processHexRecord(String line, HexRecord & hexrecord) {
       break;
 
     default:
-      Serialsnprintln("WARNING: Unknown record type: 0x%02x", hexrecord.type);
+      Serial.print(F("WARNING: Unknown record type: 0x"));
+      Serial.println(hexrecord.type, HEX);
       break;
   }
 }
@@ -109,47 +125,41 @@ void handleDataRecord(HexRecord & hexrecord) {
   // Check if address is within memory bounds
   if (fullAddress + hexrecord.datalength > 0x20000 ) {
 	  wstatus.errorCount += 1;
-	  Serialsnprintln("ERROR: Address out of memory bounds: 0x%04x (size: 0x%04x)", fullAddress, 0x20000);
+	  Serial.print(F("ERROR: Address out of memory bounds: "));
+	  Serialsnprintln(buf128, 127, "0x%04x (size: 0x%04x)", fullAddress, 0x20000);
     return;
   }
 
-  // Serial.print("OK: Wrote ");
-  // Serial.print(byteCount);
-  // Serial.print(" bytes at 0x");
-  // Serial.println(fullAddress, HEX);
-  Serialsnprint("I DATA %04X : ", fullAddress);
-  for (int i = 0; i < hexrecord.datalength; i++) {
-    Serialsnprint("%02X ", hexrecord.data[i]);
-  }
-  Serialsnprintln(" (%d bytes)", hexrecord.datalength);
-
   // Write data to EEPROM
-  for (int i = 0; i < hexrecord.datalength; i++) {
+  for (int i = 0; i < hexrecord.datalength; ++i) {
     write(fullAddress + i, hexrecord.data[i]);
   }
 
-  wstatus.totalBytesWritten += hexrecord.datalength;
+  Serial.print(F("OK: I DATA "));
+  Serial.print(fullAddress, HEX);
+  Serial.print(F(" -- "));
+  Serial.println(fullAddress + hexrecord.datalength - 1, HEX);
 
-  // Serial.print("OK: Wrote ");
-  // Serial.print(byteCount);
-  // Serial.print(" bytes at 0x");
-  // Serial.println(fullAddress, HEX);
+  wstatus.totalBytesWritten += hexrecord.datalength;
 }
 
 /*
  * Handle Extended Linear Address Record (Type 0x04)
  * Sets the upper 16 bits of the address
  */
-void handleExtendedLinearAddress(HexRecord & hexrecord) {
-  if (hexrecord.datalength != 2) {
-	  wstatus.errorCount += 1;
-    Serialsnprintln("ERROR: Extended Linear Address record must have 2 bytes, got: %d", hexrecord.datalength);
-    return;
-  }
+void handleExtendedLinearAddress(HexRecord &hexrecord) {
+	if (hexrecord.datalength != 2) {
+		wstatus.errorCount += 1;
+		Serialsnprintln(buf128, 127,
+				"ERROR: Extended Linear Address record must have 2 bytes, got: %d",
+				hexrecord.datalength);
+		return;
+	}
 
-  addrcontext.extLinearAddress = (uint16_t(hexrecord.data[0]) << 8) | hexrecord.data[1];
+	addrcontext.extLinearAddress = (uint16_t(hexrecord.data[0]) << 8) | hexrecord.data[1];
 
-  Serialsnprintln("OK: Extended Linear Address (high 16bit) set to 0x%04x", addrcontext.extLinearAddress);
+	Serial.print(F("OK: Extended Linear Address (high 16bit) set to 0x"));
+	Serial.println(addrcontext.extLinearAddress, HEX);
 }
 
 /*
@@ -158,7 +168,7 @@ void handleExtendedLinearAddress(HexRecord & hexrecord) {
  */
 void handleStartLinearAddress(HexRecord & hexrecord) { //uint8_t byteCount, uint8_t* data) {
   if (hexrecord.datalength != 4) {
-    Serial.print("WARNING: Start Linear Address record should have 4 bytes, got: ");
+    Serial.print(F("WARNING: Start Linear Address record should have 4 bytes, but got: "));
     Serial.println(hexrecord.datalength);
     return;
   }
@@ -171,7 +181,7 @@ void handleStartLinearAddress(HexRecord & hexrecord) { //uint8_t byteCount, uint
   addrcontext.startLinearAddress <<= 8;
   addrcontext.startLinearAddress |= hexrecord.data[3];
 
-  Serial.print("OK: Start Linear Address (32 bits): 0x");
+  Serial.print(F("OK: Start Linear Address (32 bits): 0x"));
   Serial.println(addrcontext.startLinearAddress, HEX);
 }
 
@@ -180,11 +190,11 @@ void handleStartLinearAddress(HexRecord & hexrecord) { //uint8_t byteCount, uint
  * Signals end of data transmission
  */
 void handleEndOfFile(HexRecord & hexrecord) {
-  Serial.println("---");
-  Serial.print("iHex load complete!");
-  Serial.print(" Total bytes loaded: ");
+  Serial.println(F("---"));
+  Serial.print(F("iHex load complete!"));
+  Serial.print(F(" Total bytes loaded: "));
   Serial.println(wstatus.totalBytesWritten);
-  Serial.print("Checksum errors: ");
+  Serial.print(F("Checksum errors: "));
   Serial.println(wstatus.checksumErrors);
 
   // Reset counters for next session

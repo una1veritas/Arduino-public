@@ -13,8 +13,8 @@ typedef struct HexRecord {
 	uint8_t type;
 	uint8_t byteCount;
 	uint8_t datalength;
+	uint32_t address;	// record's address offset
 	uint8_t data[256];
-	uint32_t address;	// address offset
 	uint8_t checksum;
 } HexRecord;
 
@@ -32,16 +32,18 @@ typedef struct {
 	uint32_t recordCount;
 	uint32_t errorCount;
 	uint32_t checksumErrors;
-	boolean loadInProgress;
+//	boolean loadInProgress;
 } writer_status;
 
 extern writer_status wstatus;
 
+extern char buf128[128];
+
 void clearWriterStatus();
 void printWriterStatus();
 
-int Serialsnprint(const char *format, ...);
-int Serialsnprintln(const char *format, ...);
+int Serialsnprint(char buf[], unsigned int n, const char *format, ...);
+int Serialsnprintln(char buf[], unsigned int n, const char *format, ...);
 
 uint8_t hexToUint8(String hex, int startpos = 0);
 

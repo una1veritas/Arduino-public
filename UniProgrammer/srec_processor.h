@@ -27,7 +27,7 @@ typedef enum {
 boolean processS19Record(const String& record,HexRecord & hexrecord);
 boolean verifyChecksum(const String& record, HexRecord & hexrecord); //uint8_t byteCount);
 boolean processHeader(const String& record, HexRecord & hexrecord); //uint8_t byteCount);
-boolean processDataRecord(const String& record, HexRecord & hexrecord /* uint8_t byteCount*/, uint8_t addressBytes);
+boolean processDataRecord(const String& record, HexRecord & hexrecord);
 boolean processStartAddress(const String& record, uint8_t addressBytes);
 
 #endif /* SREC_PROCESSOR_H_ */

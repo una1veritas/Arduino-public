@@ -9,7 +9,6 @@
 //#include <stdarg.h>
 #include "common.h"
 
-char buf128[128];
 
 uint8_t charToNibble(char c) {
   if (c >= '0' && c <= '9') {
@@ -23,35 +22,32 @@ uint8_t charToNibble(char c) {
 }
 
 uint8_t hexToUint8(String hex, int startpos = 0) {
-  if (startpos + 2 > hex.length()) {
-	return 0;
-  }
-  uint8_t val = 0;
-  char c;
-  //Serial.println(hex);
-  for(int i = startpos; i < startpos + 2; ++i) {
-    val <<= 4;
-    val |= charToNibble(hex[i]);
-  }
-  //Serial.print("result = ");Serial.println(val, HEX);
-  return val;
+	if (startpos + 2 > hex.length()) {
+		return 0;
+	}
+	uint8_t val = 0;
+	val <<= 4;
+	val |= charToNibble(hex[startpos++]);
+	val <<= 4;
+	val |= charToNibble(hex[startpos]);
+	return val;
 }
 
-int Serialsnprint(const char *format, ...) {
+int Serialsnprint(char buf[], unsigned int n, const char *format, ...) {
     va_list args;
     va_start(args, format);
-    int result = vsnprintf(buf128, 127, format, args);
+    int result = vsnprintf(buf, n, format, args);
     va_end(args);
     Serial.print(buf128);
     return result;
 }
 
-int Serialsnprintln(const char *format, ...) {
+int Serialsnprintln(char buf[], unsigned int n, const char *format, ...) {
     va_list args;
     va_start(args, format);
-    int result = vsnprintf(buf128, 127, format, args);
+    int result = vsnprintf(buf, n, format, args);
     va_end(args);
-    result += Serial.println(buf128);
+    result += Serial.println(buf);
     return result;
 }
 
@@ -61,7 +57,6 @@ void clearWriterStatus() {
 	wstatus.recordCount = 0;
 	wstatus.errorCount = 0;
 	wstatus.checksumErrors = 0;
-	wstatus.loadInProgress = false;
 	Serial.println(F("Statistics cleared.\n"));
 }
 
@@ -84,5 +79,6 @@ void verifyData() {
 }
 
 void printWriterStatus() {
-	Serialsnprintln("total bytes written = %d, ", wstatus.totalBytesWritten);
+	Serial.print("total bytes written = ");
+	Serial.println(wstatus.totalBytesWritten, DEC);
 }
