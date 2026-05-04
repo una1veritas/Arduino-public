@@ -21,7 +21,7 @@ SPISRAM myRAM(SRAM_CS, SPISRAM::BUS_MBits); // CS pin
 
 void setup() {
   
-  Serial.begin(38400);
+  Serial.begin(57600);
   while (!Serial) {}
   
   // All SPI devices must be inactivated

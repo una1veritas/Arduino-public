@@ -22,8 +22,8 @@ extern unsigned long checksumErrors;
 extern unsigned int extendedLinearAddress;
 extern unsigned long bytesWritten;
 
-void processHexRecord(String line, HexRecord & hexrecord);
-void handleDataRecord(HexRecord & hexrecord);
+void processIHexRecord(String line, HexRecord & hexrecord);
+void handleDataRecord(const HexRecord & hexrecord);
 void handleExtendedLinearAddress(HexRecord & hexrecord);
 void handleStartLinearAddress(HexRecord & hexrecord) ;
 void handleEndOfFile(HexRecord & hexrecordp);

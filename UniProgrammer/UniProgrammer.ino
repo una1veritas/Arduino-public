@@ -35,21 +35,20 @@ enum SPI_SLAVES {
 
 SPISRAM spisram(CS_23LC1024, SPISRAM::BUS_MBits);  // CS pin
 
-uint8_t write(const uint32_t addr32, const uint8_t val8) {
+uint8_t auxmem_write(const uint32_t addr32, const uint8_t val8) {
 	spisram.write(addr32, val8);
 	return val8;
 }
 
-uint8_t read(const uint32_t addr32) {
+uint8_t auxmem_read(const uint32_t addr32) {
 	return spisram.read(addr32);
 }
 
 // Configuration
 #define SERIAL_BAUD 115200
 
-writer_status wstatus = { 0, 0, 0, 0 };
+ProgrammerStatus pgmstatus;
 HexRecord record;
-AddressContext addrcontext = { 0, 0, 0 };
 
 char buf128[128];
 String line;
@@ -99,11 +98,30 @@ unsigned int readStringUntilCrLf(String &line, unsigned int limit = 256) {
 
 void setup() {
 	Serial.begin(SERIAL_BAUD);
-	delay(500);
-	printWelcome();
+
+	pinMode(CS_23LC1024, OUTPUT);
+	digitalWrite(CS_23LC1024, HIGH);
 	SPI.begin();
 	spisram.begin();
+
+	while (!Serial) {}
+	printWelcome();
 	Serial.setTimeout(10000);
+
+//	char str[] = "S9030000FC";
+//
+//	for (int i = 0; i < strlen(str) + 1; ++i) {
+//		auxmem_write(i, 0xff);
+//	}
+//	for (int i = 0; i < strlen(str) + 1; ++i) {
+//		auxmem_write(i, str[i]);
+//	}
+//	for (int i = 0; i < strlen(str); ++i) {
+//		Serial.print((char)auxmem_read(i));
+//	}
+//	Serial.println();
+	
+	//pgmstatus.clear();
 	idleStart = millis();
 	line = "";
 }
@@ -116,27 +134,28 @@ void loop() {
 		}
 		if (line[0] == '!' ) {
 			if (line.startsWith("!L") ) {
-				Serial.println(F("Waiting data..."));
+				Serial.println();
+				Serial.println(F("Start to load new data."));
+				pgmstatus.clear();
 				idleStart = millis();
-			} else if (line.startsWith("!P") ) {
-				printWriterStatus();
+			} else if (line.startsWith("!S") ) {
+				show_pgmstatus();
 				idleStart = millis();
-			} else if ( line.startsWith("!V") ) {
-				verifyData();
-				idleStart = millis();
+			} else if ( line.startsWith("!D") ) {
+				Serial.println();
+				Serial.println("Dump loaded data:");
+				dump_auxmem();
 			} else if ( line.startsWith("!H") ) {
 				printHelp();
 				idleStart = millis();
 			} else if ( line.startsWith("!C")) {
-				clearWriterStatus();
+				//clearWriterStatus();
 				idleStart = millis();
 			}
 		} else if (line[0] == ':') {
 			// Process Intel HEX record
-			record.start_code = ':';
-			processHexRecord(line, record);
+			processIHexRecord(line, record);
 		} else if (line[0] == 'S') {
-			record.start_code = 'S';
 			processS19Record(line, record);
 		} else {
 			Serial.print(F("comment: "));
@@ -149,6 +168,42 @@ void loop() {
 		// 	Serial.println(
 		// 			F("Loading timeout: No data received for 30 seconds."));
 		// }
+	}
+}
+
+void dump_auxmem() {
+	HexRecord t;
+	uint32_t rcount = 0;
+	uint32_t ix = 0;
+	while ( auxmem_read(ix) != 0 and rcount < pgmstatus.recordCount) {
+		char * p = (char *) & t;
+		for(int i = 0; i < HexRecord::header_size(); ++i) {
+			*(p + i) = auxmem_read(ix + i);
+		}
+		ix += HexRecord::header_size();
+		for (int i = 0; i < t.datalength; ++i) {
+			t.data[i] = auxmem_read(ix + i);
+		}
+		if ( t.address >> 16 != 0 ) {
+			Serial.print(t.address>>16, HEX);
+		}
+		Serial.print(t.address>>12 & 0x0f, HEX);
+		Serial.print(t.address >> 8 & 0x0f, HEX);
+		Serial.print(t.address >> 4 & 0x0f, HEX);
+		Serial.print(t.address & 0x0f, HEX);
+		Serial.print(": ");
+		for(int i = 0; i < t.datalength; ++i) {
+			Serial.print(t.data[i]>>4 & 0x0f, HEX);
+			Serial.print(t.data[i] & 0x0f, HEX);
+			Serial.print(" ");
+		}
+		Serial.print("(");
+		Serial.print(t.datalength, DEC);
+		Serial.print(")");
+		Serial.println();
+
+		ix += t.datalength;
+		rcount += 1;
 	}
 }
 
@@ -169,15 +224,20 @@ void printHelp() {
 	Serial.println(F("========================================\n"));
 }
 
-void printStatus() {
-	Serial.print(F("\n--- Statistics ---\n"));
-	Serial.print(F("Total bytes written: "));
-	Serial.println(wstatus.totalBytesWritten);
+void show_pgmstatus() {
+	Serial.println();
+	Serial.println(F("--- Status and Statistics ---"));
 	Serial.print(F("Records processed: "));
-	Serial.println(wstatus.recordCount);
-	Serial.print(F("Errors: "));
-	Serial.println(wstatus.errorCount);
-	Serial.print(F("Start address: 0x"));
-	Serial.println(addrcontext.startLinearAddress, HEX);
+	Serial.println(pgmstatus.recordCount);
+	Serial.print(F("Record errors: "));
+	Serial.println(pgmstatus.errorCount);
+	Serial.print(F("Checksum errors: "));
+	Serial.println(pgmstatus.checksumErrors);
+	Serial.print(F("Total bytes loaded: "));
+	Serial.println(pgmstatus.totalBytesWritten);
+	Serial.print(F("start_ix: "));
+	Serial.println(pgmstatus.start_ix);
 	Serial.println();
 }
+
+

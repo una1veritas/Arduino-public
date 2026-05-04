@@ -10,6 +10,7 @@
 
 #include "common.h"
 
+/*
 // S19 record types
 typedef enum {
   SREC_HEADER = 0,      // S0 - Header record
@@ -22,12 +23,13 @@ typedef enum {
   SREC_START_24 = 8,    // S8 - 24-bit start address
   SREC_START_16 = 9     // S9 - 16-bit start address
 } SREC_RecordType;
+*/
 
+uint8_t calcChecksum(const String & line);
 
-boolean processS19Record(const String& record,HexRecord & hexrecord);
-boolean verifyChecksum(const String& record, HexRecord & hexrecord); //uint8_t byteCount);
-boolean processHeader(const String& record, HexRecord & hexrecord); //uint8_t byteCount);
-boolean processDataRecord(const String& record, HexRecord & hexrecord);
-boolean processStartAddress(const String& record, uint8_t addressBytes);
+boolean processS19Record(const String& line, HexRecord & record);
+boolean processHeader(const HexRecord & record); //uint8_t byteCount);
+boolean processDataRecord(const HexRecord & record);
+boolean processStartAddress(const HexRecord & record);
 
 #endif /* SREC_PROCESSOR_H_ */

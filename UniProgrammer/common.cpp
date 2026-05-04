@@ -51,15 +51,7 @@ int Serialsnprintln(char buf[], unsigned int n, const char *format, ...) {
     return result;
 }
 
-// clear writer status
-void clearWriterStatus() {
-	wstatus.totalBytesWritten = 0;
-	wstatus.recordCount = 0;
-	wstatus.errorCount = 0;
-	wstatus.checksumErrors = 0;
-	Serial.println(F("Statistics cleared.\n"));
-}
-
+/*
 void verifyData() {
   Serial.println(F("\nVerifying loaded data..."));
 
@@ -77,8 +69,4 @@ void verifyData() {
   Serial.print(F("Total bytes to verify: "));
   Serial.println(wstatus.totalBytesWritten);
 }
-
-void printWriterStatus() {
-	Serial.print("total bytes written = ");
-	Serial.println(wstatus.totalBytesWritten, DEC);
-}
+*/

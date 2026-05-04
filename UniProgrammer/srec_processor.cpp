@@ -16,180 +16,183 @@
 //#define BUFFER_SIZE 256
 //#define MAX_FILE_SIZE (128 * 1024)  // 128 KB
 
-/*
-void loadS19() {
-  Serial.println(F("\nEntering S19 load mode. Send S-records or 'Q' to quit.\n"));
-  
-  wstatus.loadInProgress = true;
-  unsigned long startTime = millis();
-  
-  while (wstatus.loadInProgress) {
-    if (Serial.available()) {
-      String line = Serial.readStringUntil('\n');
-      line.trim();
-      
-      if (line.length() == 0) {
-        continue;
-      }
-      
-      if (line[0] == 'Q' || line[0] == 'q') {
-        Serial.println(F("Load cancelled by user."));
-        wstatus.loadInProgress = false;
-        break;
-      }
-      
-      if (line[0] != 'S' || line.length() < 4) {
-        Serial.print(F("Invalid format: "));
-        Serial.println(line);
-        wstatus.errorCount++;
-        continue;
-      }
-      
-      if (!processS19Record(line, hexrecord)) {
-        wstatus.errorCount++;
-        Serial.println(F("Load terminated due to error."));
-        wstatus.loadInProgress = false;
-      }
-    }
-    
-    // Timeout after 30 seconds of inactivity
-    if (millis() - startTime > 30000) {
-      Serial.println(F("Timeout: No data received for 30 seconds."));
-      wstatus.loadInProgress = false;
-    }
-  }
-  
-  Serial.println(F("Load complete.\n"));
-}
-*/
-
 boolean processS19Record(const String &line, HexRecord &record) {
 	if (line.length() < 4) {
 		Serial.println(F("Error: Too short line length "));
 		Serial.println(line.length(), DEC);
-		wstatus.errorCount++;
+		pgmstatus.errorCount++;
 		return false;
 	}
-
 	//SREC_RecordType
-	record.type = (SREC_RecordType) (line[1] - '0');
+	record.type[0] = line[0];
+	record.type[1] = line[1];
+//	Serial.print("type = ");
+//	Serial.print(record.type[0]);
+//	Serial.println(record.type[1]);
 
 	// Parse byte count (position 2-3, in hex)
-	record.byteCount = hexToUint8(line, 2);
+	const uint8_t byteCount = hexToUint8(line, 2);
+//	Serial.print("byteCount = ");
+//	Serial.println(byteCount, HEX);
 
-	if (record.byteCount < 2) {
+	if ( byteCount < 2 ) {
 		// At least address + checksum
 		Serial.print(F("Error: Too small byte count "));
-		Serial.println(record.byteCount, DEC);
-		wstatus.errorCount++;
+		Serial.println(byteCount, DEC);
+		pgmstatus.errorCount++;
 		return false;
 	}
 
 	// Verify record length matches
-	int expectedLength = 4 + record.byteCount * 2;
+	int expectedLength = 4 + byteCount * 2;
 	if (line.length() != expectedLength) {
 		Serial.print(F("Error: Length mismatch, expected "));
 		Serial.print(expectedLength);
 		Serial.print(F(" but got "));
 		Serial.println(line.length());
 		Serial.println(line);
-		wstatus.errorCount++;
+		pgmstatus.errorCount++;
 		return false;
 	}
+
+	// read address
+	uint8_t addressbytes;
+	switch ((char) record.type[1]) {
+	// header message record
+	case '0': 	//SREC_HEADER: 	// type 0
+		addressbytes = 2;
+		break;
+	// data record
+	case '1': 	// SREC_DATA_16: 	// type 1
+	case '2': 	// SREC_DATA_24:	// type 2
+	case '3': 	// SREC_DATA_32: 	// type 3
+		addressbytes = record.type[1] - '1' + 2;
+		break;
+	case '5': 	// SREC_COUNT_16: // S5
+	case '6':	// SREC_COUNT_24: // S6
+		// Count records are informational, can be ignored
+		addressbytes = record.type[1] - '3';
+		break;
+	// start address (declare the termination)
+	case '7': 	// SREC_START_32:  // S7
+	case '8':	// SREC_START_24:  // S8
+	case '9':	// SREC_START_16:  // S9
+		addressbytes = '9' - record.type[1] + 2;
+		break;
+	default:
+		addressbytes = 2;
+		break;
+	}
+//	Serial.print("address bytes = ");
+//	Serial.println(addressbytes);
+
+	record.datalength = byteCount - addressbytes - 1;  // 1 for check sum
+
+	// Parse address
+	record.address = 0;
+	for(int ix = 0; ix < addressbytes; ++ix) {
+		record.address <<= 8;
+		record.address |= hexToUint8(line, 4 + (ix << 1) );
+	}
+	//Serialsnprint(buf128, 127, "addr = %04x\n", record.address);
+
+	// parse data field
+	const int dataStartPos = 4 + (addressbytes << 1);
+	for (int i = 0; i < record.datalength; i++) {
+		record.data[i] = hexToUint8(line, dataStartPos + (i << 1));
+	}
+
+	record.checksum = hexToUint8(line, 2 + (byteCount << 1));
+	//Serialsnprint(buf128, 127, "chksum = %02x, calced = %02x\n", record.checksum, calcChecksum(line));
 
 	// Verify checksum
-	if ( ! verifyChecksum(line, record) ) {
+	if ( calcChecksum(line) != record.checksum ) {
 		Serial.println(F("Error: Checksum error."));
-		wstatus.checksumErrors++;
+		pgmstatus.checksumErrors++;
 		return false;
 	}
 
-	wstatus.recordCount++;
+	// record is loaded.
+	pgmstatus.recordCount++;
 
 	// Process based on record type
-	switch (record.type) {
+	switch ((char) record.type[1]) {
 	// start record
-	case SREC_HEADER: 	// type 0
+	case '0': 	// SREC_HEADER: 	// type 0
 		// S0 header: S0 + count + address(2) + data + checksum
 		// Typically contains manufacturer info, can extract and display
-		record.datalength = record.byteCount - 3; // Subtract address (2) and checksum (1)
-		return processHeader(line, record); //byteCount);
+		return processHeader(record); //byteCount);
 
 		// data record
-	case SREC_DATA_16: 	// type 1
-	case SREC_DATA_24:	// type 2
-	case SREC_DATA_32: 	// type 3
+	case '1': 	// SREC_DATA_16: 	// type 1
+	case '2': 	// SREC_DATA_24:	// type 2
+	case '3': 	// SREC_DATA_32: 	// type 3
 		// Subtract the number of bytes for address and checksum
-		// hexrecord.byteCount - (hexrecord.type + 1) - 1;
-		record.datalength = record.byteCount - (record.type + 1 + 1);
-		return processDataRecord(line, record); //byteCount, 2);  // 2 bytes address
+		return processDataRecord(record); //byteCount, 2);  // 2 bytes address
 
 		// data record count (not official)
-	case SREC_COUNT_16:
-	case SREC_COUNT_24:
+	case '5': 	// SREC_COUNT_16:
+	case '6': 	// SREC_COUNT_24:
 		// Count records are informational, can be ignored
 		return true;
 
 		// start address (declare the termination)
-	case SREC_START_32:
-		record.datalength = 0; //hexrecord.byteCount - 4 - 1;
-		return processStartAddress(line, 4);  // 4 bytes address
-	case SREC_START_24:
-		record.datalength = 0; //hexrecord.byteCount - 3 - 1;
-		return processStartAddress(line, 3);  // 3 bytes address
-	case SREC_START_16:
-		record.datalength = 0; //hexrecord.byteCount - 2 - 1;
-		return processStartAddress(line, 2);  // 2 bytes address
+	case '7': 	// SREC_START_32:
+	case '8': 	// SREC_START_24:
+	case '9': 	// SREC_START_16:
+		return processStartAddress(record);  // 4 bytes address
 
 		// unknown type. error
 	default:
-		Serial.print(F("Unknown record type: S"));
-		Serial.println(record.type, HEX);
+		Serial.print(F("Unknown record type: "));
+		Serial.print(record.type[0]);
+		Serial.println(record.type[1]);
 		return false;
 	}
 }
 
-boolean processHeader(const String& record, HexRecord & hexrecord) { //uint8_t byteCount) {
+boolean processHeader(const HexRecord & hexrecord) { //uint8_t byteCount) {
   if (hexrecord.datalength > 0) {
-    Serial.print(F("Header: "));
+    Serial.print(F("OK Header: "));
     for (int i = 0; i < hexrecord.datalength; i++) {
-      uint8_t b = hexToUint8(record, 8 + i * 2);
-      Serial.print(b, HEX);
+      Serial.print(hexrecord.data[i], HEX);
     }
     Serial.println();
   }
-  
   return true;
 }
 
-boolean processDataRecord(const String &line, HexRecord &record) {
-	// Parse address
-	record.address = 0;
-	for (int i = 0; i < record.type + 1; i++) {
-		record.address <<= 8;
-		record.address |= hexToUint8(line, 4 + (i << 1));
-	}
-
-	// Data starts after S-record type (2) + count (2) + address until before check sum.
-	int dataStartPos = 4 + ((record.type + 1) << 1);
-
+boolean processDataRecord(const HexRecord &record) {
 	// Check if total data won't exceed 128 KB
 	if (record.address + record.datalength > 0x20000) {
 		Serial.print(F("Error: Data would exceed 128 KB limit, from 0x"));
 		Serial.print(record.address, HEX);
 		Serial.print(F(" length "));
 		Serial.println(record.datalength);
-		wstatus.errorCount++;
+		pgmstatus.errorCount++;
 		return false;
 	}
 
+//	for(int ix = 0; ix < record.datalength; ++ix) {
+//		Serial.print(record.data[ix], HEX);
+//		Serial.print(' ');
+//	}
+//	Serial.println();
 	// Write data to auxiliary memory
-	for (int i = 0; i < record.datalength; i++) {
-		record.data[i] = hexToUint8(line, dataStartPos + (i << 1));
-		wstatus.totalBytesWritten++;
+	uint8_t * ptr = (uint8_t *) & record;
+	for (uint32_t ix  = 0; ix < HexRecord::header_size(); ++ix, ++ptr) {
+		auxmem_write(pgmstatus.start_ix + ix, *ptr);
 	}
+	for (uint32_t i = 0; i < record.datalength; ++i, ++ptr) {
+		auxmem_write(pgmstatus.start_ix +  HexRecord::header_size() + i, *ptr);
+	}
+	pgmstatus.start_ix += HexRecord::header_size() + record.datalength;
+	auxmem_write(pgmstatus.start_ix, 0x00);
+
+	pgmstatus.totalBytesWritten += record.datalength;
+
 	Serial.print("OK: S");
-	Serial.print(record.type, HEX);
+	Serial.print(record.type[1]);
 	Serial.print(F(" DATA "));
 	Serial.print(record.address, HEX);
 	Serial.print(F(" -- "));
@@ -198,33 +201,29 @@ boolean processDataRecord(const String &line, HexRecord &record) {
 	return true;
 }
 
-boolean processStartAddress(const String& line, uint8_t addressBytes) {
+boolean processStartAddress(const HexRecord & record) {
   // Parse start address
 	// usually used to represent the end
-  uint32_t address = 0;
-  for (int i = 0; i < addressBytes; i++) {
-    address = (address << 8) | hexToUint8(line, 4 + i * 2);
-  }
-  addrcontext.startLinearAddress = address;
-  Serial.print(F("Start address: 0x"));
-  Serial.println(address, HEX);
+	pgmstatus.startLinearAddress = record.address;
+  Serial.print(F("OK: Start address: 0x"));
+  Serial.println(record.address, HEX);
   
   //clearWriterStatus();
   return true;
 }
 
-boolean verifyChecksum(const String& line, HexRecord & record) { //uint8_t byteCount) {
-  // Calculate checksum of all bytes except the checksum itself
+uint8_t calcChecksum(const String & line) {
+  // Calculate checksum of all bytes except the first byte "Sx" and the checksum itself
   uint8_t calculatedSum = 0;
-  
-  for (int i = 0; i < record.byteCount; i++) {
-    calculatedSum += hexToUint8(line, 2 + i * 2);
+  uint8_t byteCount = hexToUint8(line, 2);
+  for (int i = 0; i < byteCount; i++) {
+    calculatedSum += hexToUint8(line, 2 + (i << 1) );
   }
   
   // Checksum is the one's complement of the calculated sum
   uint8_t expectedChecksum = (~calculatedSum) & 0xFF;
-  uint8_t recordChecksum = hexToUint8(line, 2 + record.byteCount * 2);
-  
-  return expectedChecksum == recordChecksum;
+  //uint8_t recordChecksum = hexToUint8(line, 2 + (byteCount << 1) );
+  //return expectedChecksum == recordChecksum;
+  return expectedChecksum;
 }
 

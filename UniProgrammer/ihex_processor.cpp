@@ -25,122 +25,135 @@
  * CC = Checksum (2 hex chars)
  */
 
-void processHexRecord(String line, HexRecord & hexrecord) {
-  // Validate minimum length (:LLAAAATTCC = 11 chars)
-  if (line.length() < 11) {
-	  wstatus.errorCount += 1;
-	  Serial.print("ERROR: Invalid line length: ");
-	  Serial.println(line.length(), DEC);
-	  return;
-  }
+void processIHexRecord(String line, HexRecord &record) {
+	// set record type
+	record.type[0] = line[0];
+	record.type[1] = line[8];
+//	Serial.print("type = ");
+//	Serial.println(record.type, HEX);
 
-  // Extract byte count
-  //uint8_t byteCount
-  hexrecord.datalength = hexToUint8(line, 1);
+	// Validate minimum length (:LLAAAATTCC = 11 chars)
+	if (line.length() < 11) {
+		pgmstatus.errorCount += 1;
+		Serial.print("ERROR: Invalid line length: ");
+		Serial.println(line.length(), DEC);
+		return;
+	}
 
-  // Validate line length: :LL + AAAA + TT + DD*2 + CC
-  int expectedLength = 11 + (hexrecord.datalength * 2);
-  if (line.length() != expectedLength) {
-    // Serial.print("ERROR: Line length mismatch. Expected: ");
-    // Serial.print(expectedLength);
-    // Serial.print(" Got: ");
-    // Serial.println(line.length());
-	  wstatus.errorCount += 1;
-	  Serial.print(F("ERROR: Line length mismatch. Expected: "));
-	  Serial.print(expectedLength);
-	  Serial.print(F(" Got: "));
-	  Serial.println(line.length());
-	  for(int i = 0; i < line.length(); ++i) {
-		  if ( isprint(line[i]) ) {
-			  Serial.print(line[i]);
-		  } else {
-			  Serial.print('[');
-			  Serial.print(line[i]>>4, HEX);
-			  Serial.print(line[i]&0x0f, HEX);
-			  Serial.print(']');
-		  }
-	  }
-	  Serial.println();
-	  return;
-  }
+	// Extract byte count
+	//uint8_t byteCount
+	record.datalength = hexToUint8(line, 1);
 
-  // Extract address
-//  uint16_t address = (hexToUint8(line.substring(3, 5)) << 8) |
-//                     hexToUint8(line.substring(5, 7));
-  hexrecord.address = ( uint16_t(hexToUint8(line, 3)) << 8) | hexToUint8(line, 5);
-  // Extract record type
-  //uint8_t recordType
-  hexrecord.type = hexToUint8(line, 7); //line.substring(7, 9));
+	// Validate line length: :LL + AAAA + TT + DD*2 + CC
+	int expectedLength = 11 + (record.datalength * 2);
+	if (line.length() != expectedLength) {
+		// Serial.print("ERROR: Line length mismatch. Expected: ");
+		// Serial.print(expectedLength);
+		// Serial.print(" Got: ");
+		// Serial.println(line.length());
+		pgmstatus.errorCount += 1;
+		Serial.print(F("ERROR: Line length mismatch. Expected: "));
+		Serial.print(expectedLength);
+		Serial.print(F(" Got: "));
+		Serial.println(line.length());
+		for (int i = 0; i < line.length(); ++i) {
+			if (isprint(line[i])) {
+				Serial.print(line[i]);
+			} else {
+				Serial.print('[');
+				Serial.print(line[i] >> 4, HEX);
+				Serial.print(line[i] & 0x0f, HEX);
+				Serial.print(']');
+			}
+		}
+		Serial.println();
+		return;
+	}
 
-  // Extract data bytes
-  //uint8_t data[256];
-  for (int i = 0; i < hexrecord.datalength; i++) {
-    hexrecord.data[i] = hexToUint8(line, 9 + (i<<1));
-  }
+	// Extract address (low 16 bit)
+	//  uint16_t address = (hexToUint8(line.substring(3, 5)) << 8) |
+	//                     hexToUint8(line.substring(5, 7));
+	record.address = pgmstatus.extendedLinearAddress;
+	record.address <<= 16;
+	record.address |= (uint16_t(hexToUint8(line, 3)) << 8) | hexToUint8(line, 5);
 
-  // Extract and validate checksum
-  //uint8_t checksum =
-  hexrecord.checksum = hexToUint8(line, 9 + (hexrecord.datalength << 1));
+	// Extract data bytes
+	//uint8_t data[256];
+	for (int i = 0; i < record.datalength; i++) {
+		record.data[i] = hexToUint8(line, 9 + (i << 1));
+	}
 
-  if ( !validateChecksum(hexrecord) ) {
-    Serial.println(F("ERROR: Checksum validation failed for line:"));
-    Serial.println(line);
-    wstatus.checksumErrors++;
-    return;
-  }
+	// Extract and validate checksum
+	//uint8_t checksum =
+	record.checksum = hexToUint8(line, 9 + (record.datalength << 1));
 
-  // Handle record types
-  switch (hexrecord.type) {
-    case IHEX_DATA:
-      handleDataRecord(hexrecord);
-      break;
+	if (!validateChecksum(record)) {
+		Serial.println(F("ERROR: Checksum validation failed for line:"));
+		Serial.println(line);
+		pgmstatus.checksumErrors++;
+		return;
+	}
 
-    case IHEX_EXTENDED_LINEAR_ADDR:
-      handleExtendedLinearAddress(hexrecord);
-      break;
+	pgmstatus.recordCount++;
 
-    case IHEX_START_LINEAR_ADDR:
-      handleStartLinearAddress(hexrecord);
-      break;
+	// Handle record types
+	switch ((char) record.type[1]) {
+	case '0': //IHEX_DATA:
+		handleDataRecord(record);
+		break;
 
-    case IHEX_END_OF_FILE:
-      handleEndOfFile(hexrecord);
-      break;
+	case '4': //IHEX_EXTENDED_LINEAR_ADDR:
+		handleExtendedLinearAddress(record);
+		break;
 
-    default:
-      Serial.print(F("WARNING: Unknown record type: 0x"));
-      Serial.println(hexrecord.type, HEX);
-      break;
-  }
+	case '5': //IHEX_START_LINEAR_ADDR:
+		handleStartLinearAddress(record);
+		break;
+
+	case '1': //IHEX_END_OF_FILE:
+		handleEndOfFile(record);
+		break;
+
+	default:
+		Serial.print(F("WARNING: Unknown record type: 0x0"));
+		Serial.print((char) record.type[1]);
+		Serial.println(F(", ignored."));
+		break;
+	}
 }
 
 /*
  * Handle Data Record (Type 0x00)
  * Writes data to EEPROM at the computed address
  */
-void handleDataRecord(HexRecord & hexrecord) {
-  // Compute full address (extended + base address)
-  unsigned long fullAddress = (uint32_t(addrcontext.extLinearAddress) << 16) | hexrecord.address;
+void handleDataRecord(const HexRecord & record) {
+	// Check if address is within memory bounds
+	if ( record.address +  record.datalength > 0x20000) {
+		pgmstatus.errorCount += 1;
+		Serial.print(F("ERROR: Address out of memory bounds: "));
+		Serialsnprintln(buf128, 127, "0x%04x (size: 0x%04x)",  record.address, 0x20000);
+		return;
+	}
 
-  // Check if address is within memory bounds
-  if (fullAddress + hexrecord.datalength > 0x20000 ) {
-	  wstatus.errorCount += 1;
-	  Serial.print(F("ERROR: Address out of memory bounds: "));
-	  Serialsnprintln(buf128, 127, "0x%04x (size: 0x%04x)", fullAddress, 0x20000);
-    return;
-  }
+	// Write data to auxiliary memory
+	uint8_t * ptr = (uint8_t *) & record;
+	for (uint32_t ix = 0; ix < record.header_size(); ++ix, ++ptr) {
+		auxmem_write(pgmstatus.start_ix + ix, *ptr);
+	}
+	for (uint32_t ix = 0; ix < record.datalength; ++ix, ++ptr) {
+		auxmem_write(pgmstatus.start_ix + record.header_size() + ix, *ptr);
+	}
+	pgmstatus.start_ix += record.header_size() + record.datalength;
+	auxmem_write(pgmstatus.start_ix, 0x00);
 
-  // Write data to EEPROM
-  for (int i = 0; i < hexrecord.datalength; ++i) {
-    write(fullAddress + i, hexrecord.data[i]);
-  }
+	pgmstatus.totalBytesWritten +=  record.datalength;
 
-  Serial.print(F("OK: I DATA "));
-  Serial.print(fullAddress, HEX);
-  Serial.print(F(" -- "));
-  Serial.println(fullAddress + hexrecord.datalength - 1, HEX);
+	Serial.print(F("OK: I DATA "));
+	Serial.print( record.address, HEX);
+	Serial.print(F(" -- "));
+	Serial.println( record.address +  record.datalength - 1, HEX);
 
-  wstatus.totalBytesWritten += hexrecord.datalength;
+	pgmstatus.totalBytesWritten +=  record.datalength;
 }
 
 /*
@@ -149,17 +162,17 @@ void handleDataRecord(HexRecord & hexrecord) {
  */
 void handleExtendedLinearAddress(HexRecord &hexrecord) {
 	if (hexrecord.datalength != 2) {
-		wstatus.errorCount += 1;
+		pgmstatus.errorCount += 1;
 		Serialsnprintln(buf128, 127,
 				"ERROR: Extended Linear Address record must have 2 bytes, got: %d",
 				hexrecord.datalength);
 		return;
 	}
 
-	addrcontext.extLinearAddress = (uint16_t(hexrecord.data[0]) << 8) | hexrecord.data[1];
+	pgmstatus.extendedLinearAddress = (uint16_t(hexrecord.data[0]) << 8) | hexrecord.data[1];
 
 	Serial.print(F("OK: Extended Linear Address (high 16bit) set to 0x"));
-	Serial.println(addrcontext.extLinearAddress, HEX);
+	Serial.println(pgmstatus.extendedLinearAddress, HEX);
 }
 
 /*
@@ -173,16 +186,17 @@ void handleStartLinearAddress(HexRecord & hexrecord) { //uint8_t byteCount, uint
     return;
   }
 
-  addrcontext.startLinearAddress = hexrecord.data[0];
-  addrcontext.startLinearAddress <<= 8;
-  addrcontext.startLinearAddress |= hexrecord.data[1];
-  addrcontext.startLinearAddress <<= 8;
-  addrcontext.startLinearAddress |= hexrecord.data[2];
-  addrcontext.startLinearAddress <<= 8;
-  addrcontext.startLinearAddress |= hexrecord.data[3];
+  uint32_t startaddress = hexrecord.data[0];
+  startaddress <<= 8;
+  startaddress |= hexrecord.data[1];
+  startaddress <<= 8;
+  startaddress |= hexrecord.data[2];
+  startaddress <<= 8;
+  startaddress |= hexrecord.data[3];
+  pgmstatus.startLinearAddress = startaddress;
 
-  Serial.print(F("OK: Start Linear Address (32 bits): 0x"));
-  Serial.println(addrcontext.startLinearAddress, HEX);
+  Serial.print(F("OK: Start Linear Address changed to: 0x"));
+  Serial.println(pgmstatus.startLinearAddress, HEX);
 }
 
 /*
@@ -190,39 +204,28 @@ void handleStartLinearAddress(HexRecord & hexrecord) { //uint8_t byteCount, uint
  * Signals end of data transmission
  */
 void handleEndOfFile(HexRecord & hexrecord) {
-  Serial.println(F("---"));
-  Serial.print(F("iHex load complete!"));
-  Serial.print(F(" Total bytes loaded: "));
-  Serial.println(wstatus.totalBytesWritten);
-  Serial.print(F("Checksum errors: "));
-  Serial.println(wstatus.checksumErrors);
-
-  // Reset counters for next session
-  //clearWriterStatus();
-//  wstatus.totalBytesWritten = 0;
-//  wstatus.checksumErrors = 0;
-//  wstatus.extendedLinearAddress = 0;
-  clearWriterStatus(); // wstatus.loadInProgress = false;
+  //Serial.println(F("---"));
+  Serial.println(F("OK: I end-of-file"));
 }
 
 /*
  * Validate Intel HEX checksum
  * Checksum = two's complement of sum of all bytes except checksum
  */
-bool validateChecksum(HexRecord & hexrecord) {
-  uint8_t sum = hexrecord.datalength;
-  sum += (hexrecord.address >> 8) & 0xFF;
-  sum += hexrecord.address & 0xFF;
-  sum += hexrecord.type;
+bool validateChecksum(HexRecord & record) {
+  uint8_t sum = record.datalength;
+  sum += (record.address >> 8) & 0xFF;
+  sum += record.address & 0xFF;
+  sum += (record.type[1] - '0') & 0xff;
 
-  for (int i = 0; i < hexrecord.datalength; i++) {
-    sum += hexrecord.data[i];
+  for (int i = 0; i < record.datalength; i++) {
+    sum += record.data[i];
   }
 
   // Checksum validation: (sum + checksum) should equal 0x00 (two's complement)
   uint8_t calculatedChecksum = (~sum + 1) & 0xFF;
 
-  return hexrecord.checksum == calculatedChecksum;
+  return record.checksum == calculatedChecksum;
 }
 
 /*
