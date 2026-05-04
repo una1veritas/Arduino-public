@@ -21,6 +21,8 @@ Replace yourfile.hex with your Intel HEX filename
 
 #include <SPI.h>
 #include <SPISRAM.h>
+#include <MCP23S08.h>
+#include <MCP23S17.h>
 
 #include "common.h"
 
@@ -28,12 +30,20 @@ Replace yourfile.hex with your Intel HEX filename
 #include "srec_processor.h"
 
 enum SPI_SLAVES {
-	CS_23LC1024 = 10,
-	CS_MCP23S08 = 9,
-	CS_MCP23S17 = 8,
+  CS_MCP23S17 = 8,
+  CS_MCP23S08 = 9,
+  CS_23LC1024 = 10,
+};
+
+enum {
+  MEM_CE = 14,  // A0, 10k pull-upped
+  MEM_OE = 15,  // A1
+  MEM_WE = 16,  // A2
 };
 
 SPISRAM spisram(CS_23LC1024, SPISRAM::BUS_MBits);  // CS pin
+MCP23S17 addrbusx(CS_MCP23S17, 1);
+MCP23S08 databusx(CS_MCP23S08, 0);
 
 uint8_t auxmem_write(const uint32_t addr32, const uint8_t val8) {
 	spisram.write(addr32, val8);
@@ -42,6 +52,50 @@ uint8_t auxmem_write(const uint32_t addr32, const uint8_t val8) {
 
 uint8_t auxmem_read(const uint32_t addr32) {
 	return spisram.read(addr32);
+}
+
+uint8_t AT28C64_read(const uint16_t & addr) {
+  uint8_t val;
+  digitalWrite(MEM_WE, HIGH); // only to ensure
+  addrbusx.write_GPIO16(addr);
+  databusx.write_IODIR(databusx.IODIR_INPUT8);
+  digitalWrite(MEM_CE, LOW);
+  digitalWrite(MEM_OE, LOW);
+  val = databusx.read_GPIO();
+  digitalWrite(MEM_OE, HIGH);
+  digitalWrite(MEM_CE, HIGH);
+  return val;
+}
+
+// AT28C64 single byte write
+uint8_t AT28C64_write(const uint16_t & addr, const uint8_t val) {
+  digitalWrite(MEM_OE, HIGH); // to ensure
+  addrbusx.write_GPIO16(addr);
+  databusx.write_IODIR(databusx.IODIR_OUTPUT8);
+  databusx.disable_pullup();
+  digitalWrite(MEM_CE, LOW);
+  digitalWrite(MEM_WE, LOW);
+  __asm__ __volatile__ ("nop\n\t");   // 62.5ns for t_AH min = 50ns
+  databusx.write_GPIO(val);
+  __asm__ __volatile__ ("nop\n\t");   // 62.5ns for t_DS min = 50ns
+  // t_WP > 100ns
+  digitalWrite(MEM_WE, HIGH);
+  digitalWrite(MEM_CE, HIGH);
+  databusx.enable_pullup();
+  databusx.write_IODIR(databusx.IODIR_INPUT8);
+
+  // DATA polling to observe the end of write cycle
+  uint8_t t;
+  //uint8_t count = 0;
+  digitalWrite(MEM_CE, LOW);  
+  digitalWrite(MEM_OE, LOW);
+  do {
+    t = databusx.read_GPIO();
+  } while ( t != val );
+  digitalWrite(MEM_OE, HIGH);
+  digitalWrite(MEM_CE, HIGH);
+  //Serial.println(count);
+  return t;
 }
 
 // Configuration
@@ -99,9 +153,27 @@ unsigned int readStringUntilCrLf(String &line, unsigned int limit = 256) {
 void setup() {
 	Serial.begin(SERIAL_BAUD);
 
-	pinMode(CS_23LC1024, OUTPUT);
-	digitalWrite(CS_23LC1024, HIGH);
-	SPI.begin();
+  // ensure to disable all the SPI slave devices. 
+  pinMode(CS_23LC1024, OUTPUT); digitalWrite(CS_23LC1024, HIGH);
+  pinMode(CS_MCP23S08, OUTPUT); digitalWrite(CS_MCP23S08, HIGH);
+  pinMode(CS_MCP23S17, OUTPUT); digitalWrite(CS_MCP23S17, HIGH);
+
+	// EEPROM control lines
+  pinMode(MEM_CE, OUTPUT); digitalWrite(MEM_CE, HIGH);
+  pinMode(MEM_WE, OUTPUT); digitalWrite(MEM_WE, HIGH);
+  pinMode(MEM_OE, OUTPUT); digitalWrite(MEM_OE, HIGH);
+
+  SPI.begin();
+
+  databusx.begin();
+  databusx.write_GPPU(databusx.GPPU_ENABLE8);
+  databusx.write_IODIR(databusx.IODIR_INPUT8);
+
+  addrbusx.begin();
+  addrbusx.write_IODIR16(addrbusx.IODIR_OUTPUT16); // 1 input/0 output, 
+  // A0 -- A12 is active, A13 is NC, A14 (pin 1) is NC or RDY/BUSY
+  addrbusx.write_GPPU16(addrbusx.GPPU_DISABLE16); // 1 input/0 output, 
+
 	spisram.begin();
 
 	while (!Serial) {}
@@ -145,6 +217,10 @@ void loop() {
 				Serial.println();
 				Serial.println("Dump loaded data:");
 				dump_auxmem();
+			} else if ( line.startsWith("!W") ) {
+				Serial.println();
+				Serial.println("Write loaded data to ROM:");
+				auxmem_to_AT28C64();
 			} else if ( line.startsWith("!H") ) {
 				printHelp();
 				idleStart = millis();
@@ -168,6 +244,36 @@ void loop() {
 		// 	Serial.println(
 		// 			F("Loading timeout: No data received for 30 seconds."));
 		// }
+	}
+}
+
+void auxmem_to_AT28C64() {
+	HexRecord t;
+	uint32_t rcount = 0;
+	uint32_t ix = 0;
+	while ( auxmem_read(ix) != 0 and rcount < pgmstatus.recordCount) {
+		char * p = (char *) & t;
+		for(int i = 0; i < HexRecord::header_size(); ++i) {
+			*(p + i) = auxmem_read(ix + i);
+		}
+		ix += HexRecord::header_size();
+		for (int i = 0; i < t.datalength; ++i) {
+			t.data[i] = auxmem_read(ix + i);
+		}
+		if ( t.address >> 16 != 0 ) {
+			Serial.print(t.address>>16, HEX);
+		}
+		Serial.print(t.address>>12 & 0x0f, HEX);
+		Serial.print(t.address >> 8 & 0x0f, HEX);
+		Serial.print(t.address >> 4 & 0x0f, HEX);
+		Serial.print(t.address & 0x0f, HEX);
+		Serial.print(": ");
+		for(int i = 0; i < t.datalength; ++i) {
+			AT28C64_write(t.address + i, t.data[i]);
+		}
+		Serial.println(" Ok.");
+		ix += t.datalength;
+		rcount += 1;
 	}
 }
 

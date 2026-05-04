@@ -9,14 +9,13 @@ enum SPI_SLAVES {
 };
 
 enum {
-  MEM_WE = 16,
-  MEM_OE = 15,
-  MEM_CE = 14,
+  MEM_CE = 14,  // A0, 10k pull-upped
+  MEM_OE = 15,  // A1
+  MEM_WE = 16,  // A2
 };
 
 enum {
-  AT28C64_IODIR_BITS = 0xe000,
-  AT28C64_GPIO_HIGH_MASK = 0xe000, // or-ed with value
+  ADDRESS13_MASK = 0x1fff,
 };
 
 MCP23S08 databusx(CS_MCP23S08, 0);
@@ -24,8 +23,9 @@ MCP23S17 addrbusx(CS_MCP23S17, 1);
 
 uint8_t mem_read(const uint16_t & addr) {
   uint8_t val;
-  digitalWrite(MEM_WE, HIGH); // ensure
+  digitalWrite(MEM_WE, HIGH); // only to ensure
   addrbusx.write_GPIO16(addr);
+  databusx.write_IODIR(databusx.IODIR_INPUT8);
   digitalWrite(MEM_CE, LOW);
   digitalWrite(MEM_OE, LOW);
   val = databusx.read_GPIO();
@@ -35,7 +35,7 @@ uint8_t mem_read(const uint16_t & addr) {
 }
 
 uint8_t AT28Cxx_byte_write(const uint16_t & addr, const uint8_t val) {
-  digitalWrite(MEM_OE, HIGH); // ensure
+  digitalWrite(MEM_OE, HIGH); // to ensure
   addrbusx.write_GPIO16(addr);
   databusx.write_IODIR(databusx.IODIR_OUTPUT8);
   databusx.disable_pullup();
@@ -50,10 +50,10 @@ uint8_t AT28Cxx_byte_write(const uint16_t & addr, const uint8_t val) {
   databusx.enable_pullup();
   databusx.write_IODIR(databusx.IODIR_INPUT8);
 
-  // DATA polling to observe the end of this write cycle
+  // DATA polling to observe the end of write cycle
   uint8_t t;
   //uint8_t count = 0;
-  digitalWrite(MEM_CE, LOW);
+  digitalWrite(MEM_CE, LOW);  
   digitalWrite(MEM_OE, LOW);
   do {
     t = databusx.read_GPIO();
@@ -113,7 +113,7 @@ const String textdata =
 void setup() {
   uint8_t val;
   char tmp[128];
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("Hello.");
 
   // ensure to disable all the SPI slave devices. 
@@ -134,9 +134,9 @@ void setup() {
   addrbusx.begin();
   // addr bus ioxt default setting 
   //addrbusx.hw_address_enable();
-  addrbusx.write_IODIR16(AT28C64_IODIR_BITS); // 1 input/0 output, 
+  addrbusx.write_IODIR16(addrbusx.IODIR_OUTPUT16); // 1 input/0 output, 
   // A0 -- A12 is active, A13 is NC, A14 (pin 1) is NC or RDY/BUSY
-  addrbusx.write_GPPU16(AT28C64_IODIR_BITS); // 1 input/0 output, 
+  addrbusx.disable_pullup16(); // 1 input/0 output, 
 
   Serial.println("SPI and IO Extender started.");
 
