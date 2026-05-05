@@ -8,6 +8,8 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
+#include <SPISRAM.h>
+
 //enum RecordType {
 //	S0 =  0x5300 ,	// S0 - Header record
 //	S1 =  0x5301 ,	// S1 - 16-bit address data record
@@ -80,8 +82,7 @@ int Serialsnprintln(char buf[], unsigned int n, const char *format, ...);
 
 uint8_t hexToUint8(String hex, int startpos = 0);
 
-uint8_t auxmem_write(const uint32_t addr32, const uint8_t val8);
-uint8_t auxmem_read(const uint32_t addr32);
+extern SPISRAM auxsram;
 
 //void verifyData();
 void clear_pgmstatus();

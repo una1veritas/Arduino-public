@@ -41,20 +41,15 @@ enum {
   MEM_WE = 16,  // A2
 };
 
-SPISRAM spisram(CS_23LC1024, SPISRAM::BUS_MBits);  // CS pin
+SPISRAM auxsram(CS_23LC1024, SPISRAM::BUS_MBits);  // CS pin
 MCP23S17 addrbusx(CS_MCP23S17, 1);
 MCP23S08 databusx(CS_MCP23S08, 0);
 
-uint8_t auxmem_write(const uint32_t addr32, const uint8_t val8) {
-	spisram.write(addr32, val8);
-	return val8;
-}
+enum ADDRESS_MASK {
+	    ADDRMASK_AT28C64 = 0x1fff, // 8KB/13 bits
+};
 
-uint8_t auxmem_read(const uint32_t addr32) {
-	return spisram.read(addr32);
-}
-
-uint8_t AT28C64_read(const uint16_t & addr) {
+uint8_t rom_read(const uint16_t & addr) {
   uint8_t val;
   digitalWrite(MEM_WE, HIGH); // only to ensure
   addrbusx.write_GPIO16(addr);
@@ -68,7 +63,7 @@ uint8_t AT28C64_read(const uint16_t & addr) {
 }
 
 // AT28C64 single byte write
-uint8_t AT28C64_write(const uint16_t & addr, const uint8_t val) {
+uint8_t rom_write(const uint16_t & addr, const uint8_t val) {
   digitalWrite(MEM_OE, HIGH); // to ensure
   addrbusx.write_GPIO16(addr);
   databusx.write_IODIR(databusx.IODIR_OUTPUT8);
@@ -107,16 +102,13 @@ HexRecord record;
 char buf128[128];
 String line;
 
-unsigned long idleStart;
-const unsigned long timeout = 5000;
-
 bool char_isin(const char c, const char * str) {
 	char * p;
 	for (p = str; *p != 0 and *p != c ; ++p);
 	return *p != 0;
 }
 
-unsigned int readStringUntilCrLf(String &line, unsigned int limit = 256) {
+unsigned int readStringUntilCrLf(String &line, const unsigned int & limit = 256, const unsigned long & timeout = 10000) {
 	char c;
 	line = "";
 	unsigned int n = 0;
@@ -174,7 +166,7 @@ void setup() {
   // A0 -- A12 is active, A13 is NC, A14 (pin 1) is NC or RDY/BUSY
   addrbusx.write_GPPU16(addrbusx.GPPU_DISABLE16); // 1 input/0 output, 
 
-	spisram.begin();
+	auxsram.begin();
 
 	while (!Serial) {}
 	printWelcome();
@@ -194,7 +186,6 @@ void setup() {
 //	Serial.println();
 	
 	//pgmstatus.clear();
-	idleStart = millis();
 	line = "";
 }
 
@@ -209,24 +200,27 @@ void loop() {
 				Serial.println();
 				Serial.println(F("Start to load new data."));
 				pgmstatus.clear();
-				idleStart = millis();
 			} else if (line.startsWith("!S") ) {
 				show_pgmstatus();
-				idleStart = millis();
 			} else if ( line.startsWith("!D") ) {
 				Serial.println();
 				Serial.println("Dump loaded data:");
 				dump_auxmem();
+				Serial.println("Dump loaded data finished.");
 			} else if ( line.startsWith("!W") ) {
 				Serial.println();
 				Serial.println("Write loaded data to ROM:");
-				auxmem_to_AT28C64();
+				write_to_rom(ADDRMASK_AT28C64);
+				Serial.println("Write to ROM finished.");
+			} else if ( line.startsWith("!V") ) {
+				Serial.println();
+				Serial.println("Dump rom data:");
+				dump_rom(ADDRMASK_AT28C64);
+				Serial.println("Dump rom finished.");
 			} else if ( line.startsWith("!H") ) {
 				printHelp();
-				idleStart = millis();
-			} else if ( line.startsWith("!C")) {
+			//} else if ( line.startsWith("!C")) {
 				//clearWriterStatus();
-				idleStart = millis();
 			}
 		} else if (line[0] == ':') {
 			// Process Intel HEX record
@@ -239,37 +233,31 @@ void loop() {
 		}
 
 		line = "";
-		// // Timeout after 30 seconds of inactivity
-		// if (millis() - idleStart > 30000 ) {
-		// 	Serial.println(
-		// 			F("Loading timeout: No data received for 30 seconds."));
-		// }
+
 	}
 }
 
-void auxmem_to_AT28C64() {
+void write_to_rom(const uint16_t & addr_mask) {
 	HexRecord t;
 	uint32_t rcount = 0;
 	uint32_t ix = 0;
-	while ( auxmem_read(ix) != 0 and rcount < pgmstatus.recordCount) {
+	while ( auxsram.read(ix) != 0 and rcount < pgmstatus.recordCount) {
 		char * p = (char *) & t;
 		for(int i = 0; i < HexRecord::header_size(); ++i) {
-			*(p + i) = auxmem_read(ix + i);
+			*(p + i) = auxsram.read(ix + i);
 		}
 		ix += HexRecord::header_size();
 		for (int i = 0; i < t.datalength; ++i) {
-			t.data[i] = auxmem_read(ix + i);
+			t.data[i] = auxsram.read(ix + i);
 		}
+		Serial.print("0x");
 		if ( t.address >> 16 != 0 ) {
-			Serial.print(t.address>>16, HEX);
+			Serialsnprint(buf128, 127, "%04X", t.address >> 16 & 0xffff);
 		}
-		Serial.print(t.address>>12 & 0x0f, HEX);
-		Serial.print(t.address >> 8 & 0x0f, HEX);
-		Serial.print(t.address >> 4 & 0x0f, HEX);
-		Serial.print(t.address & 0x0f, HEX);
+		Serialsnprint(buf128, 127, "%04X", t.address & 0xffff);
 		Serial.print(": ");
 		for(int i = 0; i < t.datalength; ++i) {
-			AT28C64_write(t.address + i, t.data[i]);
+			rom_write( (t.address + i) & ADDRMASK_AT28C64 , t.data[i]);
 		}
 		Serial.println(" Ok.");
 		ix += t.datalength;
@@ -281,38 +269,49 @@ void dump_auxmem() {
 	HexRecord t;
 	uint32_t rcount = 0;
 	uint32_t ix = 0;
-	while ( auxmem_read(ix) != 0 and rcount < pgmstatus.recordCount) {
+	while ( auxsram.read(ix) != 0 and rcount < pgmstatus.recordCount) {
 		char * p = (char *) & t;
 		for(int i = 0; i < HexRecord::header_size(); ++i) {
-			*(p + i) = auxmem_read(ix + i);
+			*(p + i) = auxsram.read(ix + i);
 		}
 		ix += HexRecord::header_size();
 		for (int i = 0; i < t.datalength; ++i) {
-			t.data[i] = auxmem_read(ix + i);
+			t.data[i] = auxsram.read(ix + i);
 		}
-		if ( t.address >> 16 != 0 ) {
-			Serial.print(t.address>>16, HEX);
-		}
-		Serial.print(t.address>>12 & 0x0f, HEX);
-		Serial.print(t.address >> 8 & 0x0f, HEX);
-		Serial.print(t.address >> 4 & 0x0f, HEX);
-		Serial.print(t.address & 0x0f, HEX);
-		Serial.print(": ");
+		bool first = true;
 		for(int i = 0; i < t.datalength; ++i) {
-			Serial.print(t.data[i]>>4 & 0x0f, HEX);
-			Serial.print(t.data[i] & 0x0f, HEX);
-			Serial.print(" ");
-		}
-		Serial.print("(");
-		Serial.print(t.datalength, DEC);
-		Serial.print(")");
-		Serial.println();
+			if ( ((t.address + i) & 0x000f) == 0 or first ) {
+				Serial.println();
+				Serial.print(F("0x"));
+				if ( (t.address + i) >> 16 != 0 ) {
+					Serialsnprint(buf128, 127, "%04X", (t.address + i) >> 16);
+				}
+				Serialsnprint(buf128, 127, "%04X: ", (t.address + i) & 0xffff);
+		        first = false;
+			}
+			Serialsnprint(buf128, 127, "%02X ", t.data[i]);
 
+		}
 		ix += t.datalength;
 		rcount += 1;
 	}
+	Serial.println();
 }
 
+void dump_rom(const uint16_t & addr_mask) {
+	for (uint32_t addr = 0; addr < uint32_t(addr_mask) + 1; addr += 16) {
+        Serial.print("0x");
+        Serialsnprint(buf128, 127, "%04X", addr);
+        Serial.print(": ");
+        for (int i = 0; i < 16; ++i) {
+            uint8_t val = rom_read( (addr + i) & addr_mask );
+            Serial.print(val>>4 & 0x0f, HEX);
+            Serial.print(val & 0x0f, HEX);
+            Serial.print(" ");
+        }
+        Serial.println();
+	}
+}
 
 void printWelcome() {
 	Serial.println(F("\n========================================"));

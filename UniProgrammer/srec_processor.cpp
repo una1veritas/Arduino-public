@@ -181,13 +181,13 @@ boolean processDataRecord(const HexRecord &record) {
 	// Write data to auxiliary memory
 	uint8_t * ptr = (uint8_t *) & record;
 	for (uint32_t ix  = 0; ix < HexRecord::header_size(); ++ix, ++ptr) {
-		auxmem_write(pgmstatus.start_ix + ix, *ptr);
+		auxsram.write(pgmstatus.start_ix + ix, *ptr);
 	}
 	for (uint32_t i = 0; i < record.datalength; ++i, ++ptr) {
-		auxmem_write(pgmstatus.start_ix +  HexRecord::header_size() + i, *ptr);
+		auxsram.write(pgmstatus.start_ix +  HexRecord::header_size() + i, *ptr);
 	}
 	pgmstatus.start_ix += HexRecord::header_size() + record.datalength;
-	auxmem_write(pgmstatus.start_ix, 0x00);
+	auxsram.write(pgmstatus.start_ix, 0x00);
 
 	pgmstatus.totalBytesWritten += record.datalength;
 
