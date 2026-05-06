@@ -155,10 +155,17 @@ boolean processHeader(const HexRecord & hexrecord) { //uint8_t byteCount) {
   if (hexrecord.datalength > 0) {
     Serial.print(F("OK Header: "));
     for (int i = 0; i < hexrecord.datalength; i++) {
-      Serial.print(hexrecord.data[i], HEX);
+      Serialsnprint(buf128, 127, "%02X ", hexrecord.data[i]);
     }
     Serial.println();
-  }
+    for (int i = 0; i < hexrecord.datalength; i++) {
+    	if ( isprint(hexrecord.data[i]) ) {
+    		Serial.print( (char) hexrecord.data[i]);
+    	} else {
+    		Serial.print(F("?"));
+    	}
+    }
+    Serial.println();  }
   return true;
 }
 
