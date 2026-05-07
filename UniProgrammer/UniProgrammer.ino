@@ -21,10 +21,8 @@ Replace yourfile.hex with your Intel HEX filename
 
 #include <SPI.h>
 #include <SPISRAM.h>
-//#include <MCP23S08.h>
-//#include <MCP23S17.h>
-
-#include "uni_programmer.h"
+#include <MCP23S08.h>
+#include <MCP23S17.h>
 
 #include "common.h"
 
