@@ -21,8 +21,8 @@ Replace yourfile.hex with your Intel HEX filename
 
 #include <SPI.h>
 #include <SPISRAM.h>
-//#include <MCP23S08.h>
-//#include <MCP23S17.h>
+#include <MCP23S08.h>
+#include <MCP23S17.h>
 
 #include "uni_programmer.h"
 
@@ -44,8 +44,9 @@ enum {
 };
 
 SPISRAM auxsram(CS_23LC1024, SPISRAM::BUS_MBits);  // CS pin
-MCP23S17 addrbusx(CS_MCP23S17, 1);
-MCP23S08 databusx(CS_MCP23S08, 0);
+MCP23S17 ioex16(CS_MCP23S17, 1);
+MCP23S08 ioex8(CS_MCP23S08, 0);
+IOEX_EEPROM ioex_rom(ioex16, ioex8, MEM_CE, MEM_OE, MEM_WE);
 
 enum MEM_TYPE {
 	ROM_AT28C64 = 0,
@@ -74,6 +75,7 @@ uint32_t get_addr_mask(const uint8_t & rom_type) {
     }
 }
 
+/*
 // common CE/OE controlled RAM/ROM byte read
 uint8_t mem_read(const uint16_t & addr) {
   uint8_t val;
@@ -180,7 +182,6 @@ bool eeprom_page64_write(const uint16_t & start_addr, const uint8_t * valptr, co
   return t != val;
 }
 
-
 void rom_SDP_set(const bool &enable) {
 	// AT28C64B has software data protection (SDP) feature, which requires a series of write-commands.
 	// This function is used to enable or disable the SDP feature.
@@ -203,19 +204,10 @@ void rom_SDP_set(const bool &enable) {
 		Serial.println(eeprom_byte_write(0x5555 & addrmask, 0xaa), HEX);
 		Serial.println(eeprom_byte_write(0x2aaa & addrmask, 0x55), HEX);
 		Serial.println(eeprom_byte_write(0x5555 & addrmask, 0x20), HEX);
-		/*
-		for(int i = 0; i < 64; ++i) {
-			Serial.print(rom_write(i, buf[i]) == buf[i]);
-            Serial.print(" ");
-            if ( (i & 0x0f) == 0x0f ) {
-                Serial.println();
-            }
-        }
-		*/
 	}
 	return;
 }
-
+*/
 
 // Configuration
 #define SERIAL_BAUD 115200
@@ -281,16 +273,17 @@ void setup() {
 
   SPI.begin();
 
-  databusx.begin();
-  databusx.write_GPPU(databusx.GPPU_ENABLE8);
-  databusx.write_IODIR(databusx.IODIR_INPUT8);
+  //databusx.begin();
+  //databusx.write_GPPU(databusx.GPPU_ENABLE8);
+  //databusx.write_IODIR(databusx.IODIR_INPUT8);
 
-  addrbusx.begin();
-  addrbusx.write_IODIR16(addrbusx.IODIR_OUTPUT16); // 1 input/0 output, 
+  //addrbusx.begin();
+  //addrbusx.write_IODIR16(addrbusx.IODIR_OUTPUT16); // 1 input/0 output, 
   // A0 -- A12 is active, A13 is NC, A14 (pin 1) is NC or RDY/BUSY
-  addrbusx.write_GPPU16(addrbusx.GPPU_DISABLE16); // 1 input/0 output, 
+  //addrbusx.write_GPPU16(addrbusx.GPPU_DISABLE16); // 1 input/0 output, 
 
 	auxsram.begin();
+	ioex_rom.begin();
 
 	while (!Serial) {}
 	printWelcome();
@@ -333,7 +326,7 @@ void loop() {
 
 			} else if (line.startsWith("!H")) {
 				printHelp();
-
+/*
 			} else if (line.startsWith("!PD")) {
 				Serial.println();
 				rom_SDP_set(false);
@@ -343,7 +336,7 @@ void loop() {
 				Serial.println();
 				rom_SDP_set(true);
 				Serial.println(F("Software protection enabled."));
-
+*/
 			} else if (line.startsWith("!R")) {
 				Serial.println();
 				Serial.println(F("Read memory:"));
@@ -437,27 +430,22 @@ void write_to_rom(const uint16_t & addr_mask) {
 		if (rom_type == ROM_AT28C64 or rom_type == ROM_UNKNOWN) {
 			// supports only byte write
 			for(int i = 0; i < t.datalength; ++i) {
-				uint8_t wval = eeprom_byte_write( (t.address + i) & addrmask , t.data[i]);
-				if (wval != t.data[i]) {
+				bool succeeded = ioex_rom.write_byte( (t.address + i) & addrmask , t.data[i]);
+				if (! succeeded) {
 					pgmstatus.errorCount += 1;
 					err_flag = true;
 	                Serial.print("Error: Write failed at 0x");
-	                Serialsnprint(buf128, 127, "%04X", t.address + i);
-	                Serial.print(": expected 0x");
-	                Serialsnprint(buf128, 127, "%02X", t.data[i]);
-	                Serial.print(" but results 0x");
-	                Serialsnprint(buf128, 127, "%02X", wval);
-	                Serial.println();
+	                Serialsnprintln(buf128, 127, "%04X", t.address + i);
 	            }
 			}
-		} else if (rom_type == ROM_AT28C64B or rom_type == ROM_HN58C256) {
+		} /* else if (rom_type == ROM_AT28C64B or rom_type == ROM_HN58C256) {
 			err_flag = eeprom_page64_write(t.address & addrmask, t.data, t.datalength);
 			if ( err_flag == false) {
 				pgmstatus.errorCount += 1;
                 Serial.print("Error: Write failed at 0x");
                 Serialsnprintln(buf128, 127, "%04X", t.address & addrmask);
             }
-		}
+		} */
 
 		if (not err_flag) {
 			Serial.println(" Ok.");
@@ -510,7 +498,7 @@ void dump_target(const uint32_t & startaddr, const uint32_t & stopaddr) {
         Serialsnprint(buf128, 127, "%04X", addr);
         Serial.print(": ");
         for (int i = 0; i < 16; ++i) {
-            uint8_t val = mem_read(addr + i);
+            uint8_t val = ioex_rom.read_byte(addr + i);
             Serialsnprint(buf128, 127, "%02X ", val);
         }
         Serial.println();
