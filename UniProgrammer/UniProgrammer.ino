@@ -76,74 +76,308 @@ struct ProgrammableMemory {
 	uint8_t _CE, _OE, _WE;
 	MCP23S17 & addrbus;
 	MCP23S08 & databus;
-} rom28C64 = { MEM_CE, MEM_OE, MEM_WE, addrbus_iox, databus_iox};
+	
+	static inline void delay_62ns() { __asm__ __volatile__ ("nop\n\t"); }  // about 62.7 ns
+	static inline void delay_125ns() { __asm__ __volatile__ ("nop\n\t"); __asm__ __volatile__ ("nop\n\t"); }
+	// one digitalWrite takes about 3.3 -- 3.6 us.
+	// one prot xor PORTC ^= |= takes 188.6 ns (3 clocks)
+	// volatile uint8_t & ioport = PORTB; output by reference becomes the same result
+	// one 16 bit expander write takes 23.4 us
+	// one 16 bit expander 8 bit write takes 19.4 us
+	// one 8 bit expander read takes 21.07 us
 
-inline void delay_62ns() { __asm__ __volatile__ ("nop\n\t"); }  // about 62.7 ns
-inline void delay_125ns() { __asm__ __volatile__ ("nop\n\t"); __asm__ __volatile__ ("nop\n\t"); }
-// one digitalWrite takes about 3.3 -- 3.6 us.
-// one prot xor PORTC ^= |= takes 188.6 ns (3 clocks)
-// volatile uint8_t & ioport = PORTB; output by reference becomes the same result
-// one 16 bit expander write takes 23.4 us
-// one 16 bit expander 8 bit write takes 19.4 us
-// one 8 bit expander read takes 21.07 us
 
-// common CE/OE controlled RAM/ROM byte read
-uint8_t read_byte(const uint16_t & addr) {
-  uint8_t val;
-  digitalWrite(MEM_WE, HIGH); // only to ensure
-  addrbus_iox.write_gpio16(addr);
-  databus_iox.set_gpio_input();
-  // assumes pull-up for data bus is active
-  digitalWrite(MEM_CE, LOW);
-  digitalWrite(MEM_OE, LOW);
-  __asm__ __volatile__ ("nop\n\t");   // t_OE = max 50ns, 62.5ns if needed
-  val = databus_iox.read_gpio();
-  digitalWrite(MEM_OE, HIGH);
-  digitalWrite(MEM_CE, HIGH);
-  return val;
+	// Set the status of the device control pins
+	static inline void chip_enable()       { digitalWrite(_CE, LOW); }
+	static inline void chip_disable()      { digitalWrite(_CE, HIGH);}
+	static inline void output_enable()     { digitalWrite(_OE, LOW); }
+	static inline void output_disable()    { digitalWrite(_OE, HIGH);}
+	static inline void write_enable()      { digitalWrite(_WE, LOW); }
+	static inline void write_disable()     { digitalWrite(_WE, HIGH);}
+
+	void set_databus_input() {
+		databus.gpio_pullup_enable();
+		databus.set_gpio_input();
+	}
+
+	void set_databus_output() {
+		databus.set_gpio_output();
+		databus.gpio_pullup_disable();
+	}
+
+	ProgrammableMempry(const uint8_t ce_pin, const uint8_t oe_pin, const uint8_t we_pin, 
+	MCP23S17 & ioxt16, MCP23S08 & ioxt8) 
+	: _CE(ce_pin), _OE(oe_pin), _WE(we_pin), addrbus(ioxt16), databus(ioxt8) {}
+
+
+	void begin() {
+	    // Define the data bus as input initially so that it does not put out a
+	    // signal that could collide with output on the data pins of the EEPROM.
+	    set_databus_input();
+
+	    // Define the EEPROM control pins as output, making sure they are all
+	    // in the disabled state.
+	    digitalWrite(OE, HIGH);
+	    pinMode(OE, OUTPUT);
+	    digitalWrite(CE, HIGH);
+	    pinMode(CE, OUTPUT);
+	    digitalWrite(WE, HIGH);
+	    pinMode(WE, OUTPUT);
+
+	    // This chip uses the shift register hardware for addresses, so initialize that.
+		addrbus.begin();
+		databus.begin();
+	}
+
+	/*
+	// Read a byte from a given address
+	byte PromDevice28C::readByte(uint32_t address)
+	{
+	    byte data = 0;
+	    setAddress(address);
+	    setDataBusMode(INPUT);
+	    disableOutput();
+	    disableWrite();
+	    enableChip();
+	    enableOutput();
+	    data = readDataBus();
+	    disableOutput();
+	    disableChip();
+
+	    return data;
+	}
+	*/
+
+	// common CE/OE controlled RAM/ROM byte read
+	uint8_t read_byte(const uint16_t & addr) {
+	  uint8_t data;
+	  addrbus = addr;
+	  set_databus_input();
+	  output_disable();
+	  write_disable();
+	  chip_enable();
+	  output_enable();
+	  delay_62ns();
+	  data = databus;
+	  output_disable();
+	  chip_disable();
+	  return data;
+	}
+
+	/*
+
+	// Burn a byte to the chip and verify that it was written.
+	bool PromDevice28C::burnByte(byte value, uint32_t address)
+	{
+	    bool status = false;
+
+	    disableOutput();
+	    disableWrite();
+
+	    setAddress(address);
+	    setDataBusMode(OUTPUT);
+	    writeDataBus(value);
+
+	    enableChip();
+	    delayMicroseconds(1);
+	    enableWrite();
+	    delayMicroseconds(1);
+	    disableWrite();
+
+	    status = waitForWriteCycleEnd(value);
+
+	    disableChip();
+
+	    return status;
+	}
+	*/
+
+	// AT28C64 single byte write
+	uint8_t prog_byte(const uint16_t &addr, const uint8_t val) {
+		bool status = false;
+		
+		output_disable(); //digitalWrite(MEM_OE, HIGH); // to ensure
+		write_disable(); //digitalWrite(MEM_WE, HIGH); // to ensure puls
+		addrbus = addr;
+		set_databus_output();
+		databus = value;
+		
+		chip_enable(); //digitalWrite(MEM_CE, LOW);
+		write_enable(); //digitalWrite(MEM_WE, LOW);
+		delay_125ns(); //__asm__ __volatile__ ("nop\n\t"); 	// 62.5ns for t_AH min = 50ns
+		//__asm__ __volatile__ ("nop\n\t"); 	// 62.5ns for t_DS min = 50ns
+		// t_WP > 100ns
+		write_disable(); //digitalWrite(MEM_WE, HIGH);
+		delay_62ns(); //__asm__ __volatile__ ("nop\n\t");
+		//__asm__ __volatile__ ("nop\n\t");
+		// t_WPH = min 100ns
+		
+		status = wait_for_write_cycle_end();
+		
+		chip_disable(); //digitalWrite(MEM_CE, HIGH);
+		return status;
+	}
+	
+	/*
+	bool PromDevice28C::waitForWriteCycleEnd(byte lastValue)
+	{
+	    if (mSupportsDataPoll)
+	    {
+	        // Verify programming complete by reading the last value back until it matches the
+	        // value written twice in a row.  The D7 bit will read the inverse of last written
+	        // data and the D6 bit will toggle on each read while in programming mode.
+	        //
+	        // This loop code takes about 18uSec to execute.  The max readcount is set to the
+	        // device's maxReadTime (in uSecs) divided by ten rather than eighteen to ensure
+	        // that it runs at least as long as the chip's timeout value, even if some code
+	        // optimizations are made later. In actual practice, the loop will terminate much
+	        // earlier because it will detect the end of the write well before the max time.
+	        byte b1=0, b2=0;
+	        setDataBusMode(INPUT);
+	        delayMicroseconds(1);
+	        for (unsigned readCount = 1; (readCount < (mMaxWriteTime * 100)); readCount++)
+	        {
+	            enableChip();
+	            enableOutput();
+	            delayMicroseconds(1);
+	            b1 = readDataBus();
+	            disableOutput();
+	            disableChip();
+	            enableChip();
+	            enableOutput();
+	            delayMicroseconds(1);
+	            b2 = readDataBus();
+	            disableOutput();
+	            disableChip();
+	            if ((b1 == b2) && (b1 == lastValue))
+	            {
+	                return true;
+	            }
+	        }
+
+	        debugLastExpected = lastValue;
+	        debugLastReadback = b2;
+	        return false;
+	    }
+	    else
+	    {
+	        // No way to detect success.  Just wait the max write time.
+	        delayMicroseconds(mMaxWriteTime * 1000L);
+	        return true;
+	    }
+	}
+	*/
+	
+	bool wait_for_write_cycle_end() {
+		
+	}
+};
+
+ProgrammableMemory rom28C64 = { MEM_CE, MEM_OE, MEM_WE, addrbus_iox, databus_iox};
+
+
+/*
+
+bool PromDevice28C::burnBlock(byte data[], uint32_t len, uint32_t address)
+{
+    bool status = false;
+    if (len == 0)  return true;
+
+    ++debugBlockWrites;
+    disableOutput();
+    disableWrite();
+    enableChip();
+
+    // Write all of the bytes in the block out to the chip.  The chip will
+    // program them all at once as long as they are written fast enough.
+    setDataBusMode(OUTPUT);
+    for (uint32_t ix = 0; (ix < len); ix++)
+    {
+        setAddress(address + ix);
+        writeDataBus(data[ix]);
+
+        delayMicroseconds(1);
+        enableWrite();
+        delayMicroseconds(1);
+        disableWrite();
+    }
+
+    status = waitForWriteCycleEnd(data[len - 1]);
+    disableChip();
+
+    if (!status) {
+        debugLastAddress = address + len - 1;
+    }
+    return status;
 }
 
-// AT28C64 single byte write
-uint8_t prog_byte(const uint16_t &addr, const uint8_t val) {
-	digitalWrite(MEM_OE, HIGH); // to ensure
-	digitalWrite(MEM_WE, HIGH); // to ensure puls
-	addrbus_iox.write_gpio16(addr);
-	databus_iox.set_gpio_output();
-	databus_iox.disable_gpio_pullup();
-	databus_iox.write_gpio(val);
-	digitalWrite(MEM_CE, LOW);
-	digitalWrite(MEM_WE, LOW);
-	__asm__ __volatile__ ("nop\n\t"); 	// 62.5ns for t_AH min = 50ns
-	__asm__ __volatile__ ("nop\n\t"); 	// 62.5ns for t_DS min = 50ns
-	// t_WP > 100ns
-	digitalWrite(MEM_WE, HIGH);
-	__asm__ __volatile__ ("nop\n\t");
-	__asm__ __volatile__ ("nop\n\t");
-	// t_WPH = min 100ns
-	digitalWrite(MEM_CE, HIGH);
 
-	// restore default i/o mode
-	databus_iox.enable_gpio_pullup();
-	databus_iox.set_gpio_input();
+bool PromDevice28C::waitForWriteCycleEnd(byte lastValue)
+{
+    if (mSupportsDataPoll)
+    {
+        // Verify programming complete by reading the last value back until it matches the
+        // value written twice in a row.  The D7 bit will read the inverse of last written
+        // data and the D6 bit will toggle on each read while in programming mode.
+        //
+        // This loop code takes about 18uSec to execute.  The max readcount is set to the
+        // device's maxReadTime (in uSecs) divided by ten rather than eighteen to ensure
+        // that it runs at least as long as the chip's timeout value, even if some code
+        // optimizations are made later. In actual practice, the loop will terminate much
+        // earlier because it will detect the end of the write well before the max time.
+        byte b1=0, b2=0;
+        setDataBusMode(INPUT);
+        delayMicroseconds(1);
+        for (unsigned readCount = 1; (readCount < (mMaxWriteTime * 100)); readCount++)
+        {
+            enableChip();
+            enableOutput();
+            delayMicroseconds(1);
+            b1 = readDataBus();
+            disableOutput();
+            disableChip();
+            enableChip();
+            enableOutput();
+            delayMicroseconds(1);
+            b2 = readDataBus();
+            disableOutput();
+            disableChip();
+            if ((b1 == b2) && (b1 == lastValue))
+            {
+                return true;
+            }
+        }
 
-	// verify the written byte
-	//if (rom_type == ROM_AT28C64 or rom_type == ROM_AT28C64B or rom_type == ROM_HN58C256) {
-	// DATA polling to observe the end of write cycle.
-	uint8_t t;
-	unsigned long start_millis = millis();
-	do {
-		delayMicroseconds(1); // t_WC write cycle time MAX = 10ms
-		// assumes pull-up for data bus is active
-		digitalWrite(MEM_CE, LOW);
-		digitalWrite(MEM_OE, LOW);
-		__asm__ __volatile__ ("nop\n\t");
-		// t_OE = max 50ns, 62.5ns if needed
-		t = databus_iox.read_gpio();
-		digitalWrite(MEM_OE, HIGH);
-		digitalWrite(MEM_CE, HIGH);
-	} while (t != val and millis() - start_millis < 150); // t_WC write cycle time MAX = 10ms
-	return t;
+        debugLastExpected = lastValue;
+        debugLastReadback = b2;
+        return false;
+    }
+    else
+    {
+        // No way to detect success.  Just wait the max write time.
+        delayMicroseconds(mMaxWriteTime * 1000L);
+        return true;
+    }
 }
+
+
+// Set an address and data value and toggle the write control.  This is used
+// to write control sequences, like the software write protect.  This is not a
+// complete byte write function because it does not set the chip enable or the
+// mode of the data bus.
+void PromDevice28C::setByte(byte value, uint32_t address)
+{
+    setAddress(address);
+    writeDataBus(value);
+
+    delayMicroseconds(1);
+    enableWrite();
+    delayMicroseconds(1);
+    disableWrite();
+}
+*/
+
+
 
 // AT28C64B 6 bit border aware page write.
 bool prog_page64(const uint16_t & start_addr, const uint8_t * valptr, const uint8_t & n) {
