@@ -53,7 +53,7 @@ enum MEM_TYPE {
 	ROM_UNKNOWN = 0xff,
 };
 
-uint8_t rom_type = ROM_UNKNOWN;
+uint8_t rom_type = ROM_AT28C64;
 
 enum ADDRESS_MASK {
 	ADDRMASK_64K = 0x1fff, // 8KB/13 bits
@@ -76,13 +76,13 @@ uint32_t get_addr_mask(const uint8_t & rom_type) {
 uint8_t mem_read(const uint16_t & addr) {
   uint8_t val;
   digitalWrite(MEM_WE, HIGH); // only to ensure
-  addrbusx.write_GPIO16(addr);
+  addrbusx.write_gpio16(addr);
   databusx.write_IODIR(databusx.IODIR_INPUT8);
   // assumes pull-up for data bus is active
   digitalWrite(MEM_CE, LOW);
   digitalWrite(MEM_OE, LOW);
   __asm__ __volatile__ ("nop\n\t");   // t_OE = max 50ns, 62.5ns if needed
-  val = databusx.read_GPIO();
+  val = databusx.read_gpio();
   digitalWrite(MEM_OE, HIGH);
   digitalWrite(MEM_CE, HIGH);
   return val;
@@ -92,10 +92,10 @@ uint8_t mem_read(const uint16_t & addr) {
 uint8_t eeprom_byte_write(const uint16_t &addr, const uint8_t val) {
 	digitalWrite(MEM_OE, HIGH); // to ensure
 	digitalWrite(MEM_WE, HIGH); // to ensure puls
-	addrbusx.write_GPIO16(addr);
+	addrbusx.write_gpio16(addr);
 	databusx.write_IODIR(databusx.IODIR_OUTPUT8);
-	databusx.disable_pullup();
-	databusx.write_GPIO(val);
+	databusx.disable_gpio_pullup();
+	databusx.write_gpio(val);
 	digitalWrite(MEM_CE, LOW);
 	digitalWrite(MEM_WE, LOW);
 	__asm__ __volatile__ ("nop\n\t"); 	// 62.5ns for t_AH min = 50ns
@@ -108,7 +108,7 @@ uint8_t eeprom_byte_write(const uint16_t &addr, const uint8_t val) {
 	digitalWrite(MEM_CE, HIGH);
 
 	// restore default i/o mode
-	databusx.enable_pullup();
+	databusx.enable_gpio_pullup();
 	databusx.write_IODIR(databusx.IODIR_INPUT8);
 
 	// verify the written byte
@@ -123,7 +123,7 @@ uint8_t eeprom_byte_write(const uint16_t &addr, const uint8_t val) {
 		digitalWrite(MEM_OE, LOW);
 		__asm__ __volatile__ ("nop\n\t");
 		// t_OE = max 50ns, 62.5ns if needed
-		t = databusx.read_GPIO();
+		t = databusx.read_gpio();
 		digitalWrite(MEM_OE, HIGH);
 		digitalWrite(MEM_CE, HIGH);
 	} while (t != val and millis() - start_millis < 150); // t_WC write cycle time MAX = 10ms
@@ -141,13 +141,13 @@ bool eeprom_page64_write(const uint16_t & start_addr, const uint8_t * valptr, co
   uint32_t lastaddr;
   for (addr = start_addr; addr < start_addr + n; ) {
 	  databusx.write_IODIR(databusx.IODIR_OUTPUT8);
-	  databusx.disable_pullup();
+	  databusx.disable_gpio_pullup();
 	  uint32_t currentpage = addr & 0xffc0;
 	  for ( ; addr < start_addr + n and addr < currentpage + 64 ; ++addr) {
 		  lastaddr = addr;
 		  val= *valptr++;
-		  addrbusx.write_GPIO16(lastaddr);
-		  databusx.write_GPIO(val);
+		  addrbusx.write_gpio16(lastaddr);
+		  databusx.write_gpio(val);
 		  digitalWrite(MEM_CE, LOW);
 		  digitalWrite(MEM_WE, LOW);
 			__asm__ __volatile__ ("nop\n\t");
@@ -157,7 +157,7 @@ bool eeprom_page64_write(const uint16_t & start_addr, const uint8_t * valptr, co
 	  }
 	  //Serialsnprintln(buf128, 127, "page %04x", currentpage);
 	  // DATA polling to observe the end of write cycle.
-	  databusx.enable_pullup();
+	  databusx.enable_gpio_pullup();
 	  databusx.write_IODIR(databusx.IODIR_INPUT8);
 	  digitalWrite(MEM_CE, LOW);
 	  unsigned long start_millis = millis();
@@ -165,7 +165,7 @@ bool eeprom_page64_write(const uint16_t & start_addr, const uint8_t * valptr, co
 		  delayMicroseconds(1); // t_WC write cycle time MAX = 10ms
 		  digitalWrite(MEM_OE, LOW);
 		  __asm__ __volatile__ ("nop\n\t");   // 62.5ns if needed
-		  t = databusx.read_GPIO();
+		  t = databusx.read_gpio();
 		  digitalWrite(MEM_OE, HIGH);
 	  } while ( t != val and millis() - start_millis < 200); // t_WC write cycle time MAX = 10ms
 	  digitalWrite(MEM_CE, HIGH);
