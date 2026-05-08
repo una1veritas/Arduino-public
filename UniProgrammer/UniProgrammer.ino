@@ -72,7 +72,7 @@ uint32_t get_addr_mask(const uint8_t & rom_type) {
     }
 }
 
-struct ProgrammableMemory {
+struct ProgrammableROM {
 	uint8_t _CE, _OE, _WE;
 	MCP23S17 & addrbus;
 	MCP23S08 & databus;
@@ -88,192 +88,122 @@ struct ProgrammableMemory {
 
 
 	// Set the status of the device control pins
-	static inline void chip_enable()       { digitalWrite(_CE, LOW); }
-	static inline void chip_disable()      { digitalWrite(_CE, HIGH);}
-	static inline void output_enable()     { digitalWrite(_OE, LOW); }
-	static inline void output_disable()    { digitalWrite(_OE, HIGH);}
-	static inline void write_enable()      { digitalWrite(_WE, LOW); }
-	static inline void write_disable()     { digitalWrite(_WE, HIGH);}
+	inline void chip_enable()       { digitalWrite(_CE, LOW); }
+	inline void chip_disable()      { digitalWrite(_CE, HIGH);}
+	inline void output_enable()     { digitalWrite(_OE, LOW); }
+	inline void output_disable()    { digitalWrite(_OE, HIGH);}
+	inline void write_enable()      { digitalWrite(_WE, LOW); }
+	inline void write_disable()     { digitalWrite(_WE, HIGH);}
 
 	void set_databus_input() {
-		databus.gpio_pullup_enable();
+		databus.enable_gpio_pullup();
 		databus.set_gpio_input();
 	}
 
 	void set_databus_output() {
 		databus.set_gpio_output();
-		databus.gpio_pullup_disable();
+		databus.disable_gpio_pullup();
 	}
 
-	ProgrammableMempry(const uint8_t ce_pin, const uint8_t oe_pin, const uint8_t we_pin, 
+	ProgrammableROM(const uint8_t ce_pin, const uint8_t oe_pin, const uint8_t we_pin,
 	MCP23S17 & ioxt16, MCP23S08 & ioxt8) 
 	: _CE(ce_pin), _OE(oe_pin), _WE(we_pin), addrbus(ioxt16), databus(ioxt8) {}
 
 
 	void begin() {
-	    // Define the data bus as input initially so that it does not put out a
-	    // signal that could collide with output on the data pins of the EEPROM.
 	    set_databus_input();
 
-	    // Define the EEPROM control pins as output, making sure they are all
-	    // in the disabled state.
-	    digitalWrite(OE, HIGH);
-	    pinMode(OE, OUTPUT);
-	    digitalWrite(CE, HIGH);
-	    pinMode(CE, OUTPUT);
-	    digitalWrite(WE, HIGH);
-	    pinMode(WE, OUTPUT);
+	    digitalWrite(_OE, HIGH);
+	    pinMode(_OE, OUTPUT);
+	    digitalWrite(_CE, HIGH);
+	    pinMode(_CE, OUTPUT);
+	    digitalWrite(_WE, HIGH);
+	    pinMode(_WE, OUTPUT);
 
-	    // This chip uses the shift register hardware for addresses, so initialize that.
 		addrbus.begin();
 		databus.begin();
 	}
 
-	/*
-	// Read a byte from a given address
-	byte PromDevice28C::readByte(uint32_t address)
-	{
-	    byte data = 0;
-	    setAddress(address);
-	    setDataBusMode(INPUT);
-	    disableOutput();
-	    disableWrite();
-	    enableChip();
-	    enableOutput();
-	    data = readDataBus();
-	    disableOutput();
-	    disableChip();
-
-	    return data;
-	}
-	*/
-
 	// common CE/OE controlled RAM/ROM byte read
 	uint8_t read_byte(const uint16_t & addr) {
 	  uint8_t data;
+
 	  addrbus = addr;
 	  set_databus_input();
+
 	  output_disable();
 	  write_disable();
+
 	  chip_enable();
 	  output_enable();
 	  delay_62ns();
 	  data = databus;
+
 	  output_disable();
 	  chip_disable();
+
 	  return data;
 	}
 
-	/*
-
-	// Burn a byte to the chip and verify that it was written.
-	bool PromDevice28C::burnByte(byte value, uint32_t address)
-	{
-	    bool status = false;
-
-	    disableOutput();
-	    disableWrite();
-
-	    setAddress(address);
-	    setDataBusMode(OUTPUT);
-	    writeDataBus(value);
-
-	    enableChip();
-	    delayMicroseconds(1);
-	    enableWrite();
-	    delayMicroseconds(1);
-	    disableWrite();
-
-	    status = waitForWriteCycleEnd(value);
-
-	    disableChip();
-
-	    return status;
-	}
-	*/
-
 	// AT28C64 single byte write
-	uint8_t prog_byte(const uint16_t &addr, const uint8_t val) {
+	bool prog_byte(const uint16_t & addr, const uint8_t val) {
 		bool status = false;
 		
 		output_disable(); //digitalWrite(MEM_OE, HIGH); // to ensure
 		write_disable(); //digitalWrite(MEM_WE, HIGH); // to ensure puls
 		addrbus = addr;
 		set_databus_output();
-		databus = value;
+		databus = val;
 		
 		chip_enable(); //digitalWrite(MEM_CE, LOW);
 		write_enable(); //digitalWrite(MEM_WE, LOW);
-		delay_125ns(); //__asm__ __volatile__ ("nop\n\t"); 	// 62.5ns for t_AH min = 50ns
-		//__asm__ __volatile__ ("nop\n\t"); 	// 62.5ns for t_DS min = 50ns
+		delay_125ns(); // 62.5ns for t_AH min = 50ns
+		// 62.5ns for t_DS min = 50ns
 		// t_WP > 100ns
+
 		write_disable(); //digitalWrite(MEM_WE, HIGH);
-		delay_62ns(); //__asm__ __volatile__ ("nop\n\t");
-		//__asm__ __volatile__ ("nop\n\t");
-		// t_WPH = min 100ns
+		delay_125ns(); // t_WPH = min 100ns
 		
-		status = wait_for_write_cycle_end();
+		status = wait_for_write_cycle_end(val);
 		
 		chip_disable(); //digitalWrite(MEM_CE, HIGH);
+
 		return status;
 	}
-	
-	/*
-	bool PromDevice28C::waitForWriteCycleEnd(byte lastValue)
-	{
-	    if (mSupportsDataPoll)
-	    {
-	        // Verify programming complete by reading the last value back until it matches the
-	        // value written twice in a row.  The D7 bit will read the inverse of last written
-	        // data and the D6 bit will toggle on each read while in programming mode.
-	        //
-	        // This loop code takes about 18uSec to execute.  The max readcount is set to the
-	        // device's maxReadTime (in uSecs) divided by ten rather than eighteen to ensure
-	        // that it runs at least as long as the chip's timeout value, even if some code
-	        // optimizations are made later. In actual practice, the loop will terminate much
-	        // earlier because it will detect the end of the write well before the max time.
-	        byte b1=0, b2=0;
-	        setDataBusMode(INPUT);
-	        delayMicroseconds(1);
-	        for (unsigned readCount = 1; (readCount < (mMaxWriteTime * 100)); readCount++)
-	        {
-	            enableChip();
-	            enableOutput();
-	            delayMicroseconds(1);
-	            b1 = readDataBus();
-	            disableOutput();
-	            disableChip();
-	            enableChip();
-	            enableOutput();
-	            delayMicroseconds(1);
-	            b2 = readDataBus();
-	            disableOutput();
-	            disableChip();
-	            if ((b1 == b2) && (b1 == lastValue))
-	            {
-	                return true;
-	            }
-	        }
 
-	        debugLastExpected = lastValue;
-	        debugLastReadback = b2;
-	        return false;
-	    }
-	    else
-	    {
-	        // No way to detect success.  Just wait the max write time.
-	        delayMicroseconds(mMaxWriteTime * 1000L);
-	        return true;
-	    }
-	}
-	*/
-	
-	bool wait_for_write_cycle_end() {
-		
+	bool wait_for_write_cycle_end(const uint8_t & lastValue) {
+		// observe bit-toggling and flipped bit
+
+        uint8_t b1 = 0, b2 = 0;
+        set_databus_input();
+        uint32_t count = 2000;
+        delayMicroseconds(1);
+        for ( ; count > 0; --count) {
+            delayMicroseconds(5);
+
+            chip_enable();
+            output_enable();
+            delayMicroseconds(1);
+            b1 = databus;
+            output_disable();
+            chip_disable();
+
+            chip_enable();
+            output_enable();
+            delayMicroseconds(1);
+            b2 = databus;
+            output_disable();
+            chip_disable();
+
+            if ((b1 == b2) && (b1 == lastValue))
+                return true;
+        }
+        Serial.println(count);
+        return false;
 	}
 };
 
-ProgrammableMemory rom28C64 = { MEM_CE, MEM_OE, MEM_WE, addrbus_iox, databus_iox};
+ProgrammableROM rom28C64(MEM_CE, MEM_OE, MEM_WE, addrbus_iox, databus_iox);
 
 
 /*
@@ -312,55 +242,6 @@ bool PromDevice28C::burnBlock(byte data[], uint32_t len, uint32_t address)
 }
 
 
-bool PromDevice28C::waitForWriteCycleEnd(byte lastValue)
-{
-    if (mSupportsDataPoll)
-    {
-        // Verify programming complete by reading the last value back until it matches the
-        // value written twice in a row.  The D7 bit will read the inverse of last written
-        // data and the D6 bit will toggle on each read while in programming mode.
-        //
-        // This loop code takes about 18uSec to execute.  The max readcount is set to the
-        // device's maxReadTime (in uSecs) divided by ten rather than eighteen to ensure
-        // that it runs at least as long as the chip's timeout value, even if some code
-        // optimizations are made later. In actual practice, the loop will terminate much
-        // earlier because it will detect the end of the write well before the max time.
-        byte b1=0, b2=0;
-        setDataBusMode(INPUT);
-        delayMicroseconds(1);
-        for (unsigned readCount = 1; (readCount < (mMaxWriteTime * 100)); readCount++)
-        {
-            enableChip();
-            enableOutput();
-            delayMicroseconds(1);
-            b1 = readDataBus();
-            disableOutput();
-            disableChip();
-            enableChip();
-            enableOutput();
-            delayMicroseconds(1);
-            b2 = readDataBus();
-            disableOutput();
-            disableChip();
-            if ((b1 == b2) && (b1 == lastValue))
-            {
-                return true;
-            }
-        }
-
-        debugLastExpected = lastValue;
-        debugLastReadback = b2;
-        return false;
-    }
-    else
-    {
-        // No way to detect success.  Just wait the max write time.
-        delayMicroseconds(mMaxWriteTime * 1000L);
-        return true;
-    }
-}
-
-
 // Set an address and data value and toggle the write control.  This is used
 // to write control sequences, like the software write protect.  This is not a
 // complete byte write function because it does not set the chip enable or the
@@ -378,7 +259,7 @@ void PromDevice28C::setByte(byte value, uint32_t address)
 */
 
 
-
+/*
 // AT28C64B 6 bit border aware page write.
 bool prog_page64(const uint16_t & start_addr, const uint8_t * valptr, const uint8_t & n) {
   digitalWrite(MEM_OE, HIGH); // to ensure
@@ -450,19 +331,19 @@ void rom_SDP_set(const bool &enable) {
 		Serial.println(prog_byte(0x5555 & addrmask, 0xaa), HEX);
 		Serial.println(prog_byte(0x2aaa & addrmask, 0x55), HEX);
 		Serial.println(prog_byte(0x5555 & addrmask, 0x20), HEX);
-		/*
-		for(int i = 0; i < 64; ++i) {
-			Serial.print(rom_write(i, buf[i]) == buf[i]);
-            Serial.print(" ");
-            if ( (i & 0x0f) == 0x0f ) {
-                Serial.println();
-            }
-        }
-		*/
+
+//		for(int i = 0; i < 64; ++i) {
+//			Serial.print(rom_write(i, buf[i]) == buf[i]);
+//            Serial.print(" ");
+//            if ( (i & 0x0f) == 0x0f ) {
+//                Serial.println();
+//            }
+//        }
+
 	}
 	return;
 }
-
+*/
 
 // Configuration
 #define SERIAL_BAUD 115200
@@ -517,27 +398,10 @@ void setup() {
 	Serial.begin(SERIAL_BAUD);
 
   // ensure to disable all the SPI slave devices. 
-  pinMode(CS_23LC1024, OUTPUT); digitalWrite(CS_23LC1024, HIGH);
-  pinMode(CS_MCP23S08, OUTPUT); digitalWrite(CS_MCP23S08, HIGH);
-  pinMode(CS_MCP23S17, OUTPUT); digitalWrite(CS_MCP23S17, HIGH);
-
-	// EEPROM control lines
-  pinMode(MEM_CE, OUTPUT); digitalWrite(MEM_CE, HIGH);
-  pinMode(MEM_WE, OUTPUT); digitalWrite(MEM_WE, HIGH);
-  pinMode(MEM_OE, OUTPUT); digitalWrite(MEM_OE, HIGH);
-
+  auxsram.begin();
+  rom28C64.begin();
   SPI.begin();
 
-  databus_iox.begin();
-  databus_iox.write_GPPU(databus_iox.GPPU_ENABLE8);
-  databus_iox.write_IODIR(databus_iox.IODIR_INPUT8);
-
-  addrbus_iox.begin();
-  addrbus_iox.write_IODIR16(addrbus_iox.IODIR_OUTPUT16); // 1 input/0 output, 
-  // A0 -- A12 is active, A13 is NC, A14 (pin 1) is NC or RDY/BUSY
-  addrbus_iox.write_GPPU16(addrbus_iox.GPPU_DISABLE16); // 1 input/0 output, 
-
-	auxsram.begin();
 
 	while (!Serial) {}
 	printWelcome();
@@ -558,7 +422,7 @@ void setup() {
 	
 	//pgmstatus.clear();
 	line = "";
-	rom_type = ROM_UNKNOWN;
+	rom_type = ROM_AT28C64;
 }
 
 void loop() {
@@ -608,9 +472,7 @@ void loop() {
 				uint32_t startaddr = strtoul(line.c_str(), &ptr, 0);
 				line = line.substring(ptr - line.c_str());
 				line.trim();
-				Serial.println(line);
 				uint32_t stopaddr = strtoul(line.c_str(), &ptr, 0);
-				Serialsnprintln(buf128, 127, "from %04X to %04X", startaddr, stopaddr);
 				dump_target(startaddr, stopaddr);
 				Serial.println(F("Finished."));
 
@@ -692,26 +554,22 @@ void write_to_rom(const uint16_t & addr_mask) {
 		if (rom_type == ROM_AT28C64 or rom_type == ROM_UNKNOWN) {
 			// supports only byte write
 			for(int i = 0; i < t.datalength; ++i) {
-				uint8_t wval = prog_byte( (t.address + i) & addrmask , t.data[i]);
-				if (wval != t.data[i]) {
+				bool succ = rom28C64.prog_byte( (t.address + i) & addrmask , t.data[i]);
+				if (! succ) {
 					pgmstatus.errorCount += 1;
 					err_flag = true;
 	                Serial.print("Error: Write failed at 0x");
-	                Serialsnprint(buf128, 127, "%04X", t.address + i);
-	                Serial.print(": expected 0x");
-	                Serialsnprint(buf128, 127, "%02X", t.data[i]);
-	                Serial.print(" but results 0x");
-	                Serialsnprint(buf128, 127, "%02X", wval);
+	                Serialsnprint(buf128, 127, "%04X.", t.address + i);
 	                Serial.println();
 	            }
 			}
 		} else if (rom_type == ROM_AT28C64B or rom_type == ROM_HN58C256) {
-			err_flag = prog_page64(t.address & addrmask, t.data, t.datalength);
-			if ( err_flag == false) {
-				pgmstatus.errorCount += 1;
-                Serial.print("Error: Write failed at 0x");
-                Serialsnprintln(buf128, 127, "%04X", t.address & addrmask);
-            }
+//			err_flag = prog_page64(t.address & addrmask, t.data, t.datalength);
+//			if ( err_flag == false) {
+//				pgmstatus.errorCount += 1;
+//                Serial.print("Error: Write failed at 0x");
+//                Serialsnprintln(buf128, 127, "%04X", t.address & addrmask);
+//            }
 		}
 
 		if (not err_flag) {
@@ -765,7 +623,7 @@ void dump_target(const uint32_t & startaddr, const uint32_t & stopaddr) {
         Serialsnprint(buf128, 127, "%04X", addr);
         Serial.print(": ");
         for (int i = 0; i < 16; ++i) {
-            uint8_t val = read_byte(addr + i);
+            uint8_t val = rom28C64.read_byte(addr + i);
             Serialsnprint(buf128, 127, "%02X ", val);
         }
         Serial.println();
