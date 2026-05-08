@@ -83,7 +83,7 @@ inline void delay_125ns() { __asm__ __volatile__ ("nop\n\t"); __asm__ __volatile
 // one digitalWrite takes about 3.3 -- 3.6 us.
 // one prot xor PORTC ^= |= takes 188.6 ns (3 clocks)
 // volatile uint8_t & ioport = PORTB; output by reference becomes the same result
-// one 16 bit expander write takes 23 us
+// one 16 bit expander write takes 23.4 us
 // one 16 bit expander 8 bit write takes 19.4 us
 // one 8 bit expander read takes 21.07 us
 
@@ -354,18 +354,17 @@ void loop() {
 				unsigned long uswatch = micros();
 					addrbus_iox.set_gpio16_output();
 				for(long i = 0 ; i < 100000; ++i) {
-					delay_62ns();
-					delay_62ns();
-					delay_62ns();
-					//ioport ^= 1<<5;
+					addrbus_iox.write_gpio16(0xa5a5);
+					addrbus_iox.write_gpio16(0xffff);
 				}
 				uswatch = micros() - uswatch;
 				swatch = millis() - swatch;
 				Serial.println("Stop");
-				Serial.println(uswatch);
+				Serial.print(uswatch);
+				Serial.println(" us.");
 				Serial.println(double(uswatch) / 100000);
-				Serial.println(swatch);
-				Serial.println(double(swatch) / 100000);
+				//Serial.println(swatch);
+				//Serial.println(double(swatch) / 100000);
 			} else if (line.startsWith("!R")) {
 				Serial.println();
 				Serial.println(F("Read memory:"));
