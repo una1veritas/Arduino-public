@@ -46,189 +46,249 @@ MCP23S17 addrbus_iox(CS_MCP23S17, 1);
 MCP23S08 databus_iox(CS_MCP23S08, 0);
 
 enum MEM_TYPE {
-	ROM_AT28C64 = 0,
-	ROM_AT28C64B = 1,
-	ROM_HN58C256 = 2, 	// P-20
-	SRAM = 0x81,	//  HM62256ALP-10
-	ROM_UNKNOWN = 0xff,
+	ROM_AT28C64 = 1,
+	ROM_AT28C64B = 2,
+	ROM_AT28C256 = 3,
+	ROM_HN58C256 = 4, 	// P-20
+	SRAM_256Kbit = 129,	//  HM62256ALP-10
+
+	ROM_UNKNOWN = 0,
 };
 
-uint8_t rom_type = ROM_AT28C64;
-
-enum ADDRESS_MASK {
-	ADDRMASK_64K = 0x1fff, // 8KB/13 bits
-	ADDRMASK_256K = 0x7fff,
+struct ROMINFO {
+	uint8_t type_id;
+	uint32_t capacity_bytes;
+    uint16_t page_size;
+    char name[16];
 };
 
-uint32_t get_addr_mask(const uint8_t & rom_type) {
-    switch (rom_type) {
-    case ROM_AT28C64:
-    case ROM_AT28C64B:
-        return ADDRMASK_64K;
-    case ROM_HN58C256:
-        return ADDRMASK_256K;
-    default:
-        return 0xffff;
-    }
+ROMINFO rominfo[] = {
+    { ROM_AT28C64, 8 * 1024UL, 0, "AT28C64" },
+    { ROM_AT28C64B, 8 * 1024UL, 64, "AT28C64B" },
+    { ROM_AT28C256, 32 * 1024UL, 64, "AT28C256" },
+    { ROM_HN58C256, 32 * 1024UL, 64, "HN58C256" },
+    { 0, 0, 0, ""},
+};
+
+const ROMINFO & get_rominfo(const uint8_t id) {
+	uint8_t ix;
+	for(ix = 0; rominfo[ix].type_id != 0 and rominfo[ix].type_id != id ; ++ix) { }
+	return rominfo[ix];
 }
 
-struct ProgrammableMemory {
+struct ProgrammableROM {
+private:
 	uint8_t _CE, _OE, _WE;
 	MCP23S17 & addrbus;
 	MCP23S08 & databus;
-} rom28C64 = { MEM_CE, MEM_OE, MEM_WE, addrbus_iox, databus_iox};
 
-inline void delay_62ns() { __asm__ __volatile__ ("nop\n\t"); }  // about 62.7 ns
-inline void delay_125ns() { __asm__ __volatile__ ("nop\n\t"); __asm__ __volatile__ ("nop\n\t"); }
-// one digitalWrite takes about 3.3 -- 3.6 us.
-// one prot xor PORTC ^= |= takes 188.6 ns (3 clocks)
-// volatile uint8_t & ioport = PORTB; output by reference becomes the same result
-// one 16 bit expander write takes 23.4 us
-// one 16 bit expander 8 bit write takes 19.4 us
-// one 8 bit expander read takes 21.07 us
+	uint32_t capacity; // in bytes
+	uint16_t page_size;
 
-// common CE/OE controlled RAM/ROM byte read
-uint8_t read_byte(const uint16_t & addr) {
-  uint8_t val;
-  digitalWrite(MEM_WE, HIGH); // only to ensure
-  addrbus_iox.write_gpio16(addr);
-  databus_iox.set_gpio_input();
-  // assumes pull-up for data bus is active
-  digitalWrite(MEM_CE, LOW);
-  digitalWrite(MEM_OE, LOW);
-  __asm__ __volatile__ ("nop\n\t");   // t_OE = max 50ns, 62.5ns if needed
-  val = databus_iox.read_gpio();
-  digitalWrite(MEM_OE, HIGH);
-  digitalWrite(MEM_CE, HIGH);
-  return val;
-}
+public:
 
-// AT28C64 single byte write
-uint8_t prog_byte(const uint16_t &addr, const uint8_t val) {
-	digitalWrite(MEM_OE, HIGH); // to ensure
-	digitalWrite(MEM_WE, HIGH); // to ensure puls
-	addrbus_iox.write_gpio16(addr);
-	databus_iox.set_gpio_output();
-	databus_iox.disable_gpio_pullup();
-	databus_iox.write_gpio(val);
-	digitalWrite(MEM_CE, LOW);
-	digitalWrite(MEM_WE, LOW);
-	__asm__ __volatile__ ("nop\n\t"); 	// 62.5ns for t_AH min = 50ns
-	__asm__ __volatile__ ("nop\n\t"); 	// 62.5ns for t_DS min = 50ns
-	// t_WP > 100ns
-	digitalWrite(MEM_WE, HIGH);
-	__asm__ __volatile__ ("nop\n\t");
-	__asm__ __volatile__ ("nop\n\t");
-	// t_WPH = min 100ns
-	digitalWrite(MEM_CE, HIGH);
+	ProgrammableROM(const uint8_t & CE, const uint8_t & OE, const uint8_t & WE,
+			MCP23S17 & addrbus, MCP23S08 & databus)
+	: _CE(CE), _OE(OE), _WE(WE), addrbus(addrbus), databus(databus) {}
 
-	// restore default i/o mode
-	databus_iox.enable_gpio_pullup();
-	databus_iox.set_gpio_input();
+private:
+	inline static void delay_62ns() { __asm__ __volatile__ ("nop\n\t"); }  // about 62.7 ns
+	inline static void delay_125ns() { __asm__ __volatile__ ("nop\n\t"); __asm__ __volatile__ ("nop\n\t"); }
+	// one digitalWrite takes about 3.3 -- 3.6 us.
+	// one prot xor PORTC ^= |= takes 188.6 ns (3 clocks)
+	// volatile uint8_t & ioport = PORTB; output by reference becomes the same result
+	// one 16 bit expander write takes 23.4 us
+	// one 16 bit expander 8 bit write takes 19.4 us
+	// one 8 bit expander read takes 21.07 us
 
-	// verify the written byte
-	//if (rom_type == ROM_AT28C64 or rom_type == ROM_AT28C64B or rom_type == ROM_HN58C256) {
-	// DATA polling to observe the end of write cycle.
-	uint8_t t;
-	unsigned long start_millis = millis();
-	do {
-		delayMicroseconds(1); // t_WC write cycle time MAX = 10ms
-		// assumes pull-up for data bus is active
-		digitalWrite(MEM_CE, LOW);
-		digitalWrite(MEM_OE, LOW);
-		__asm__ __volatile__ ("nop\n\t");
-		// t_OE = max 50ns, 62.5ns if needed
-		t = databus_iox.read_gpio();
-		digitalWrite(MEM_OE, HIGH);
-		digitalWrite(MEM_CE, HIGH);
-	} while (t != val and millis() - start_millis < 150); // t_WC write cycle time MAX = 10ms
-	return t;
-}
+	inline void chip_enable() { digitalWrite(_CE, LOW);}
+	inline void chip_disable() { digitalWrite(_CE, HIGH); }
 
-// AT28C64B 6 bit border aware page write.
-bool prog_page64(const uint16_t & start_addr, const uint8_t * valptr, const uint8_t & n) {
-  digitalWrite(MEM_OE, HIGH); // to ensure
-  digitalWrite(MEM_WE, HIGH); // to ensure puls
-  Serial.println("starts sequence.");
-  uint32_t addr; 	// 6 bit in the page
+	inline void output_enable() { digitalWrite(_OE, LOW);}
+	inline void output_disable() { digitalWrite(_OE, HIGH); }
 
-  uint8_t val = 0, t = 0;
-  uint32_t lastaddr;
-  for (addr = start_addr; addr < start_addr + n; ) {
-	  databus_iox.write_IODIR(databus_iox.IODIR_OUTPUT8);
-	  databus_iox.disable_gpio_pullup();
-	  uint32_t currentpage = addr & 0xffc0;
-	  for ( ; addr < start_addr + n and addr < currentpage + 64 ; ++addr) {
-		  lastaddr = addr;
-		  val= *valptr++;
-		  addrbus_iox.write_gpio16(lastaddr);
-		  databus_iox.write_gpio(val);
-		  digitalWrite(MEM_CE, LOW);
-		  digitalWrite(MEM_WE, LOW);
-			__asm__ __volatile__ ("nop\n\t");
-			__asm__ __volatile__ ("nop\n\t");
-		  digitalWrite(MEM_WE, HIGH);
-		  digitalWrite(MEM_CE, HIGH);
-	  }
-	  //Serialsnprintln(buf128, 127, "page %04x", currentpage);
-	  // DATA polling to observe the end of write cycle.
-	  databus_iox.enable_gpio_pullup();
-	  databus_iox.write_IODIR(databus_iox.IODIR_INPUT8);
-	  digitalWrite(MEM_CE, LOW);
-	  unsigned long start_millis = millis();
-	  do {
-		  delayMicroseconds(1); // t_WC write cycle time MAX = 10ms
-		  digitalWrite(MEM_OE, LOW);
-		  __asm__ __volatile__ ("nop\n\t");   // 62.5ns if needed
-		  t = databus_iox.read_gpio();
-		  digitalWrite(MEM_OE, HIGH);
-	  } while ( t != val and millis() - start_millis < 200); // t_WC write cycle time MAX = 10ms
-	  digitalWrite(MEM_CE, HIGH);
-	  //Serialsnprintln(buf128, 127, "count %d", count);
-	  currentpage = addr & 0xffc0;
-	  if ( addr < start_addr + n)
-		  break;
-  }
-  digitalWrite(MEM_CE, HIGH);
-  return t != val;
-}
+	inline void write_enable() { digitalWrite(_WE, LOW);}
+	inline void write_disable() { digitalWrite(_WE, HIGH); }
 
+public:
+	void begin() {
+		digitalWrite(_CE, HIGH); pinMode(_CE, OUTPUT);
+	    digitalWrite(_OE, HIGH); pinMode(_OE, OUTPUT);
+	    digitalWrite(_WE, HIGH); pinMode(_WE, OUTPUT);
 
-void rom_SDP_set(const bool &enable) {
-	// AT28C64B has software data protection (SDP) feature, which requires a series of write-commands.
-	// This function is used to enable or disable the SDP feature.
-	uint8_t buf[64];
-	for(int i = 0; i < 64; ++i) {
-        buf[i] = read_byte(i);
-    }
-	uint32_t addrmask = get_addr_mask(rom_type);
-	if (enable) {
-		prog_byte(0x5555 & addrmask, 0xaa);
-		prog_byte(0x2aaa & addrmask, 0x55);
-		prog_byte(0x5555 & addrmask, 0xa0);
-		for(int i = 0; i < 64; ++i) {
-            prog_byte(i, buf[i]);
-        }
-	} else {
-		Serial.println(prog_byte(0x5555 & addrmask, 0xaa), HEX);
-		Serial.println(prog_byte(0x2aaa & addrmask, 0x55), HEX);
-		Serial.println(prog_byte(0x5555 & addrmask, 0x80), HEX);
-		Serial.println(prog_byte(0x5555 & addrmask, 0xaa), HEX);
-		Serial.println(prog_byte(0x2aaa & addrmask, 0x55), HEX);
-		Serial.println(prog_byte(0x5555 & addrmask, 0x20), HEX);
-		/*
-		for(int i = 0; i < 64; ++i) {
-			Serial.print(rom_write(i, buf[i]) == buf[i]);
-            Serial.print(" ");
-            if ( (i & 0x0f) == 0x0f ) {
-                Serial.println();
-            }
-        }
-		*/
+	    databus.begin();
+	    databus.enable_gpio_pullup();
+	    databus.set_gpio_input();
+
+	    addrbus.begin();
+	    addrbus.set_gpio16_output();
 	}
-	return;
-}
 
+	// common CE/OE controlled RAM/ROM byte read
+	// high address bits will be ignored by the ROM
+	uint8_t read_byte(const uint16_t & addr) {
+	  uint8_t val;
+	  write_disable(); // only to ensure
+
+	  addrbus = addr; //addrbus.write_gpio16(addr);
+	  databus.set_gpio_input();	 // assumes pull-up for data bus is active
+	  chip_enable(); // digitalWrite(MEM_CE, LOW);
+	  output_enable(); //digitalWrite(MEM_OE, LOW);
+	  delay_62ns();  // t_OE = max 50ns, 62.5ns if needed
+	  val = databus; //val = databus_iox.read_gpio();
+
+	  output_disable(); //digitalWrite(MEM_OE, HIGH);
+	  chip_disable(); //digitalWrite(MEM_CE, HIGH);
+	  return val;
+	}
+
+	// AT28C64 single byte write,
+	// seems taking about 7.89 ms on HN58C256
+	bool prog_byte(const uint16_t &addr, const uint8_t val) {
+		output_disable(); //digitalWrite(MEM_OE, HIGH); // to ensure
+		write_disable(); //digitalWrite(MEM_WE, HIGH); // to ensure pulsee
+
+		addrbus = addr; //.write_gpio16(addr);
+		databus.set_gpio_output();
+		databus = val;
+		chip_enable(); // digitalWrite(MEM_CE, LOW);
+		// address, OE, CE setup time = 0 ns
+		write_enable(); //digitalWrite(MEM_WE, LOW);
+		// write pulse width min 100 ns, address hold min 50 ns, data setup min 50 ns.
+		delay_125ns();
+		write_disable(); //digitalWrite(MEM_WE, HIGH);
+		delay_62ns();
+
+		// restore default i/o mode
+		databus.set_gpio_input();
+
+		// t_WPH = min 100ns in page write
+		// DATA polling to observe the end of write cycle.
+		bool succ = write_cycle_ended(val);
+
+		chip_disable(); //digitalWrite(MEM_CE, HIGH);
+		return succ;
+	}
+
+
+	bool write_cycle_ended(uint8_t lastval) {
+		uint8_t readout0, readout1;
+
+		// assumes CE is still LOW, just toggle OE to read the data
+		output_disable(); //digitalWrite(MEM_OE, HIGH);
+		uint16_t count = 2000;	// t_WC write cycle time MAX = 10ms
+		for( ; count > 0 ; --count) {
+			delayMicroseconds(5);
+
+			output_enable(); //digitalWrite(MEM_OE, LOW);
+			readout0 = databus;
+			output_disable(); //digitalWrite(MEM_OE, HIGH);
+
+			delayMicroseconds(5);
+
+			output_enable(); //digitalWrite(MEM_OE, LOW);
+			readout1 = databus;
+			output_disable(); //digitalWrite(MEM_OE, HIGH);
+
+			if ( readout0 == readout1 and readout1 == lastval ) {
+				// D6 toggling stoped, D7 read the last written value
+				//Serial.println(count);
+	            return true;
+	        }
+		}
+
+		return false;
+	}
+
+	// load byte to rom in page write procedure.
+	// assumes CE, OE and WE are set high
+	// toggles CE and WE
+	// takes 63.7 us
+	void set_byte(uint16_t addr, uint8_t value){
+		addrbus = addr; //setAddress(address);
+	    databus = value; //writeDataBus(value);
+	    // t_WC write cycle time (wait after byte 63)
+
+	    // t_AS address setup = 0, t_AH address hold = min 50ns, t_DS data setup = min 50ns
+	    // t_WP write pulse width min 100ns, t_WPH write pulse width high = min 50ns
+	    // t_BLC = max 150 us
+	    //delayMicroseconds(1);
+
+	    chip_enable();
+	    write_enable();
+
+	    //delayMicroseconds(1);
+	    delay_125ns();
+	    //__asm__ __volatile__ ("nop\n\t"); // delay 62ns ; // address hold
+	    //__asm__ __volatile__ ("nop\n\t"); // + write pulse width
+	    write_disable(); //disableWrite();
+	    chip_disable(); // disableChip();
+	    //__asm__ __volatile__ ("nop\n\t"); //delay_62ns(); // write pulse width high
+	    //delayMicroseconds(1);
+	    delay_125ns();
+	}
+
+	// takes about 4268.64 us.
+	uint16_t prog_page(const uint16_t addr, uint8_t data[], const uint16_t len, const uint16_t page_size = 64) {
+	    bool status = false;
+
+	    if ( len == 0 )  return 0;
+
+	    // page size must be 2^n
+	    uint16_t pagelast_addr = addr | (page_size - 1);
+
+	    output_disable();
+	    write_disable();
+	    databus.set_gpio_output();
+
+	    // Write all of the bytes in the block out to the chip.  The chip will
+	    // program them all at once as long as they are written fast enough.
+	    uint8_t lastval;
+	    uint16_t ix;
+	    for (ix = 0; ix < len ; ++ix) {
+	    	if ( !(addr + ix <= pagelast_addr) ) break;
+	        lastval = data[ix];
+
+	        // CE and WE are toggled in set_byte()
+	        set_byte(addr+ix, lastval);
+
+//	        delay_62ns();
+//	        write_enable();
+//	        delay_125ns();
+//	        write_disable();
+//	        delay_125ns();
+	    }
+
+	    status = write_cycle_ended(lastval);
+	    chip_disable(); //disableChip();
+
+	    if ( !status ) {
+        	return 0;
+        }
+	    return ix;
+	}
+
+	// Write the special six-byte code to turn off Software Data Protection.
+	void disable_software_data_protect()
+	{
+	    output_disable();
+	    write_disable();
+	    databus.set_gpio_output();
+
+	    set_byte(0xaa, 0x5555);
+	    set_byte(0x55, 0x2aaa);
+	    set_byte(0x80, 0x5555);
+	    set_byte(0xaa, 0x5555);
+	    set_byte(0x55, 0x2aaa);
+	    set_byte(0x20, 0x5555);
+
+	    databus.set_gpio_input();
+	    chip_disable();
+	}
+
+};
+
+ProgrammableROM rom28C64(MEM_CE, MEM_OE, MEM_WE, addrbus_iox, databus_iox);
 
 // Configuration
 #define SERIAL_BAUD 115200
@@ -238,6 +298,7 @@ HexRecord record;
 
 char buf128[128];
 String line;
+uint8_t rom_typeid;
 
 bool char_isin(const char c, const char * str) {
 	char * p;
@@ -279,33 +340,42 @@ unsigned int readStringUntilCrLf(String &line, const unsigned int & limit = 256,
 	return line.length();
 }
 
+void write_to_rom(const bool);
+
+void get_two_uint32s(String & line, uint32_t & val1, uint32_t & val2) {
+	line.trim();
+	if (line.length() == 0) {
+		val1 = 0;
+		val2 = 0;
+		return;
+	}
+    char * ptr;
+	val1 = strtoul(line.c_str(), &ptr, 16);
+	line = line.substring(ptr - line.c_str());
+	line.trim();
+	if (line.length() == 0) {
+		val2 = 0;
+		return;
+	}
+	val2 = strtoul(line.c_str(), &ptr, 16);
+}
+
 void setup() {
 	Serial.begin(SERIAL_BAUD);
 
-  // ensure to disable all the SPI slave devices. 
-  pinMode(CS_23LC1024, OUTPUT); digitalWrite(CS_23LC1024, HIGH);
-  pinMode(CS_MCP23S08, OUTPUT); digitalWrite(CS_MCP23S08, HIGH);
-  pinMode(CS_MCP23S17, OUTPUT); digitalWrite(CS_MCP23S17, HIGH);
+	// ensure to disable all the SPI slave devices.
+	pinMode(CS_23LC1024, OUTPUT);
+	digitalWrite(CS_23LC1024, HIGH);
+	pinMode(CS_MCP23S08, OUTPUT);
+	digitalWrite(CS_MCP23S08, HIGH);
+	pinMode(CS_MCP23S17, OUTPUT);
+	digitalWrite(CS_MCP23S17, HIGH);
 
-	// EEPROM control lines
-  pinMode(MEM_CE, OUTPUT); digitalWrite(MEM_CE, HIGH);
-  pinMode(MEM_WE, OUTPUT); digitalWrite(MEM_WE, HIGH);
-  pinMode(MEM_OE, OUTPUT); digitalWrite(MEM_OE, HIGH);
-
-  SPI.begin();
-
-  databus_iox.begin();
-  databus_iox.write_GPPU(databus_iox.GPPU_ENABLE8);
-  databus_iox.write_IODIR(databus_iox.IODIR_INPUT8);
-
-  addrbus_iox.begin();
-  addrbus_iox.write_IODIR16(addrbus_iox.IODIR_OUTPUT16); // 1 input/0 output, 
-  // A0 -- A12 is active, A13 is NC, A14 (pin 1) is NC or RDY/BUSY
-  addrbus_iox.write_GPPU16(addrbus_iox.GPPU_DISABLE16); // 1 input/0 output, 
-
+	SPI.begin();
 	auxsram.begin();
+	rom28C64.begin();
 
-	while (!Serial) {}
+	while (!Serial) { }
 	printWelcome();
 	Serial.setTimeout(10000);
 
@@ -321,10 +391,10 @@ void setup() {
 //		Serial.print((char)auxmem_read(i));
 //	}
 //	Serial.println();
-	
+
 	//pgmstatus.clear();
 	line = "";
-	rom_type = ROM_UNKNOWN;
+	rom_typeid = ROM_HN58C256;
 }
 
 void loop() {
@@ -336,7 +406,10 @@ void loop() {
 		if (line[0] == '!' ) {
 			if (line.startsWith("!D")) {
 				Serial.println();
-				dump_auxmem();
+				line = line.substring(2);
+				uint32_t start, stop;
+				get_two_uint32s(line, start, stop) ;
+				dump_auxmem(start, stop);
 				Serial.println(F("Dump loaded data finished."));
 
 			} else if (line.startsWith("!L")) {
@@ -350,73 +423,65 @@ void loop() {
 			} else if (line.startsWith("!X")) {
 				Serial.println();
 				Serial.println("Test Start");
+				uint8_t val = rom28C64.read_byte(0x107);
+				long notimes = 10000;
 				unsigned long swatch = millis();
 				unsigned long uswatch = micros();
-					addrbus_iox.set_gpio16_output();
-				for(long i = 0 ; i < 100000; ++i) {
-					addrbus_iox.write_gpio16(0xa5a5);
-					addrbus_iox.write_gpio16(0xffff);
+				for(long i = 0 ; i < notimes; ++i) {
+					rom28C64.prog_page(0x100, buf128, 64);
 				}
 				uswatch = micros() - uswatch;
 				swatch = millis() - swatch;
+				if (val != rom28C64.read_byte(0x107) )
+					Serial.println("verify failed.");
 				Serial.println("Stop");
-				Serial.print(uswatch);
+				Serial.print(double(uswatch) / notimes);
 				Serial.println(" us.");
-				Serial.println(double(uswatch) / 100000);
-				//Serial.println(swatch);
-				//Serial.println(double(swatch) / 100000);
+				Serial.print(double(swatch) / notimes);
+				Serial.println(" ms");
 			} else if (line.startsWith("!R")) {
 				Serial.println();
-				Serial.println(F("Read memory:"));
+				Serial.println(F("Read from target ROM"));
 				line = line.substring(2);
-				line.trim();
-	            char * ptr;
-				uint32_t startaddr = strtoul(line.c_str(), &ptr, 0);
-				line = line.substring(ptr - line.c_str());
-				line.trim();
-				Serial.println(line);
-				uint32_t stopaddr = strtoul(line.c_str(), &ptr, 0);
-				Serialsnprintln(buf128, 127, "from %04X to %04X", startaddr, stopaddr);
-				dump_target(startaddr, stopaddr);
+				uint32_t start, stop;
+				get_two_uint32s(line, start, stop) ;
+				dump_target(start, stop);
 				Serial.println(F("Finished."));
 
 			} else if (line.startsWith("!S")) {
 				show_pgmstatus();
+
+			} else if (line.startsWith("!P")) {
+				Serial.println();
+				rom28C64.disable_software_data_protect();
+				Serial.println("Software data protect disabled.");
 
 			} else if (line.startsWith("!T")) {
 				Serial.println();
 				Serial.println(F("Target memory type:"));
 				line = line.substring(2);
 				line.trim();
-	            uint8_t type_id;
 	            if ( line.length() > 0 ) {
-	            	type_id  = (uint8_t) strtol(line.c_str(), NULL, 0);
-					switch (type_id) {
-					case ROM_AT28C64:
-						Serial.println(F("AT28C64 (8KB)"));
-						rom_type = ROM_AT28C64;
-						break;
-					case ROM_AT28C64B:
-						Serial.println(F("AT28C64B (8KB with software data protection)"));
-						rom_type = ROM_AT28C64B;
-						break;
-					case ROM_HN58C256:
-						Serial.println(F("HN58C256 (32KB)"));
-						rom_type = ROM_HN58C256;
-						break;
-					default:
-						Serial.print(F("Unknown type id: "));
-						Serial.println(type_id);
-						rom_type = ROM_UNKNOWN;
-						break;
-					}
-	            } else {
-	            	Serial.println(rom_type);
+	            	rom_typeid = (uint8_t) strtol(line.c_str(), NULL, 0);
 	            }
+	            const ROMINFO & info = get_rominfo(rom_typeid);
+	            rom_typeid = info.type_id;
+	            snprintf(buf128, 127, "type id %02d \"%s\" %lu K-bytes", rom_typeid, info.name, info.capacity_bytes>>10);
+	            Serial.print(buf128);
+	            if (info.page_size > 0) {
+	            	Serial.print(" (page write supported)");
+	            }
+	            Serial.println();
 
 			} else if (line.startsWith("!W")) {
 				Serial.println();
-				write_to_rom(get_addr_mask(rom_type));
+				if ( line.startsWith("!WP")) {
+                    Serial.println(F("Start to write to ROM with block write if supported."));
+                    write_to_rom(true);
+				} else {
+                    Serial.println(F("Start to write to ROM with byte write."));
+                    write_to_rom(false);
+                }
 				Serial.println(F("Finished."));
 			}
 		} else if (line[0] == ':') {
@@ -434,10 +499,11 @@ void loop() {
 	}
 }
 
-void write_to_rom(const uint16_t & addr_mask) {
+void write_to_rom(const bool page_write) {
 	HexRecord t;
 	uint32_t rcount = 0;
 	uint32_t ix = 0;
+	const ROMINFO & info = get_rominfo(rom_typeid);
 	while ( auxsram.read(ix) != 0 and rcount < pgmstatus.recordCount) {
 		char * p = (char *) & t;
 		for(int i = 0; i < HexRecord::header_size(); ++i) {
@@ -454,30 +520,30 @@ void write_to_rom(const uint16_t & addr_mask) {
 		}
 		Serialsnprint(buf128, 127, "%04X", t.address & 0xffff);
 		Serial.print(": ");
-		uint32_t addrmask = get_addr_mask(rom_type);
-		if (rom_type == ROM_AT28C64 or rom_type == ROM_UNKNOWN) {
+		uint32_t addrmask = info.capacity_bytes - 1;
+		if ( info.page_size == 0 or page_write == false ) {
 			// supports only byte write
 			for(int i = 0; i < t.datalength; ++i) {
-				uint8_t wval = prog_byte( (t.address + i) & addrmask , t.data[i]);
-				if (wval != t.data[i]) {
+				bool succ = rom28C64.prog_byte( (t.address + i) & addrmask , t.data[i]);
+				if (! succ ) {
 					pgmstatus.errorCount += 1;
 					err_flag = true;
 	                Serial.print("Error: Write failed at 0x");
 	                Serialsnprint(buf128, 127, "%04X", t.address + i);
-	                Serial.print(": expected 0x");
-	                Serialsnprint(buf128, 127, "%02X", t.data[i]);
-	                Serial.print(" but results 0x");
-	                Serialsnprint(buf128, 127, "%02X", wval);
 	                Serial.println();
 	            }
 			}
-		} else if (rom_type == ROM_AT28C64B or rom_type == ROM_HN58C256) {
-			err_flag = prog_page64(t.address & addrmask, t.data, t.datalength);
-			if ( err_flag == false) {
+		} else if (info.page_size > 0) {
+			uint16_t writtenbytes = rom28C64.prog_page(t.address & addrmask, t.data, t.datalength, info.page_size);
+			if ( writtenbytes != t.datalength) {
+				err_flag = true;
 				pgmstatus.errorCount += 1;
-                Serial.print("Error: Write failed at 0x");
+                Serial.print("Error: Page write failed at 0x");
                 Serialsnprintln(buf128, 127, "%04X", t.address & addrmask);
             }
+		} else {
+			Serial.println("no programming method.");
+			break;
 		}
 
 		if (not err_flag) {
@@ -491,8 +557,11 @@ void write_to_rom(const uint16_t & addr_mask) {
 	}
 }
 
-void dump_auxmem() {
+void dump_auxmem(uint32_t start, uint32_t stop) {
 	HexRecord t;
+	if ( stop == 0 ) {
+		stop = 0xffffffff;
+	}
 	uint32_t rcount = 0;
 	uint32_t ix = 0;
 	while ( auxsram.read(ix) != 0 and rcount < pgmstatus.recordCount) {
@@ -501,22 +570,24 @@ void dump_auxmem() {
 			*(p + i) = auxsram.read(ix + i);
 		}
 		ix += HexRecord::header_size();
-		for (int i = 0; i < t.datalength; ++i) {
-			t.data[i] = auxsram.read(ix + i);
-		}
-		bool first = true;
-		for(int i = 0; i < t.datalength; ++i) {
-			if ( ((t.address + i) & 0x000f) == 0 or first ) {
-				Serial.println();
-				Serial.print(F("0x"));
-				if ( (t.address + i) >> 16 != 0 ) {
-					Serialsnprint(buf128, 127, "%04X", (t.address + i) >> 16);
-				}
-				Serialsnprint(buf128, 127, "%04X: ", (t.address + i) & 0xffff);
-		        first = false;
+		if ( start <= t.address and t.address - 1 + t.datalength <= stop) {
+			for (int i = 0; i < t.datalength; ++i) {
+				t.data[i] = auxsram.read(ix + i);
 			}
-			Serialsnprint(buf128, 127, "%02X ", t.data[i]);
+			bool first = true;
+			for(int i = 0; i < t.datalength; ++i) {
+				if ( ((t.address + i) & 0x000f) == 0 or first ) {
+					Serial.println();
+					Serial.print(F("0x"));
+					if ( (t.address + i) >> 16 != 0 ) {
+						Serialsnprint(buf128, 127, "%04X", (t.address + i) >> 16);
+					}
+					Serialsnprint(buf128, 127, "%04X: ", (t.address + i) & 0xffff);
+					first = false;
+				}
+				Serialsnprint(buf128, 127, "%02X ", t.data[i]);
 
+			}
 		}
 		ix += t.datalength;
 		rcount += 1;
@@ -531,7 +602,7 @@ void dump_target(const uint32_t & startaddr, const uint32_t & stopaddr) {
         Serialsnprint(buf128, 127, "%04X", addr);
         Serial.print(": ");
         for (int i = 0; i < 16; ++i) {
-            uint8_t val = read_byte(addr + i);
+            uint8_t val = rom28C64.read_byte(addr + i);
             Serialsnprint(buf128, 127, "%02X ", val);
         }
         Serial.println();
@@ -572,7 +643,7 @@ void show_pgmstatus() {
 	Serial.print(F("start_ix: "));
 	Serial.println(pgmstatus.start_ix);
 	Serial.print(F("Target memory type: "));
-	Serial.println(rom_type);
+	Serial.println(rom_typeid);
 	Serial.println();
 }
 
