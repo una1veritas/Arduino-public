@@ -34,12 +34,12 @@ void setup() {
   pinMode(SRAM_CS, OUTPUT);
   digitalWrite(SRAM_CS, HIGH);
 
-Serial.begin(115200);
+  Serial.begin(115200);
 
   bus24.begin();
   SPI.begin();
 
-unsigned long swatch = millis();
+  unsigned long swatch = millis();
   for (uint32_t i = 0; i < 0x20000; ++i) {
     bus24.write32( i );
     uint8_t val = databus.read();
