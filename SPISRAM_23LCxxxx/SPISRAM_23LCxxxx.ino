@@ -17,19 +17,25 @@ const int SRAM_CS = 10;
 //const int SRAM_HOLD = 12; // / SIO3
 //const int SRAM_SIO2 = 11;
 
-SPISRAM myRAM(SRAM_CS, SPISRAM::BUS_MBits); // CS pin
+SPISRAM myRAM(SRAM_CS, SPISRAM::BUS_WIDTH_23LC1024); // CS pin
+
+char buf128[128];
 
 void setup() {
   
-  Serial.begin(57600);
+  Serial.begin(115200);
   while (!Serial) {}
   
   // All SPI devices must be inactivated
   // by pulling CSs high.
 
+  // inactivate other SPI slaves
+  digitalWrite(A3, HIGH);
+  pinMode(A3, OUTPUT);
+  
   // set pinmode for CS
-  pinMode(SRAM_CS, OUTPUT);
   digitalWrite(SRAM_CS, HIGH);
+  pinMode(SRAM_CS, OUTPUT);
   // ensure the HOLD pulled up
   //pinMode(SRAM_HOLD, OUTPUT);
   //digitalWrite(SRAM_HOLD, HIGH);
@@ -84,30 +90,28 @@ void setup() {
   myRAM.read(addr, text, textlen+1);
   Serial.println( text );
 
+randomSeed(analogRead(0));
   long count = 0, err = 0;
   Serial.println("\nRandom read/write...");
-  while ( count < 512 ) {
-    long addr;
-    if ( myRAM.buswidth()== 16 ) {
-      addr = random() & 0xffff;
-    } else {
-      addr = random() & 0xffffff;
-    }
-    Serial.print("0x");
-    Serial.print( addr, HEX );
-    Serial.print(": ");
-    for(int i = 0; i < 8; i++) {
-      text[i] = random() & 0xFF;
-      Serial.print( " " );
-      Serial.print( (byte)text[i], HEX );
+  while ( count < 1024 ) {
+    uint32_t addr;
+    addr = (uint32_t(random()) << 8 | random(0, 0xf)) & myRAM.addressmask();
+    
+    snprintf(buf128, 127, "%06lX: ", addr);
+    Serial.print(buf128);
+    for(int i = 0; i < 16; i++) {
+      text[i] = random(0xff);
+      snprintf(buf128, 127, " %02x", uint8_t(text[i]) );
+      Serial.print(buf128);
       myRAM.write(addr+i, text[i]);
     }
-    Serial.print( "/" );
-    for(int i = 0; i < 8; i++) {
-      Serial.print( " " );
-      Serial.print( myRAM.read(addr+i), HEX );
+    Serial.println( " / " );
+    Serial.print( "        " );
+    for(int i = 0; i < 16; i++) {
+      snprintf(buf128, 127, " %02x", myRAM.read(addr+i));
+      Serial.print(buf128);
       count++;
-      if ((byte)text[i] != myRAM.read(addr+i)) err++;
+      if ((byte)text[i] != myRAM[addr+i]) err++;
     }
     Serial.println();
   }
@@ -115,7 +119,6 @@ void setup() {
   Serial.print(err);
   Serial.print(" of ");
   Serial.println(count);
-
 }
 
 void loop()

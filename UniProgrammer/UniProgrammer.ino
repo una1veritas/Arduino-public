@@ -94,7 +94,7 @@ private:
 	inline static void delay_62ns() { __asm__ __volatile__ ("nop\n\t"); }  // about 62.7 ns
 	inline static void delay_125ns() { __asm__ __volatile__ ("nop\n\t"); __asm__ __volatile__ ("nop\n\t"); }
 	// one digitalWrite takes about 3.3 -- 3.6 us.
-	// one prot xor PORTC ^= |= takes 188.6 ns (3 clocks)
+	// one port xor PORTC ^= or |= takes 188.6 ns (3 clocks)
 	// volatile uint8_t & ioport = PORTB; output by reference becomes the same result
 	// one 16 bit expander write takes 23.4 us
 	// one 16 bit expander 8 bit write takes 19.4 us
