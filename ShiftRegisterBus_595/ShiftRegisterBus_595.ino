@@ -1,55 +1,108 @@
 #include <SPI.h>
 //#include "SPISRAM.h"
-#include "shift_registers.h"
+#include "spishiftregisters.h"
 
-const int SRAM_CS = 10;
+const int SRAM_WE = A0;
+const int SRAM_CE = A1;
+const int SRAM_OE = A2;
 const int ShiftReg_CS = A3;
+const int SPISRAM_CS = 10;
 
-ShiftRegisters bus24(ShiftReg_CS, 24, ShiftRegisters::LSB_FIRST);
+SPIShiftRegisters bus24(ShiftReg_CS, 24, SPIShiftRegisters::LSB_FIRST);
 
-struct DataBus {
-  volatile uint8_t & high2out = PORTB;
-  volatile uint8_t & high2in = PINB;
-  volatile uint8_t & low6out = PORTD;
-  volatile uint8_t & low6in = PIND;
-  const uint8_t high2mask = 0x3;
-  const uint8_t low6mask = 0xfc;
+inline void delay_62ns() { __asm__ __volatile__ ("nop\n\t"); }  // about 62.7 ns
 
-  uint8_t read() {
-    DDRB &= ~high2mask;  // set 0, input
-    DDRD &= ~low6mask;  // set 0
-    return (low6in >> 2) | (high2in << 6);
+inline void sram_select() { digitalWrite(SRAM_CE, LOW); }
+inline void sram_deselect() { digitalWrite(SRAM_CE, HIGH); }
+inline void output_enable() { digitalWrite(SRAM_OE, LOW); }
+inline void output_disable() { digitalWrite(SRAM_OE, HIGH); }
+inline void write_enable() { digitalWrite(SRAM_WE, LOW); }
+inline void write_disable() { digitalWrite(SRAM_WE, HIGH); }
+
+uint8_t read_databus() {
+  return (PIND >> 2) | (PINB << 6);
+}
+
+void write_databus(const uint8_t val) {
+  PORTD = (PORTD & 0x03) | (val << 2);
+  PORTB = (PORTB & 0xfc) | (val >> 6);
+}
+
+void set_databus_mode(const uint8_t inout) {
+  if (inout == INPUT) {
+    DDRB &= ~0x03;  // set 0, input
+    DDRD &= ~0xfc;  // set 0
+  } else if (inout == OUTPUT) {
+    DDRB |= 0x03;  // set 1, output
+    DDRD |= 0xfc;  // set 1
   }
+}
 
-  void write(uint8_t val) {
-    DDRB |= high2mask;  // set 1, output
-    DDRD |= low6mask;  // set 1
-    high2out |= val >> 6;
-    low6out |= val << 2;
-  }
-} databus;
+void set_address(const uint32_t & addr) {
+  bus24.write32(addr);
+}
+
+uint8_t read(const uint32_t & addr) {
+  set_databus_mode(INPUT);
+  set_address(addr);
+  sram_select();
+  output_enable();
+  delay_62ns();
+  uint8_t val = read_databus();
+  output_disable();
+  sram_deselect();
+  return val;
+}
+
+uint8_t write(const uint32_t & addr, const uint8_t data) {
+  set_databus_mode(INPUT);
+  set_address(addr);
+  sram_select();
+  write_enable();
+  delay_62ns();
+  uint8_t val = read_databus();
+  delay_62ns();
+  write_disable();
+  sram_deselect();
+  return val;
+}
+
+void sram_begin() {
+  sram_select();
+  pinMode(SRAM_CE, OUTPUT);
+  output_enable();
+  pinMode(SRAM_OE, OUTPUT);
+  write_enable();
+  pinMode(SRAM_WE, OUTPUT);
+}
 
 void setup() {
   // put your setup code here, to run once:
-  pinMode(SRAM_CS, OUTPUT);
-  digitalWrite(SRAM_CS, HIGH);
 
+  sram_begin();
+  bus24.begin();
+  digitalWrite(SPISRAM_CS, HIGH);
+  digitalWrite(SPISRAM_CS, OUTPUT);
+  SPI.begin();
   Serial.begin(115200);
 
-  bus24.begin();
-  SPI.begin();
+  Serial.println();
+  Serial.println(read(0), HEX);
+  write(0, 0x55);
+  Serial.println(read(0), HEX);
+  Serial.println();
 
-  unsigned long swatch = millis();
-  for (uint32_t i = 0; i < 0x20000; ++i) {
-    bus24.write32( i );
-    uint8_t val = databus.read();
-    databus.write(val);
-  }
-  Serial.println(millis() - swatch);
-  bus24.write32( 0 );
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-
+  unsigned long swatch = millis();
+  for (uint32_t i = 1; i < 0x1000000; i <<= 1) {
+    bus24.write32( i );
+    //uint8_t val = databus.read();
+    //databus.write(val);
+    delay(200);
+  }
+  Serial.println(millis() - swatch);
+  bus24.write32( 0 );
 }
