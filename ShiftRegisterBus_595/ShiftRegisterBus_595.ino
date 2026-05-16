@@ -1,131 +1,34 @@
 #include <SPI.h>
 //#include "SPISRAM.h"
-#include "spishiftregisters.h"
+#include <ShiftRegister.h>
+#include <MCP23S08.h>
 
 const int SPISRAM_CS = 10;
 
-struct SRAM {
-  const int SRAM_WE = A0;
-  const int SRAM_CE = A1;
-  const int SRAM_OE = A2;
-  const int ShiftReg_CS = A3;
 
-  SPIShiftRegisters addrbus;
 
-SRAM() : addrbus(SPIShiftRegisters(ShiftReg_CS, 24, SPIShiftRegisters::LSB_FIRST)){}
+Memory memory(Memory::EEPROM64KBITS);
+char buf128[128];
+uint8_t data[256];
 
-  static const uint8_t PORTD_MASK = 0xfc;   // high 6 bits
-  static const uint8_t PORTB_MASK = 0x03;   // low 2 bits
+void memory_read_write_test(uint32_t addrlow = 0, uint32_t addrend = 0);
 
-  inline static void delay_62ns() {
-    __asm__ __volatile__("nop\n\t");
-  }  // about 62.7 ns
-
-  inline void select() {
-    digitalWrite(SRAM_CE, LOW);
-  }
-  inline void deselect() {
-    digitalWrite(SRAM_CE, HIGH);
-  }
-  inline void output_enable() {
-    digitalWrite(SRAM_OE, LOW);
-  }
-  inline void output_disable() {
-    digitalWrite(SRAM_OE, HIGH);
-  }
-  inline void write_enable() {
-    digitalWrite(SRAM_WE, LOW);
-  }
-  inline void write_disable() {
-    digitalWrite(SRAM_WE, HIGH);
-  }
-
-  void begin() {
-    addrbus.begin();
-    select();
-    pinMode(SRAM_CE, OUTPUT);
-    output_enable();
-    pinMode(SRAM_OE, OUTPUT);
-    write_enable();
-    pinMode(SRAM_WE, OUTPUT);
-  }
-
-  void set_databus_mode(const uint8_t inout) {
-    if (inout == INPUT) {
-      PORTB |= PORTB_MASK;  // set 1 -> weak pull-up
-      PORTD |= PORTD_MASK; // pull-up
-      DDRB  &= ~PORTB_MASK;  // set 0 -> input
-      DDRD  &= ~PORTD_MASK;  //~0xfc;  // set 0
-    } else if (inout == OUTPUT) {
-      DDRB |= PORTB_MASK;  // set 1 -> output
-      DDRD |= PORTD_MASK;  // set 1
-    }
-  }
-
-  uint8_t get_databus() {
-    return (PINB & PORTB_MASK) | (PIND & PORTD_MASK);
-  }
-
-  void set_databus(const uint8_t val) {
-    PORTD &= ~PORTD_MASK; 
-    PORTD |= val & PORTD_MASK;
-    PORTB &= ~PORTB_MASK;
-    PORTB |= val & PORTB_MASK;
-  }
-
-  void set_address(const uint32_t& addr) {
-    addrbus.write32(addr);
-  }
-
-  uint8_t read(const uint32_t& addr) {
-    set_databus_mode(INPUT);
-    set_address(addr);
-    select();
-    output_enable();
-    delay_62ns();
-    uint8_t val = get_databus();
-    output_disable();
-    deselect();
-    return val;
-  }
-
-  uint8_t write(const uint32_t& addr, const uint8_t data) {
-    set_databus_mode(OUTPUT);
-    set_address(addr);
-    set_databus(data);
-    select();
-    delay_62ns();
-    write_enable();
-    delay_62ns();
-    write_disable();
-    deselect();
-    return data;
-  }
-
-};
-
-SRAM hm628128;
+void(* resetFunc) (void) = 0;
 
 void setup() {
   // put your setup code here, to run once:
+  Serial.begin(115200);
+  Serial.println();
+  Serial.println("Hello.");
+  delay(500);
 
-  hm628128.begin();
   digitalWrite(SPISRAM_CS, HIGH);
   pinMode(SPISRAM_CS, OUTPUT);
   SPI.begin();
-  Serial.begin(115200);
+  memory.begin();
 
-  Serial.println();
-  uint32_t addr = 0x0230;
-  for(uint32_t val = 0; val < 0x100; ++val) {
-    Serial.print("addr :"); Serial.print(addr, HEX);
-    hm628128.write(addr, 0x0);
-    Serial.print(", read :"); Serial.print(hm628128.read(addr), HEX);
-    hm628128.write(addr, val);
-    Serial.print(", written: "); Serial.print(val, HEX);
-    Serial.print(", read: "); Serial.println(hm628128.read(addr), HEX);
-  }
-  Serial.println();
+  Serial.println("memory read write test (for SRAM)");
+  memory_program_test(0, 0x100);
 }
 
 void loop() {
@@ -141,4 +44,141 @@ void loop() {
   Serial.println(millis() - swatch);
   bus24.write32( 0 );
   */
+  if (Serial.available() > 0) {
+    resetFunc();
+  }
+}
+
+void memory_read_test(uint32_t addrlow, uint32_t addrhigh) {
+  Serial.println("Memory Read Test.");
+  addrhigh = (addrhigh > memory.size() ? memory.size() : addrhigh) ;
+  Serial.println();
+  uint32_t addr;
+  for(addr = addrlow; addr < addrhigh; addr += 64) {
+    Serial.println(addr, HEX);
+    for(uint32_t offset = 0; offset < 64; offset++) {
+      uint8_t val = memory.read(addr+offset);
+      Serial.print(val, HEX);
+      Serial.print(" ");
+      if ( (offset & 0x01f) == 0x01f ) {
+        Serial.println();
+      }
+    }
+    Serial.println();
+  }
+  Serial.println(addr, HEX);
+}
+
+void memory_program_test(uint32_t addrlow, uint32_t addrhigh) {
+  Serial.println("Memory Read Test.");
+  addrhigh = (addrhigh > memory.size() ? memory.size() : addrhigh) ;
+  Serial.println("Disable software data protection.");
+  memory.disable_SDP();
+  Serial.println("Writing...");
+  uint32_t addr;
+  for(addr = addrlow; addr < addrhigh; addr += 64) {
+    Serial.println(addr, HEX);
+    for(uint32_t offset = 0; offset < 64; offset++) {
+      uint8_t val = offset;
+      memory.program_byte(addr+offset, val);
+      Serial.print(val, HEX);
+      Serial.print(" ");
+      if ( (offset & 0x01f) == 0x01f ) {
+        Serial.println();
+      }
+    }
+    Serial.println();
+  }
+  Serial.println("Reading...");
+  for(addr = addrlow; addr < addrhigh; addr += 64) {
+    Serial.println(addr, HEX);
+    for(uint32_t offset = 0; offset < 64; offset++) {
+      uint8_t val = memory.read(addr+offset);
+      Serial.print(val, HEX);
+      Serial.print(" ");
+      if ( (offset & 0x01f) == 0x01f ) {
+        Serial.println();
+      }
+    }
+    Serial.println();
+  }
+  Serial.println(addr, HEX);
+}
+
+void memory_read_write_test(uint32_t addrlow = 0, uint32_t addrend = 0) {
+  if ( addrlow == 0 and addrend == 0) {
+    addrend = memory.size() ;
+  }
+  addrend = addrend > memory.size() ? memory.size() : addrend;
+  randomSeed(analogRead(5));
+  uint32_t totalerrcount = 0;
+  Serial.println();
+  uint32_t addr;
+  Serial.print("Read/Write test from");
+  Serial.print(addrlow, HEX); 
+  Serial.print(" to ");
+  Serial.println(addrend, HEX);
+  for(addr = addrlow; addr < addrend; addr += 32) {
+    if ( (addr & (0x200 - 1)) == 0 ) {
+      snprintf(buf128, 127, "%08lX: ", addr);
+      Serial.println(buf128);
+    }
+
+    for(uint32_t offset = 0; offset < 32; ++offset) {
+      data[offset] = memory.read(addr + offset);
+    }
+    long seed = millis() ^ analogRead(5);
+    randomSeed(seed);
+    for(uint32_t offset = 0; offset < 32; ++offset) {
+      uint8_t writeval = random(0, 256);
+      memory.write(addr + offset, writeval);
+    }
+    randomSeed(seed);
+    uint32_t readout = 0, errcount = 0;
+    for(uint32_t offset = 0; offset < 32; ++offset) {
+      readout = memory.read(addr + offset);
+      if ( readout != random(0, 256) )
+        errcount++;
+    }
+    if ( errcount > 0 ) {
+      snprintf(buf128, 127, "%04x: ", addr);
+      Serial.println(buf128);
+      Serial.print("First Read: ");
+      for(uint32_t offset = 0; offset < 32; ++offset) {
+        snprintf(buf128, 127, "%02x ", data[offset]);
+        Serial.print(buf128);
+      }
+      Serial.println();
+      Serial.print("Then write: ");
+      randomSeed(seed);
+      for(uint32_t offset = 0; offset < 32; ++offset) {
+        uint8_t writeval = random(0, 256);
+        snprintf(buf128, 127, "%02x ", writeval);
+        Serial.print(buf128);
+      }
+      Serial.println();
+      Serial.print("But read:   ");
+      for(uint32_t offset = 0; offset < 32; ++offset) {
+        snprintf(buf128, 127, "%02x ", memory.read(addr + offset));
+        Serial.print(buf128);
+      }
+      Serial.println();
+      Serial.println();
+      Serial.print("occurred errors = ");
+      Serial.println(errcount);
+      totalerrcount += errcount;
+    } else {
+      for(uint32_t offset = 0; offset < 32; ++offset) {
+        memory.write(addr + offset, data[offset]);
+      }
+    }
+    if ( totalerrcount > 0x400 ) {
+      Serial.println("Got too many errors. Abandon.");
+      break;
+    }
+  }
+  snprintf(buf128, 127, "%08lX: ", addr);
+  Serial.println(buf128);
+  Serial.print("total error count = ");
+  Serial.println(totalerrcount);
 }

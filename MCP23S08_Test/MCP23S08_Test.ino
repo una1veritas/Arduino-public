@@ -4,7 +4,7 @@
 enum SPI_SLAVES {
   CS_23LC1024 = 10,
   CS_MCP23S08 = 9,
-  CS_MCP23S17 = 8,
+  CS_ShiftReg = 8,
 };
 
 enum LED7SEG {
@@ -31,23 +31,30 @@ MCP23S08 ioxt(CS_MCP23S08, 0);
 
 void output_test() {
   long sec = (millis()/1000);
+  /*
   byte bits = ten_secs[((sec / 10) % 6)] | ((sec & 1) == 0 ? 0 : DP) | ten_secs[(sec / 300) % 6] | (((sec / 1800) & 1) == 0 ? 0 : G) ;
-  ioxt.write_gpio( bits ^ 0xff );
+  */
+  ioxt.write( sec & 0xff );
+  Serial.println(sec & 0xff);
 }
 void input_test() {
-  uint8_t val = ioxt.read_gpio(); //ioxt.read(ioxt.GPIO);
+  uint8_t val = ioxt.read(); //ioxt.read(ioxt.GPIO);
   Serial.println(val, HEX);
   delay(1000);
 }
 
 void setup() {
-  bool test_for_output = false;
+  bool test_for_output = true;
 
   Serial.begin(9600);
   Serial.println("Hello.");
 
-  pinMode(10, OUTPUT);
-  digitalWrite(10, HIGH);
+  digitalWrite(CS_23LC1024, HIGH);
+  pinMode(CS_23LC1024, OUTPUT);
+  digitalWrite(CS_ShiftReg, HIGH);
+  pinMode(CS_ShiftReg, OUTPUT);
+  digitalWrite(CE_Memory, HIGH);
+  pinMode(CE_Memory, OUTPUT);
 
   SPI.begin();
   Serial.println("SPI started.");
@@ -55,13 +62,16 @@ void setup() {
   Serial.println("IO Expander started.");
   
   if (test_for_output) { 
-    ioxt.gpio_output();
+    Serial.println("Do output test.");
+    ioxt.set_gpio_output();
     for(;;) {
-      output_test();
+      //output_test();
+      ioxt.write(0x55);
+      delay(500);
     }
   } else if (!test_for_output) {
-    ioxt.enable_pullup();
-    ioxt.gpio_input();
+    ioxt.enable_gpio_pullup();
+    ioxt.set_gpio_input();
     for(;;) {
       input_test();
     }
