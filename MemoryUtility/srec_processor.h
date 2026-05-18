@@ -8,7 +8,7 @@
 #ifndef SREC_PROCESSOR_H_
 #define SREC_PROCESSOR_H_
 
-#include "common.h"
+#include "memutil.h"
 
 /*
 // S19 record types

@@ -8,7 +8,10 @@
 #include <Arduino.h>
 
 #include "ihex_processor.h"
-#include "common.h"
+
+#include "memutil.h"
+#include "pagearray.h"
+
 
 // Global variables
 //unsigned int extendedLinearAddress = 0;
@@ -136,15 +139,16 @@ void handleDataRecord(const HexRecord & record) {
 	}
 
 	// Write data to auxiliary memory
-	uint8_t * ptr = (uint8_t *) & record;
-	for (uint32_t ix = 0; ix < record.header_size(); ++ix, ++ptr) {
-		auxsram.write(pgmstatus.start_ix + ix, *ptr);
-	}
-	for (uint32_t ix = 0; ix < record.datalength; ++ix, ++ptr) {
-		auxsram.write(pgmstatus.start_ix + record.header_size() + ix, *ptr);
-	}
-	pgmstatus.start_ix += record.header_size() + record.datalength;
-	auxsram.write(pgmstatus.start_ix, 0x00);
+	pagearray.append_bytes(record.address, record.data, record.datalength);
+//	uint8_t * ptr = (uint8_t *) & record;
+//	for (uint32_t ix = 0; ix < record.header_size(); ++ix, ++ptr) {
+//		auxsram.write(pgmstatus.start_ix + ix, *ptr);
+//	}
+//	for (uint32_t ix = 0; ix < record.datalength; ++ix, ++ptr) {
+//		auxsram.write(pgmstatus.start_ix + record.header_size() + ix, *ptr);
+//	}
+//	pgmstatus.start_ix += record.header_size() + record.datalength;
+//	auxsram.write(pgmstatus.start_ix, 0x00);
 
 	pgmstatus.totalBytesWritten +=  record.datalength;
 

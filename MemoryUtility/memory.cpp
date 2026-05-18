@@ -15,20 +15,6 @@ void Memory::set_databus_mode(const uint8_t inout) {
 		databus.set_gpio_output();
 		databus.disable_gpio_pullup();
 	}
-	/*
-	 if (inout == INPUT) {
-	 //PORTB |= PORTB_MASK;  // set 1 -> weak pull-up
-	 PORTC |= PORTC_MASK;
-	 PORTD |= PORTD_MASK; // pull-up
-	 //DDRB  &= ~PORTB_MASK;  // set 0 -> input
-	 DDRC  &= ~PORTC_MASK;
-	 DDRD  &= ~PORTD_MASK;  //~0xfc;  // set 0
-	 } else if (inout == OUTPUT) {
-	 //DDRB |= PORTB_MASK;  // set 1 -> output
-	 DDRC |= PORTC_MASK;
-	 DDRD |= PORTD_MASK;  // set 1
-	 }
-	 */
 }
 
 uint8_t Memory::read(const uint32_t & addr) {

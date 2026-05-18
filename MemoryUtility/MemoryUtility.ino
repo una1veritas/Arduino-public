@@ -24,13 +24,12 @@ Replace yourfile.hex with your Intel HEX filename
 //#include <MCP23S17.h>
 #include <ShiftRegister.h>
 
+#include "memutil.h"
+
 #include "memory.h"
 
 #include "ihex_processor.h"
 #include "srec_processor.h"
-
-const uint8_t SPISRAM_23LC1024_CS = 10;
-
 
 enum CAPACITY_IN_BITS {
   SRAM16KBITS   =   0x4000UL,   // 2k bytes
@@ -94,7 +93,9 @@ const MEM_INFO & get_meminfo(const String & name) {
 // Configuration
 #define SERIAL_BAUD 115200
 
-SPISRAM  auxsram(SPISRAM_23LC1024_CS, SPISRAM::BUS_MBits);  // CS pin
+const uint8_t SPISRAM_23LC1024_CS = 10;
+
+PageArray pagearray(SPISRAM_23LC1024_CS);
 Memory memory(EEPROM64KBITS);
 
 ProgrammerStatus pgmstatus;
@@ -148,9 +149,10 @@ void write_to_rom(const bool);
 
 void setup() {
 	Serial.begin(SERIAL_BAUD);
+	Serial.println("Hello.");
 
 	SPI.begin();
-	auxsram.begin();
+	pagearray.begin();
 	memory.begin();
 
 	while (!Serial) { }
@@ -252,36 +254,30 @@ void loop() {
 }
 
 void write_to_rom() {
-	HexRecord t;
-	uint32_t rcount = 0;
-	uint32_t ix = 0;
-	while ( auxsram.read(ix) != 0 and rcount < pgmstatus.recordCount) {
-		char * p = (char *) & t;
-		for(int i = 0; i < HexRecord::header_size(); ++i) {
-			*(p + i) = auxsram.read(ix + i);
-		}
-		ix += HexRecord::header_size();
-		for (int i = 0; i < t.datalength; ++i) {
-			t.data[i] = auxsram.read(ix + i);
-		}
+	Page64 page;
+	uint32_t rcount;
+	uint32_t ix;
+	for(ix = 0, rcount = 0; ix < pagearray.size() and rcount < pgmstatus.recordCount; ++ix, ++rcount) {
+		pagearray.load(ix, page);
+
 		bool err_flag = false;
 
 		Serial.print("0x");
-		if ( t.address >> 16 != 0 ) {
-			Serialsnprint(buf128, 127, "%04X", t.address >> 16 & 0xffff);
+		if ( page.address >> 16 != 0 ) {
+			Serialsnprint(buf128, 127, "%04X", page.address >> 16 & 0xffff);
 		}
-		Serialsnprint(buf128, 127, "%04X", t.address & 0xffff);
+		Serialsnprint(buf128, 127, "%04X", page.address & 0xffff);
 		Serial.print(": ");
 
 		uint32_t addrmask = memory.size() - 1;
 		// determine byte write or page write
 
 		if ( meminfo.page_size == 0
-				or (t.address & (meminfo.page_size - 1)) != 0 // start address is not aligned
-				or (t.datalength % meminfo.page_size) != 0 ) {
+				or (! page.is_aligned() ) // start address is not aligned
+				or (! page.is_full() ) ) {
 			Serial.println(meminfo.page_size);
-			Serial.println(t.address & (meminfo.page_size - 1), HEX);
-			Serial.println(t.datalength % meminfo.page_size);
+			Serial.println(page.address & (meminfo.page_size - 1), HEX);
+			Serial.println(page.length % meminfo.page_size);
 			Serial.println("Use byte write.");
 		} else {
 			Serial.println("Use page write.");
@@ -319,45 +315,34 @@ void write_to_rom() {
 			Serial.println(" Stop writing to ROM.");
             break;
 		}
-		ix += t.datalength;
-		rcount += 1;
 	}
 }
 
 void dump_auxmem(uint32_t start, uint32_t stop) {
-	HexRecord t;
+	Page64 page;
 	if ( stop == 0 ) {
 		stop = 0xffffffff;
 	}
-	uint32_t rcount = 0;
-	uint32_t ix = 0;
-	while ( auxsram.read(ix) != 0 and rcount < pgmstatus.recordCount) {
-		char * p = (char *) & t;
-		for(int i = 0; i < HexRecord::header_size(); ++i) {
-			*(p + i) = auxsram.read(ix + i);
-		}
-		ix += HexRecord::header_size();
-		if ( start <= t.address and t.address - 1 + t.datalength <= stop) {
-			for (int i = 0; i < t.datalength; ++i) {
-				t.data[i] = auxsram.read(ix + i);
-			}
+	uint32_t rcount;
+	uint32_t ix;
+	for ( ix = 0, rcount = 0; ix < pagearray.size() and rcount < pgmstatus.recordCount; ++ix, ++rcount) {
+		pagearray.load(ix, page);
+		if ( start <= page.address and page.address - 1 + page.length <= stop) {
 			bool first = true;
-			for(int i = 0; i < t.datalength; ++i) {
-				if ( ((t.address + i) & 0x000f) == 0 or first ) {
+			for(int i = 0; i < page.length; ++i) {
+				if ( ((page.address + i) & 0x000f) == 0 or first ) {
 					Serial.println();
 					Serial.print(F("0x"));
-					if ( (t.address + i) >> 16 != 0 ) {
-						Serialsnprint(buf128, 127, "%04X", (t.address + i) >> 16);
+					if ( (page.address + i) >> 16 != 0 ) {
+						Serialsnprint(buf128, 127, "%04X", (page.address + i) >> 16);
 					}
-					Serialsnprint(buf128, 127, "%04X: ", (t.address + i) & 0xffff);
+					Serialsnprint(buf128, 127, "%04X: ", (page.address + i) & 0xffff);
 					first = false;
 				}
-				Serialsnprint(buf128, 127, "%02X ", t.data[i]);
+				Serialsnprint(buf128, 127, "%02X ", page[i]);
 
 			}
 		}
-		ix += t.datalength;
-		rcount += 1;
 	}
 	Serial.println();
 }

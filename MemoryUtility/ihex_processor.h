@@ -8,7 +8,7 @@
 #ifndef IHEX_PROCESSOR_H_
 #define IHEX_PROCESSOR_H_
 
-#include "common.h"
+#include "memutil.h"
 
 // Intel HEX Record Types
 typedef enum {

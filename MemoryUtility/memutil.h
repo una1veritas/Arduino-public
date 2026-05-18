@@ -8,7 +8,7 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
-#include <SPISRAM.h>
+#include "pagearray.h"
 
 //enum RecordType {
 //	S0 =  0x5300 ,	// S0 - Header record
@@ -73,6 +73,7 @@ struct ProgrammerStatus {
 
 };
 
+extern PageArray pagearray;
 extern ProgrammerStatus pgmstatus;
 
 extern char buf128[128];
@@ -81,8 +82,6 @@ int Serialsnprint(char buf[], unsigned int n, const char *format, ...);
 int Serialsnprintln(char buf[], unsigned int n, const char *format, ...);
 
 uint8_t hexToUint8(String hex, int startpos = 0);
-
-extern SPISRAM auxsram;
 
 //void verifyData();
 void clear_pgmstatus();
