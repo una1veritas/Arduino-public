@@ -266,13 +266,14 @@ void loop() {
 	}
 }
 
-void write_to_rom() {
+void write_to_rom(const uint32_t & startaddr, const uint32_t & stopaddr) {
 	Page64 page;
 	uint32_t rcount;
 	uint32_t ix;
 	for(ix = 0, rcount = 0; ix < pagearray.size() and rcount < pgmstatus.recordCount; ++ix, ++rcount) {
 		pagearray.load(ix, page);
-
+		if (page.address < startaddr or page.address > stopaddr)
+			continue;
 		bool err_flag = false;
 
 		Serial.print("0x");
@@ -292,6 +293,16 @@ void write_to_rom() {
 			Serial.println(page.address & (meminfo.page_size - 1), HEX);
 			Serial.println(page.length % meminfo.page_size);
 			Serial.print("Byte write ");
+			uint16_t i;
+			for(i = 0; i < page.length; ++i) {
+				bool succ = memory.program_byte( page.address + i, page.data[i]);
+				if (! succ ) {
+					pgmstatus.errorCount += 1;
+					err_flag = true;
+					Serial.print(F("Error: Write failed at 0x"));
+					Serial.println(page.address + i, HEX);
+				}
+			}
 		} else {
 			Serial.print("Page write ");
 		}
