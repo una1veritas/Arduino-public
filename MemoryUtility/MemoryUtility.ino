@@ -247,9 +247,9 @@ void loop() {
 
 				case 'W':
 					Serial.println();
-                    write_to_rom();
-                    Serial.println(F("Finished."));
-                    break;
+          write_to_rom(0, meminfo.capacity_inbits >> 3);
+          Serial.println(F("Finished."));
+          break;
 			}
 		} else if (line[0] == ':') {
 			// Process Intel HEX record
@@ -286,25 +286,31 @@ void write_to_rom(const uint32_t & startaddr, const uint32_t & stopaddr) {
 		uint32_t addrmask = memory.size() - 1;
 		// determine byte write or page write
 
-		if ( meminfo.page_size == 0
+		if ( meminfo.page_size == 0	// the target memory has no page write mode
 				or (! page.is_aligned() ) // start address is not aligned
 				or (! page.is_full() ) ) {
-			Serial.println(meminfo.page_size);
-			Serial.println(page.address & (meminfo.page_size - 1), HEX);
-			Serial.println(page.length % meminfo.page_size);
+			//Serial.println(meminfo.page_size);
+			Serial.println(page.address, HEX);
 			Serial.print("Byte write ");
 			uint16_t i;
 			for(i = 0; i < page.length; ++i) {
-				bool succ = memory.program_byte( page.address + i, page.data[i]);
+				bool succ = true;// memory.program_byte( (page.address + i) & addrmask, page.data[i]);
 				if (! succ ) {
 					pgmstatus.errorCount += 1;
 					err_flag = true;
-					Serial.print(F("Error: Write failed at 0x"));
+					Serial.print(F("Error: Write failed at $"));
 					Serial.println(page.address + i, HEX);
 				}
 			}
 		} else {
 			Serial.print("Page write ");
+//			bool succ = memory.program_page(t.address & addrmask, t.data, meminfo.page_size);
+//			if ( !succ ) {
+//				err_flag = true;
+//				pgmstatus.errorCount += 1;
+//                Serial.print("Error: Page write failed at 0x");
+//                Serialsnprintln(buf128, 127, "%04X", t.address & addrmask);
+//            }
 		}
 
 
@@ -353,22 +359,6 @@ void dump_auxmem(uint32_t start, uint32_t stop) {
 		pagearray.load(ix, page);
 		if ( start <= page.address and page.address - 1 + page.length <= stop) {
 			page.printOn(Serial);
-			/*
-			bool first = true;
-			for(int i = 0; i < page.length; ++i) {
-				if ( ((page.address + i) & 0x000f) == 0 or first ) {
-					Serial.println();
-					Serial.print(F("0x"));
-					if ( (page.address + i) >> 16 != 0 ) {
-						Serialsnprint(buf128, 127, "%04X", (page.address + i) >> 16);
-					}
-					Serialsnprint(buf128, 127, "%04X: ", (page.address + i) & 0xffff);
-					first = false;
-				}
-				Serialsnprint(buf128, 127, "%02X ", page[i]);
-
-			}
-			*/
 		}
 	}
 	Serial.println();
