@@ -12,13 +12,15 @@ size_t Page64::printOn(Stream &out) {
 	char tmp16[16];
 	size_t count = 0;
 	for (int i = 0; i < length; ++i) {
-		if (i % 16 == 0) {
-			count += Serial.println();
+		if (i == 0) {
 			snprintf(tmp16, 15, "%04X : ", address + i);
 			count += out.print(tmp16);
+		} else if ( i % 16 == 0 ) {
+			count += out.println();
+			count += out.print(F("       ") );
 		}
 		snprintf(tmp16, 15, "%02X ", data[i]);
-		count += Serial.print(tmp16);
+		count += out.print(tmp16);
 	}
 	count += out.println();
 	return count;
