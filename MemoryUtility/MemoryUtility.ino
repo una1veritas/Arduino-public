@@ -24,12 +24,12 @@ Replace yourfile.hex with your Intel HEX filename
 //#include <MCP23S17.h>
 #include <ShiftRegister.h>
 
+#include "hex_processor.h"
 #include "memutil.h"
+
 
 #include "memory.h"
 
-#include "ihex_processor.h"
-#include "srec_processor.h"
 
 enum CAPACITY_IN_BITS {
   SRAM16KBITS   =   0x4000UL,   // 2k bytes
@@ -57,7 +57,7 @@ enum MEM_TYPE {
 
 struct MEM_INFO {
 		String partname;
-		CAPACITY_IN_BITS capacity_inbits;
+		uint32_t capacity_inbits;
 		uint8_t memtype;
 		int16_t page_size;
 
@@ -106,7 +106,7 @@ String line;
 MEM_INFO meminfo;
 
 bool char_isin(const char c, const char * str) {
-	char * p;
+	const char * p;
 	for (p = str; *p != 0 and *p != c ; ++p);
 	return *p != 0;
 }
@@ -164,6 +164,8 @@ void setup() {
 }
 
 void loop() {
+	char * ptr;
+	uint32_t start, stop;
 	if ( readStringUntilCrLf(line, 256) > 0 ) {
 		line.trim();
 		if ( line.length() == 0 ) {
@@ -177,8 +179,6 @@ void loop() {
 				case 'd':
 					Serial.println();
 					line = line.substring(2);
-					uint32_t start, stop;
-					char * ptr;
 					start = strtoul(line.c_str(), &ptr, 0);
 					line = line.substring(ptr - line.c_str());
 					stop = strtoul(line.c_str(), &ptr, 0);
@@ -217,6 +217,19 @@ void loop() {
 					Serial.println("Software data protect disabled.");
 					break;
 
+				case 'R':
+				case 'r':
+					Serial.println();
+					line = line.substring(2);
+					start = strtoul(line.c_str(), &ptr, 0);
+					line = line.substring(ptr - line.c_str());
+					stop = strtoul(line.c_str(), &ptr, 0);
+					//Serial.println(start);
+					//Serial.println(stop);
+					dump_target(start, stop);
+					Serial.println(F("Dump memory content finished."));
+					break;
+
 				case 'T':
 				case 't':
 					Serial.println();
@@ -240,7 +253,7 @@ void loop() {
 			}
 		} else if (line[0] == ':') {
 			// Process Intel HEX record
-			processIHexRecord(line, record);
+			processiHexRecord(line, record);
 		} else if (line[0] == 'S') {
 			processS19Record(line, record);
 		} else {
@@ -278,9 +291,9 @@ void write_to_rom() {
 			Serial.println(meminfo.page_size);
 			Serial.println(page.address & (meminfo.page_size - 1), HEX);
 			Serial.println(page.length % meminfo.page_size);
-			Serial.println("Use byte write.");
+			Serial.print("Byte write ");
 		} else {
-			Serial.println("Use page write.");
+			Serial.print("Page write ");
 		}
 
 
@@ -328,6 +341,8 @@ void dump_auxmem(uint32_t start, uint32_t stop) {
 	for ( ix = 0, rcount = 0; ix < pagearray.size() and rcount < pgmstatus.recordCount; ++ix, ++rcount) {
 		pagearray.load(ix, page);
 		if ( start <= page.address and page.address - 1 + page.length <= stop) {
+			page.printOn(Serial);
+			/*
 			bool first = true;
 			for(int i = 0; i < page.length; ++i) {
 				if ( ((page.address + i) & 0x000f) == 0 or first ) {
@@ -342,6 +357,7 @@ void dump_auxmem(uint32_t start, uint32_t stop) {
 				Serialsnprint(buf128, 127, "%02X ", page[i]);
 
 			}
+			*/
 		}
 	}
 	Serial.println();

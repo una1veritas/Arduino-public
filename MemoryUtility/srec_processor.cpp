@@ -10,10 +10,10 @@
 
 #include <Arduino.h>
 
-#include "srec_processor.h"
+#include "hex_processor.h"
 #include "pagearray.h"
 
-#include "common.h"
+#include "memutil.h"
 
 //#define BUFFER_SIZE 256
 //#define MAX_FILE_SIZE (128 * 1024)  // 128 KB
@@ -108,7 +108,7 @@ boolean processS19Record(const String &line, HexRecord &record) {
 	//Serialsnprint(buf128, 127, "chksum = %02x, calced = %02x\n", record.checksum, calcChecksum(line));
 
 	// Verify checksum
-	if ( calcChecksum(line) != record.checksum ) {
+	if ( calcS19Checksum(line) != record.checksum ) {
 		Serial.println(F("Error: Checksum error."));
 		pgmstatus.checksumErrors++;
 		return false;
@@ -123,14 +123,14 @@ boolean processS19Record(const String &line, HexRecord &record) {
 	case '0': 	// SREC_HEADER: 	// type 0
 		// S0 header: S0 + count + address(2) + data + checksum
 		// Typically contains manufacturer info, can extract and display
-		return processHeader(record); //byteCount);
+		return processS19Header(record); //byteCount);
 
 		// data record
 	case '1': 	// SREC_DATA_16: 	// type 1
 	case '2': 	// SREC_DATA_24:	// type 2
 	case '3': 	// SREC_DATA_32: 	// type 3
 		// Subtract the number of bytes for address and checksum
-		return processDataRecord(record); //byteCount, 2);  // 2 bytes address
+		return processS19DataRecord(record); //byteCount, 2);  // 2 bytes address
 
 		// data record count (not official)
 	case '5': 	// SREC_COUNT_16:
@@ -142,7 +142,7 @@ boolean processS19Record(const String &line, HexRecord &record) {
 	case '7': 	// SREC_START_32:
 	case '8': 	// SREC_START_24:
 	case '9': 	// SREC_START_16:
-		return processStartAddress(record);  // 4 bytes address
+		return processS19StartAddress(record);  // 4 bytes address
 
 		// unknown type. error
 	default:
@@ -153,7 +153,7 @@ boolean processS19Record(const String &line, HexRecord &record) {
 	}
 }
 
-boolean processHeader(const HexRecord & hexrecord) { //uint8_t byteCount) {
+boolean processS19Header(const HexRecord & hexrecord) { //uint8_t byteCount) {
   if (hexrecord.datalength > 0) {
     Serial.print(F("OK Header: "));
     for (int i = 0; i < hexrecord.datalength; i++) {
@@ -171,7 +171,7 @@ boolean processHeader(const HexRecord & hexrecord) { //uint8_t byteCount) {
   return true;
 }
 
-boolean processDataRecord(const HexRecord &record) {
+boolean processS19DataRecord(const HexRecord &record) {
 	// Check if total data won't exceed 128 KB
 	if (record.address + record.datalength > 0x20000) {
 		Serial.print(F("Error: Data would exceed 128 KB limit, from 0x"));
@@ -211,7 +211,7 @@ boolean processDataRecord(const HexRecord &record) {
 	return true;
 }
 
-boolean processStartAddress(const HexRecord & record) {
+boolean processS19StartAddress(const HexRecord & record) {
   // Parse start address
 	// usually used to represent the end
 	pgmstatus.startLinearAddress = record.address;
@@ -222,7 +222,7 @@ boolean processStartAddress(const HexRecord & record) {
   return true;
 }
 
-uint8_t calcChecksum(const String & line) {
+uint8_t calcS19Checksum(const String & line) {
   // Calculate checksum of all bytes except the first byte "Sx" and the checksum itself
   uint8_t calculatedSum = 0;
   uint8_t byteCount = hexToUint8(line, 2);

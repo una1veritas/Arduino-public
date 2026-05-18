@@ -7,7 +7,7 @@
 
 #include <Arduino.h>
 
-#include "ihex_processor.h"
+#include "hex_processor.h"
 
 #include "memutil.h"
 #include "pagearray.h"
@@ -28,7 +28,7 @@
  * CC = Checksum (2 hex chars)
  */
 
-void processIHexRecord(String line, HexRecord &record) {
+void processiHexRecord(String line, HexRecord &record) {
 	// set record type
 	record.type[0] = line[0];
 	record.type[1] = line[8];
@@ -90,7 +90,7 @@ void processIHexRecord(String line, HexRecord &record) {
 	//uint8_t checksum =
 	record.checksum = hexToUint8(line, 9 + (record.datalength << 1));
 
-	if (!validateChecksum(record)) {
+	if (! validateiHexChecksum(record)) {
 		Serial.println(F("ERROR: Checksum validation failed for line:"));
 		Serial.println(line);
 		pgmstatus.checksumErrors++;
@@ -102,19 +102,19 @@ void processIHexRecord(String line, HexRecord &record) {
 	// Handle record types
 	switch ((char) record.type[1]) {
 	case '0': //IHEX_DATA:
-		handleDataRecord(record);
+		handleiHexDataRecord(record);
 		break;
 
 	case '4': //IHEX_EXTENDED_LINEAR_ADDR:
-		handleExtendedLinearAddress(record);
+		handleiHexExtendedLinearAddress(record);
 		break;
 
 	case '5': //IHEX_START_LINEAR_ADDR:
-		handleStartLinearAddress(record);
+		handleiHexStartLinearAddress(record);
 		break;
 
 	case '1': //IHEX_END_OF_FILE:
-		handleEndOfFile(record);
+		handleiHexEndOfFile(record);
 		break;
 
 	default:
@@ -129,7 +129,7 @@ void processIHexRecord(String line, HexRecord &record) {
  * Handle Data Record (Type 0x00)
  * Writes data to EEPROM at the computed address
  */
-void handleDataRecord(const HexRecord & record) {
+void handleiHexDataRecord(const HexRecord & record) {
 	// Check if address is within memory bounds
 	if ( record.address +  record.datalength > 0x20000) {
 		pgmstatus.errorCount += 1;
@@ -164,7 +164,7 @@ void handleDataRecord(const HexRecord & record) {
  * Handle Extended Linear Address Record (Type 0x04)
  * Sets the upper 16 bits of the address
  */
-void handleExtendedLinearAddress(HexRecord &hexrecord) {
+void handleiHexExtendedLinearAddress(HexRecord &hexrecord) {
 	if (hexrecord.datalength != 2) {
 		pgmstatus.errorCount += 1;
 		Serialsnprintln(buf128, 127,
@@ -183,7 +183,7 @@ void handleExtendedLinearAddress(HexRecord &hexrecord) {
  * Handle Start Linear Address Record (Type 0x05)
  * Optional: used for execution start address (informational)
  */
-void handleStartLinearAddress(HexRecord & hexrecord) { //uint8_t byteCount, uint8_t* data) {
+void handleiHexStartLinearAddress(HexRecord & hexrecord) { //uint8_t byteCount, uint8_t* data) {
   if (hexrecord.datalength != 4) {
     Serial.print(F("WARNING: Start Linear Address record should have 4 bytes, but got: "));
     Serial.println(hexrecord.datalength);
@@ -207,7 +207,7 @@ void handleStartLinearAddress(HexRecord & hexrecord) { //uint8_t byteCount, uint
  * Handle End of File Record (Type 0x01)
  * Signals end of data transmission
  */
-void handleEndOfFile(HexRecord & hexrecord) {
+void handleiHexEndOfFile(HexRecord & hexrecord) {
   //Serial.println(F("---"));
   Serial.println(F("OK: I end-of-file"));
 }
@@ -216,7 +216,7 @@ void handleEndOfFile(HexRecord & hexrecord) {
  * Validate Intel HEX checksum
  * Checksum = two's complement of sum of all bytes except checksum
  */
-bool validateChecksum(HexRecord & record) {
+bool validateiHexChecksum(HexRecord & record) {
   uint8_t sum = record.datalength;
   sum += (record.address >> 8) & 0xFF;
   sum += record.address & 0xFF;
