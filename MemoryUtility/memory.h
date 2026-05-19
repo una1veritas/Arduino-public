@@ -24,7 +24,7 @@ private:
   uint32_t capacity_bits;
 
 public:
-  enum CAPACITY_BITS{
+  enum CAPACITY_INBITS {
     SRAM32KBITS   =   0x8000UL,   // 4k bytes
     SRAM64KBITS   =  0x10000UL,   // 8k bytes
     SRAM128KBITS  =  0x20000UL,   // 16k bytes
@@ -58,26 +58,26 @@ Memory(const uint32_t & capabits,
     pinMode(MEM_WE, OUTPUT);
 }
 
-//  static const uint8_t PORTD_MASK = 0xfc;   // high 6 bits
-//  static const uint8_t PORTB_MASK = 0x03;   // low 2 bits
-//  static const uint8_t PORTC_MASK = 0x03<<4;   // low 2 bits
-
   inline static void delay_62ns() {
     __asm__ __volatile__("nop\n\t");
   }  // about 62.7 ns
 
+  // chip select/enable (/CE)
   inline void select() {
     digitalWrite(MEM_CE, LOW);
   }
+
   inline void deselect() {
     digitalWrite(MEM_CE, HIGH);
   }
+  // Output enable (/OE)
   inline void output_enable() {
     digitalWrite(MEM_OE, LOW);
   }
   inline void output_disable() {
     digitalWrite(MEM_OE, HIGH);
   }
+  // Write enable (/WE)
   inline void write_enable() {
     digitalWrite(MEM_WE, LOW);
   }
@@ -85,13 +85,14 @@ Memory(const uint32_t & capabits,
     digitalWrite(MEM_WE, HIGH);
   }
 
-// must be called after SPI has begun
+// must be called after SPI has begun (otherwise hangs up)
   inline void begin() {
     addrbus.begin();
     databus.begin();
     set_databus_mode(INPUT);
   }
 
+  // capacity size in byte/mqximum address
   inline uint32_t size() const {
     return capacity_bits >> 3;
   }
@@ -100,20 +101,10 @@ private:
   void set_databus_mode(const uint8_t inout);
 
   inline uint8_t read_databus() {
-    //return (PINB & PORTB_MASK) | (PIND & PORTD_MASK);
-    //return ((PINC & PORTC_MASK)>>4) | (PIND & PORTD_MASK);
     return databus.read();
   }
 
   inline void write_databus(const uint8_t val) {
-    /*
-    PORTD &= ~PORTD_MASK;
-    PORTD |= val & PORTD_MASK;
-    //PORTB &= ~PORTB_MASK;
-    //PORTB |= val & PORTB_MASK;
-    PORTC &= ~PORTC_MASK;
-    PORTB |= (val & (PORTC_MASK>>4)) << 4;
-    */
     databus.write(val);
   }
 
@@ -131,6 +122,7 @@ public:
 
   // Write the special six-byte code to turn off Software Data Protection.
   bool disable_SDP();
+  bool enable_SDP();
 
   bool program_byte(const uint32_t& addr, const uint8_t data);
   bool program_page(const uint32_t& addr, const uint8_t data[], uint16_t page_size);

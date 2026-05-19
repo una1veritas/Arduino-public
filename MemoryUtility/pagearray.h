@@ -103,20 +103,6 @@ struct PageArray {
 		pages_count = 0;
 	}
 
-/*	Page64 & load_page(const uint32_t & auxindex, Page64 & page) {
-		for(uint32_t i = 0; i < sizeof(Page64); ++i) {
-			*(((uint8_t *)&page) + i) = auxarray.read(auxindex + i);
-		}
-		return page;
-	}
-
-	Page64 & store_page(const uint32_t & auxindex, Page64 & page) {
-		for(uint32_t i = 0; i < sizeof(Page64); ++i) {
-			auxarray.write(auxindex + i, *(((uint8_t *)&page) + i));
-		}
-		return page;
-	}*/
-
 	Page64 & load(const uint32_t & arrayindex, Page64 & page) {
 		uint32_t auxindex = head_ix + arrayindex * sizeof(Page64);
 		for (uint32_t i = 0; i < sizeof(Page64); ++i) {
@@ -136,7 +122,7 @@ struct PageArray {
 	// create new page block then add to the next of the last, as tail page block.
 	uint16_t append_page(const uint32_t & addr, const uint8_t data[], const uint16_t & length);
 
-	void append_bytes(uint32_t address, uint8_t * data, uint16_t length);
+	void append_bytes(uint32_t address, const uint8_t * data, uint16_t length);
 
 	size_t printOn(Stream & out);
 };

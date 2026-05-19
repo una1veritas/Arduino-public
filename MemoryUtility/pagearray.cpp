@@ -45,7 +45,7 @@ uint16_t PageArray::append_page(const uint32_t &addr, const uint8_t data[],
 	return pagecache.length;
 }
 
-void PageArray::append_bytes(uint32_t address, uint8_t *data, uint16_t length) {
+void PageArray::append_bytes(uint32_t address, const uint8_t *data, uint16_t length) {
 	Page64 lastpage;
 	load(pages_count - 1, lastpage); //load_page(head_ix + sizeof(Page64) * (pages_count - 1), lastpage);
 

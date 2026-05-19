@@ -31,6 +31,7 @@ uint8_t Memory::read(const uint32_t & addr) {
   return val;
 }
 
+// for SRAM
 uint8_t Memory::write(const uint32_t & addr, const uint8_t data) {
   set_databus_mode(OUTPUT);
   //output_disable();
@@ -46,7 +47,7 @@ uint8_t Memory::write(const uint32_t & addr, const uint8_t data) {
   return data;
 }
 
-// for eeprom
+// for eeprom continuous write
 void Memory::put_byte(const uint32_t& addr, const uint8_t data) {
   set_address(addr);
   write_databus(data);
@@ -77,6 +78,25 @@ bool Memory::disable_SDP() {
     return true;
 }
 
+// Write the special three-byte code to turn on Software Data Protection.
+bool Memory::enable_SDP() {
+    //disableOutput();
+    //disableWrite();
+    select();
+    set_databus_mode(OUTPUT);
+
+    put_byte(0x5555, 0xaa);
+    put_byte(0x2aaa, 0x55);
+    put_byte(0x5555, 0xa0);
+
+    set_databus_mode(INPUT);
+    deselect();
+
+    return true;
+}
+
+
+// write to EEPROM
 bool Memory::program_byte(const uint32_t& addr, const uint8_t data) {
   set_databus_mode(OUTPUT);
   //output_disable();
@@ -91,6 +111,7 @@ bool Memory::program_byte(const uint32_t& addr, const uint8_t data) {
   return succ;
 }
 
+// write to EEPROM
 bool Memory::program_page(const uint32_t & addr, const uint8_t data[], uint16_t page_size) {
 	uint8_t val;
   uint32_t baseaddr = (~uint32_t(page_size - 1)) & addr;
