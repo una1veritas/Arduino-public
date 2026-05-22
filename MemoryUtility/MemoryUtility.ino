@@ -173,8 +173,8 @@ void loop() {
 			case 'D':
 			case 'd':
 				Serial.println();
-				start = Stringtoul(line.substring(2), line, 0);
-				stop = Stringtoul(line, line, 0);
+				start = Stringtoul(line.substring(2), line, 16);
+				stop = Stringtoul(line, line, 16);
 				dump_auxmem(start, stop);
 				Serial.println(F("Dump loaded data finished."));
 				break;
@@ -205,15 +205,20 @@ void loop() {
 
 			case 'P':
 				Serial.println();
-				targetmemory.disable_SDP();
-				Serial.println("Software data protect disabled.");
+				if ( line.length() >= 3 and line[2] == 'D' ) {
+					targetmemory.disable_SDP();
+					Serial.println("Software data protection disabled.");
+				} else if ( line.length() >= 3 and line[2] == 'E' ) {
+					targetmemory.enable_SDP();
+					Serial.println("Software data protection enabled.");
+				}
 				break;
 
 			case 'R':
 			case 'r':
 				Serial.println();
-				start = Stringtoul(line.substring(2), line, 0);
-				stop = Stringtoul(line, line, 0);
+				start = Stringtoul(line.substring(2), line, 16);
+				stop = Stringtoul(line, line, 16);
 				dump_target(start, stop);
 				Serial.println(F("Dump memory content finished."));
 				break;
@@ -235,8 +240,8 @@ void loop() {
 
 			case 'W':
 				Serial.println();
-				start = Stringtoul(line.substring(2), line, 0);
-				stop = Stringtoul(line, line, 0);
+				start = Stringtoul(line.substring(2), line, 16);
+				stop = Stringtoul(line, line, 16);
 				write_to_rom(start, stop);
 				Serial.println(F("Finished."));
 				break;
@@ -258,16 +263,18 @@ void loop() {
 
 void write_to_rom(const uint32_t & startaddr, uint32_t stopaddr) {
 	Page64 page;
+	bool write_all = false;
 	Serial.print("startaddr = $"); Serial.println(startaddr, HEX);
 	Serial.print("stopaddr = $"); Serial.println(stopaddr, HEX);
 	if ( startaddr == 0 and stopaddr == 0) {
-		stopaddr = (meminfo.capacity_inbits>>3) - 1;
+		write_all = true;
 	}
 	uint32_t ix;
 	for(ix = 0; ix < pagearray.size() ; ++ix) {
 		pagearray.load(ix, page);
-		if (page.address < startaddr or page.address > stopaddr)
+		if ( write_all = false and (page.address < startaddr or page.address > stopaddr) ) {
 			continue;
+		}
 		bool err_flag = false;
 
 		Serial.print("0x");
@@ -285,7 +292,7 @@ void write_to_rom(const uint32_t & startaddr, uint32_t stopaddr) {
 				or (! page.is_aligned() ) // start address is not aligned
 				or (! page.is_full() ) ) {
 			//Serial.println(meminfo.page_size);
-			Serial.println(page.address, HEX);
+			//Serial.println(page.address, HEX);
 			Serial.print("Byte write ");
 			uint16_t i;
 			for(i = 0; i < page.length; ++i) {

@@ -58,9 +58,9 @@ Memory(const uint32_t & capabits,
     pinMode(MEM_WE, OUTPUT);
 }
 
-  inline static void delay_62ns() {
+  inline static void delay1clock() {
     __asm__ __volatile__("nop\n\t");
-  }  // about 62.7 ns
+  }  // about 62.7 ns at 16MHz
 
   // chip select/enable (/CE)
   inline void select() {
@@ -114,7 +114,7 @@ private:
 
   void put_byte(const uint32_t& addr, const uint8_t data);
 
-  bool waitfor_write_cycle_end(const uint8_t & data);
+  bool waitfor_write_cycle_end(const uint8_t & data, uint16_t count);
 
 public:
   uint8_t read(const uint32_t& addr);

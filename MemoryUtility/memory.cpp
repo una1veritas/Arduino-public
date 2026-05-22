@@ -17,46 +17,104 @@ void Memory::set_databus_mode(const uint8_t inout) {
 	}
 }
 
+// basic read sequence with additional 1 clock wait between /OE to read databus
 uint8_t Memory::read(const uint32_t & addr) {
-  set_databus_mode(INPUT);
-  //write_disable();
   //output_disable();
+  //write_disable();
+  set_databus_mode(INPUT);
   set_address(addr);
-  select();
-  output_enable();
-  delay_62ns();
+  select();  		// more than 62.5ns
+  output_enable(); 	// 62.5ns
+  delay1clock(); 	// wait duration + calling read_databus over head duration must be larger than access time
   uint8_t val = read_databus();
   output_disable();
   deselect();
   return val;
 }
 
-// for SRAM
+// basic write to SRA< with 1 clock wait after /CE and 1 clock after /WE
 uint8_t Memory::write(const uint32_t & addr, const uint8_t data) {
   set_databus_mode(OUTPUT);
-  //output_disable();
+  output_disable();
   //write_disable();
   set_address(addr);
   write_databus(data);
   select();
-  delay_62ns();
+  delay1clock();
   write_enable();
-  delay_62ns();
+  delay1clock();
   write_disable();
   deselect();
   return data;
 }
 
-// for eeprom continuous write
+// partial eeprom write sequence after bus mode change and /CE, before CE, with address change
 void Memory::put_byte(const uint32_t& addr, const uint8_t data) {
   set_address(addr);
-  write_databus(data);
   write_enable();
-  delay_62ns();
-  delay_62ns();
+  write_databus(data);
+  delay1clock();
   write_disable();
-  delay_62ns();
+  delay1clock();
 }
+
+// write to EEPROM
+bool Memory::program_byte(const uint32_t& addr, const uint8_t data) {
+  set_databus_mode(OUTPUT);
+  output_disable();
+  write_disable(); 	// to ensure pulse
+  set_address(addr);
+  select();
+  //delay1clock();
+  write_enable();
+  write_databus(data);
+  delay1clock();
+  write_disable();
+
+  bool succ = waitfor_write_cycle_end(data, 1000);
+  deselect();
+  set_databus_mode(INPUT);
+
+  return succ;
+}
+
+// write to EEPROM
+bool Memory::program_page(const uint32_t & addr, const uint8_t data[], uint16_t page_size) {
+	uint8_t val;
+  uint32_t baseaddr = (~uint32_t(page_size - 1)) & addr;
+  set_databus_mode(OUTPUT);
+  select();
+  for(uint16_t ix = 0; ix < page_size; ++ix) {
+	  val = data[ix];
+	  put_byte(baseaddr + ix, val);
+  }
+  bool succ = waitfor_write_cycle_end(val, 1000);
+  deselect();
+  return succ;
+}
+
+bool Memory::waitfor_write_cycle_end(const uint8_t & data, uint16_t count) {
+	uint8_t val0, val1;
+	set_databus_mode(INPUT);
+	do {
+		select();
+	    output_enable();
+	    delay1clock();
+	    val0 = read_databus();
+	    output_disable();
+	    deselect();
+	    select();
+	    output_enable();
+	    delay1clock();
+	    val1 = read_databus();
+	    output_disable();
+	    if ( !(count-- > 0) ) {
+	      return false;
+	    }
+	  } while (val0 != val1 and val1 != data);
+	  return true;
+}
+
 
 // Write the special six-byte code to turn off Software Data Protection.
 bool Memory::disable_SDP() {
@@ -95,54 +153,3 @@ bool Memory::enable_SDP() {
     return true;
 }
 
-
-// write to EEPROM
-bool Memory::program_byte(const uint32_t& addr, const uint8_t data) {
-  set_databus_mode(OUTPUT);
-  //output_disable();
-  //write_disable();
-  select();
-  put_byte(addr, data);
-
-  bool succ = waitfor_write_cycle_end(data);
-  deselect();
-  set_databus_mode(INPUT);
-
-  return succ;
-}
-
-// write to EEPROM
-bool Memory::program_page(const uint32_t & addr, const uint8_t data[], uint16_t page_size) {
-	uint8_t val;
-  uint32_t baseaddr = (~uint32_t(page_size - 1)) & addr;
-  set_databus_mode(OUTPUT);
-  select();
-  for(uint16_t ix = 0; ix < page_size; ++ix) {
-	  val = data[ix];
-	  put_byte(baseaddr + ix, val);
-  }
-  bool succ = waitfor_write_cycle_end(val);
-  deselect();
-  return succ;
-}
-
-bool Memory::waitfor_write_cycle_end(const uint8_t & data) {
-	  set_databus_mode(INPUT);
-	  uint32_t counter = 10000;
-	  uint8_t val0, val1;
-	  do {
-	    output_enable();
-	    delay_62ns();
-	    val0 = read_databus();
-	    output_disable();
-	    delayMicroseconds(1); //delay_62ns();
-	    output_enable();
-	    delay_62ns();
-	    val1 = read_databus();
-	    output_disable();
-	    if ( !(counter-- > 0) ) {
-	      return false;
-	    }
-	  } while (val0 != val1 and val1 != data);
-	  return true;
-}
