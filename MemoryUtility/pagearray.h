@@ -51,6 +51,8 @@ struct Page64 {
 		return *this;
 	}
 
+	inline uint16_t size() const { return length; }
+
 	uint8_t & operator[](const uint16_t & index) {
 		return data[index];
 	}
@@ -60,35 +62,35 @@ struct Page64 {
 		return *this;
 	}
 
-	bool is_full() const {
-		uint32_t page_boundary = (address & ~uint32_t(page_size - 1)) + page_size;
-		return address + length == page_boundary;
+	bool is_filled() const {
+		uint32_t boundary = (address & ~uint32_t(page_size - 1)) + page_size;
+		return address + length == boundary;
 	}
 
 	bool is_aligned() const {
-		return (address & (page_size - 1)) == 0 ;
+		return (address & (page_size - 1)) == 0 and is_filled();
 	}
 
-	uint16_t remaining_capacity() {
+	uint16_t remaining_capacity() const {
 		uint32_t page_boundary = (address & ~uint32_t(page_size - 1)) + page_size;
 		return page_boundary - (address + length);
 	}
 
-	size_t printOn(Stream & out);
+	size_t printOn(Stream & out) const;
 
 };
 
 
-// Variable memory block array
+// Variable length memory page block array
 struct PageArray {
 	SPISRAM auxarray;
-	uint32_t head_ix; // indexes of the first page block.
+	uint32_t start_offset; // offset address to the first page block.
 	uint32_t pages_count;
 
 
 	PageArray(const uint8_t SRAM_CS) :
 		auxarray(SPISRAM(SRAM_CS, SPISRAM::BUS_WIDTH_23LC1024)),
-		head_ix(0),
+		start_offset(0),
 		pages_count(0) {
 	}
 
@@ -96,28 +98,24 @@ struct PageArray {
 		auxarray.begin();
 	}
 
-	inline uint32_t size() { return pages_count; }
+	inline uint32_t size() const { return pages_count; }
 
 	void clear() {
-		head_ix = 0;
+		start_offset = 0;
 		pages_count = 0;
 	}
 
-	Page64 & load(const uint32_t & arrayindex, Page64 & page) {
-		uint32_t auxindex = head_ix + arrayindex * sizeof(Page64);
-		for (uint32_t i = 0; i < sizeof(Page64); ++i) {
-			*(((uint8_t*) &page) + i) = auxarray.read(auxindex + i);
-		}
-		return page;
-	}
+	uint32_t total_bytes() const;
 
-	void store(const uint32_t & arrayindex, const Page64 &page) {
-		uint32_t auxindex = head_ix + arrayindex * sizeof(Page64);
-		for (uint32_t i = 0; i < sizeof(Page64); ++i) {
-			auxarray.write(auxindex + i, *(((uint8_t*) &page) + i));
-		}
-		return;
-	}
+	// the first address appears in pages
+	uint32_t lowest_address() const;
+
+	// the next of the last address (= page.address + page.length) appears in pages
+	uint32_t end_address() const;
+
+	void load(Page64 & page, const uint32_t & index) const ;
+
+	void store(const uint32_t & index, Page64 &page) ;
 
 	// create new page block then add to the next of the last, as tail page block.
 	uint16_t append_page(const uint32_t & addr, const uint8_t data[], const uint16_t & length);

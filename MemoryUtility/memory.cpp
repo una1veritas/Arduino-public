@@ -59,6 +59,8 @@ void Memory::put_byte(const uint32_t& addr, const uint8_t data) {
 }
 
 // write to EEPROM
+// succeeded with at28c64
+
 bool Memory::program_byte(const uint32_t& addr, const uint8_t data) {
   set_databus_mode(OUTPUT);
   output_disable();
@@ -111,8 +113,8 @@ bool Memory::waitfor_write_cycle_end(const uint8_t & data, uint16_t count) {
 	    if ( !(count-- > 0) ) {
 	      return false;
 	    }
-	  } while (val0 != val1 and val1 != data);
-	  return true;
+	  } while ( val0 != val1 );
+	  return val0 == data;
 }
 
 

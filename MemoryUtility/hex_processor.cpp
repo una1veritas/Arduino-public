@@ -7,7 +7,7 @@
 
 #include <Arduino.h>
 
-#include "hexline_processor.h"
+#include "hex_processor.h"
 
 #include "pagearray.h"
 
@@ -24,7 +24,7 @@ uint8_t charToNibble(char c) {
   return 0;
 }
 
-uint8_t hexToUint8(const String & hex, const int & startpos) {
+uint8_t hexToUint8(const String & hex, const uint16_t & startpos) {
 	if (startpos + 2 > hex.length()) {
 		return 0;
 	}
@@ -71,7 +71,7 @@ void processiHexRecord(String line, HexRecord &record) {
 	record.datalength = hexToUint8(line, 1);
 
 	// Validate line length: :LL + AAAA + TT + DD*2 + CC
-	int expectedLength = 11 + (record.datalength * 2);
+	unsigned int expectedLength = 11 + (record.datalength * 2);
 	if (line.length() != expectedLength) {
 		// Serial.print("ERROR: Line length mismatch. Expected: ");
 		// Serial.print(expectedLength);
@@ -82,7 +82,7 @@ void processiHexRecord(String line, HexRecord &record) {
 		Serial.print(expectedLength);
 		Serial.print(F(" Got: "));
 		Serial.println(line.length());
-		for (int i = 0; i < line.length(); ++i) {
+		for (unsigned int i = 0; i < line.length(); ++i) {
 			if (isprint(line[i])) {
 				Serial.print(line[i]);
 			} else {
@@ -157,7 +157,7 @@ void handleiHexDataRecord(const HexRecord & record) {
 	if ( record.address +  record.datalength > 0x20000) {
 		pgmstatus.errorCount += 1;
 		Serial.print(F("ERROR: Address out of memory bounds: "));
-		snprintf(buf128, 127, "0x%04x (size: 0x%04x)",  record.address, 0x20000);
+		snprintf(buf128, 127, "0x%04lx (size: 0x%04lx)",  record.address, 0x20000);
 		Serial.println(buf128);
 		return;
 	}
@@ -301,7 +301,7 @@ boolean processS19Record(const String &line, HexRecord &record) {
 	}
 
 	// Verify record length matches
-	int expectedLength = 4 + byteCount * 2;
+	uint16_t expectedLength = 4 + byteCount * 2;
 	if (line.length() != expectedLength) {
 		Serial.print(F("Error: Length mismatch, expected "));
 		Serial.print(expectedLength);
@@ -354,7 +354,7 @@ boolean processS19Record(const String &line, HexRecord &record) {
 	//Serialsnprint(buf128, 127, "addr = %04x\n", record.address);
 
 	// parse data field
-	const int dataStartPos = 4 + (addressbytes << 1);
+	const uint16_t dataStartPos = 4 + (addressbytes << 1);
 	for (int i = 0; i < record.datalength; i++) {
 		record.data[i] = hexToUint8(line, dataStartPos + (i << 1));
 	}

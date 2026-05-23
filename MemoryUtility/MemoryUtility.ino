@@ -18,19 +18,28 @@ Replace /dev/ttyUSB0 with your actual serial port
 Replace yourfile.hex with your Intel HEX filename
  */
 
+//#include <Arduino.h>
+
 #include <SPI.h>
 #include <SPISRAM.h>
 #include <MCP23S08.h>
 //#include <MCP23S17.h>
 #include <ShiftRegister.h>
 
-#include "hexline_processor.h"
+#include "hex_processor.h"
 
 // address bus 24 bit through SPI by 3 shift register 74hc595 (Output Expander/ShiftRegister),
 // data bus 8 through SPI by MCP23S08 IO Expander
 // Data buffer memory through SPI by SPI Serial SRAM 23C1024
 
 #include "memory.h"
+
+		// uint8_t addrbus_cs = 8,
+		// uint8_t addrbus_oe = 7,
+		// uint8_t databus_cs = 9,
+		// uint8_t CE_pin = A1,
+		// uint8_t OE_pin = A2,
+		// uint8_t WE_pin = A0
 
 
 enum MEM_TYPE {
@@ -45,26 +54,30 @@ enum MEM_TYPE {
 struct MEM_INFO {
 	String partname;
 	uint32_t capacity_inbits;
-	uint8_t memtype;
+	uint8_t type;
 	int16_t page_size;
+	bool SDP;
 
 	MEM_INFO& operator=(const MEM_INFO &src) {
 		partname = src.partname;
 		capacity_inbits = src.capacity_inbits;
-		memtype = src.memtype;
+		type = src.type;
 		page_size = src.page_size;
 		return *this;
 	}
 };
 
 const MEM_INFO meminfo_db [] = {
-		{ "AT28C64", 	Memory::EEPROM64KBITS, 	EEPROM, 	0 },
-		{ "AT28C64B", 	Memory::EEPROM64KBITS, 	EEPROM, 	64 },
-		{ "AT28C256", 	Memory::EEPROM256KBITS, EEPROM, 	64 },
-		{ "HN58C256", 	Memory::EEPROM256KBITS, EEPROM, 	64 },
-		{ "SRAM64KBITS", Memory::SRAM64KBITS, 	SRAM, 		0 },
-		{ "SRAM1MBITS", Memory::SRAM1MBITS, 	SRAM, 		0 },
-		{ "SRAM4MBITS", Memory::SRAM4MBITS, 	SRAM, 		0 },
+		{ "AT28C64", 	Memory::EEPROM64KBITS, 	EEPROM, 	0, 	false },
+		{ "AT28C64B", 	Memory::EEPROM64KBITS, 	EEPROM, 	64,	true },
+		{ "AT28C256", 	Memory::EEPROM256KBITS, EEPROM, 	64,	true },
+		{ "AT29C256", 	Memory::EEPROM256KBITS, FLASH,	 	64,	true },
+		{ "HN58C256", 	Memory::EEPROM256KBITS, EEPROM, 	64, false },
+		{ "HN58C256A", 	Memory::EEPROM256KBITS, EEPROM, 	64, true },
+		{ "SRAM64KBITS", Memory::SRAM64KBITS, 	SRAM, 		0, 	false },
+		{ "SRAM256KBITS", Memory::SRAM64KBITS, 	SRAM, 		0, 	false },
+		{ "SRAM1MBITS", Memory::SRAM1MBITS, 	SRAM, 		0, 	false },
+		{ "SRAM4MBITS", Memory::SRAM4MBITS, 	SRAM, 		0, 	false },
 		{ "", 0, 0, },
 };
 
@@ -75,6 +88,19 @@ const MEM_INFO & get_meminfo_byname(const String & name) {
 			break;
 	}
 	return meminfo_db[ix];
+}
+
+void list_target_types(void) {
+	for(uint8_t ix = 0; meminfo_db[ix].capacity_inbits != 0; ++ix ) {
+		const MEM_INFO & minfo = meminfo_db[ix];
+		snprintf(buf128, 127, "%d: %-12s %ldkbits ", ix, minfo.partname.c_str(), minfo.capacity_inbits / 1024);
+		Serial.print(buf128);
+		Serial.print(minfo.type);
+		Serial.print(" ");
+		Serial.print(minfo.page_size);
+		Serial.println(minfo.SDP ? " SDP" : "");
+	}
+
 }
 
 // Configuration
@@ -143,6 +169,7 @@ unsigned int readStringUntilCrLf(String &line, const unsigned int & limit = 256,
 void write_to_rom(const bool);
 
 void setup() {
+
 	Serial.begin(SERIAL_BAUD);
 	Serial.println("Hello.");
 
@@ -156,6 +183,7 @@ void setup() {
 
 	line = "";
 	meminfo = meminfo_db[1];
+
 }
 
 void loop() {
@@ -226,6 +254,7 @@ void loop() {
 			case 'T':
 			case 't':
 				Serial.println();
+				list_target_types();
 				line = line.substring(2);
 				line.trim();
 				if (line.length() > 0) {
@@ -236,6 +265,12 @@ void loop() {
 					Serial.println(F("Current target memory type:"));
 				}
 				Serial.println(meminfo.partname);
+				if (meminfo.page_size == 0) {
+					Serial.print("No page write supported.");
+				} else {
+					Serial.print("Page write suppored, page-size = ");
+					Serial.println(meminfo.page_size);
+				}
 				break;
 
 			case 'W':
@@ -261,43 +296,64 @@ void loop() {
 	}
 }
 
-void write_to_rom(const uint32_t & startaddr, uint32_t stopaddr) {
+void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 	Page64 page;
-	bool write_all = false;
-	Serial.print("startaddr = $"); Serial.println(startaddr, HEX);
-	Serial.print("stopaddr = $"); Serial.println(stopaddr, HEX);
-	if ( startaddr == 0 and stopaddr == 0) {
-		write_all = true;
+	uint32_t lowestaddr = pagearray.lowest_address();
+	uint32_t endaddr = pagearray.end_address();
+
+	Serial.println(lowestaddr, HEX);
+	Serial.println(endaddr, HEX);
+	if (startaddr == 0 and stopaddr == 0) {
+		startaddr = lowestaddr;
+		stopaddr = endaddr;
 	}
+	if ( pagearray.size() == 0 or stopaddr - startaddr == 0) {
+		Serial.println(F("No data to write."));
+		return;
+	}
+	Serial.print(F("pages "));
+	Serial.print(pagearray.size());
+	Serial.print(F(", start "));
+	Serial.print(startaddr, HEX);
+	Serial.print(F(", stop "));
+	Serial.println(stopaddr, HEX);
+
 	uint32_t ix;
 	for(ix = 0; ix < pagearray.size() ; ++ix) {
-		pagearray.load(ix, page);
-		if ( write_all = false and (page.address < startaddr or page.address > stopaddr) ) {
+		pagearray.load(page, ix);
+		if ( (startaddr > page.address + page.length - 1) or (page.address >= stopaddr) ) {
 			continue;
 		}
 		bool err_flag = false;
 
-		Serial.print("0x");
 		if ( page.address >> 16 != 0 ) {
-			snprintf(buf128, 127, "%04X", page.address >> 16 & 0xffff);
-			Serial.print(buf128);
+			snprintf(buf128, 127, "%08lX ", page.address);
+		} else {
+			snprintf(buf128, 127, "%04lX ", page.address);
 		}
-		snprintf(buf128, 127, "%04X: ", page.address & 0xffff);
 		Serial.print(buf128);
 
 		uint32_t addrmask = targetmemory.size() - 1;
 		// determine byte write or page write
 
+		if ( page.address != (addrmask & page.address) ) {
+			snprintf(buf128, 127, "(%04X) ", page.address & addrmask);
+			Serial.print(buf128);
+		}
+
 		if ( meminfo.page_size == 0	// the target memory has no page write mode
 				or (! page.is_aligned() ) // start address is not aligned
-				or (! page.is_full() ) ) {
+				) {
 			//Serial.println(meminfo.page_size);
 			//Serial.println(page.address, HEX);
 			Serial.print("Byte write ");
 			uint16_t i;
 			for(i = 0; i < page.length; ++i) {
 				bool succ = targetmemory.program_byte( (page.address + i) & addrmask, page.data[i]);
-				if (! succ ) {
+				if ( succ ) {
+					snprintf(buf128, 127, "%02X ", page.data[i]);
+					Serial.print(buf128);
+				} else {
 					pgmstatus.errorCount += 1;
 					err_flag = true;
 					Serial.print(F("Error: Write failed at $"));
@@ -333,7 +389,7 @@ void dump_auxmem(uint32_t start, uint32_t stop) {
 	uint32_t rcount;
 	uint32_t ix;
 	for ( ix = 0, rcount = 0; ix < pagearray.size() and rcount < pgmstatus.recordCount; ++ix, ++rcount) {
-		pagearray.load(ix, page);
+		pagearray.load(page, ix);
 		if ( start <= page.address and page.address - 1 + page.length <= stop) {
 			page.printOn(Serial);
 		}

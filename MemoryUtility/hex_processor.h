@@ -63,7 +63,7 @@ extern ProgrammerStatus pgmstatus;
 
 extern char buf128[128];
 
-uint8_t hexToUint8(const String & hex, const int & startpos = 0);
+uint8_t hexToUint8(const String & hex, const uint16_t & startpos = 0);
 
 //void verifyData();
 void clear_pgmstatus();
