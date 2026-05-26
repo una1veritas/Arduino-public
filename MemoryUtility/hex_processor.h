@@ -8,7 +8,7 @@
 #ifndef HEXLINE_PROCESSOR_H_
 #define HEXLINE_PROCESSOR_H_
 
-#include "pagearray.h"
+#include "promwriter.h"
 
 // common definitions
 
@@ -24,50 +24,7 @@ struct HexRecord {
 	}
 };
 
-struct ProgrammerStatus {
-	uint32_t record_start_address;
-	uint16_t extendedLinearAddress; 	// ihex high 16 bits of 32 bit address
-	uint32_t startLinearAddress; 	// SREC start address/80386 EIP value
-	// uint16_t startSegmentAddress; 	// CS:IP, reserved
-	// uint16_t extSegmentAddress;		// reserved
-
-	uint32_t start_ix;
-
-	uint32_t totalBytesWritten;
-	uint32_t recordCount;
-	uint32_t errorCount;
-	uint32_t checksumErrors;
-
-	ProgrammerStatus(void) {
-		clear();
-	}
-
-	// clear programmer status
-	void clear(void) {
-		record_start_address = 0;
-		extendedLinearAddress = 0;
-		startLinearAddress = 0;
-
-		start_ix = 0;
-
-		totalBytesWritten = 0;
-		recordCount = 0;
-		errorCount = 0;
-		checksumErrors = 0;
-	}
-
-};
-
-extern PageArray pagearray;
-extern ProgrammerStatus pgmstatus;
-
-extern char buf128[128];
-
 uint8_t hexToUint8(const String & hex, const uint16_t & startpos = 0);
-
-//void verifyData();
-void clear_pgmstatus();
-
 
 // format specific definitions
 
@@ -92,9 +49,8 @@ typedef enum {
   SREC_START_16 = 9     // S9 - 16-bit start address
 } SREC_RecordType;
 
-extern unsigned long checksumErrors;
-extern unsigned int extendedLinearAddress;
-extern unsigned long bytesWritten;
+extern PageArray pagearray;
+extern PROMWriter promwriter;
 
 void processiHexRecord(String line, HexRecord & hexrecord);
 void handleiHexDataRecord(const HexRecord & hexrecord);

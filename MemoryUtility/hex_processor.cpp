@@ -11,6 +11,7 @@
 
 #include "pagearray.h"
 
+
 // common utilities
 
 uint8_t charToNibble(char c) {
@@ -60,7 +61,7 @@ void processiHexRecord(String line, HexRecord &record) {
 
 	// Validate minimum length (:LLAAAATTCC = 11 chars)
 	if (line.length() < 11) {
-		pgmstatus.errorCount += 1;
+		promwriter.errorCount += 1;
 		Serial.print("ERROR: Invalid line length: ");
 		Serial.println(line.length(), DEC);
 		return;
@@ -77,7 +78,7 @@ void processiHexRecord(String line, HexRecord &record) {
 		// Serial.print(expectedLength);
 		// Serial.print(" Got: ");
 		// Serial.println(line.length());
-		pgmstatus.errorCount += 1;
+		promwriter.errorCount += 1;
 		Serial.print(F("ERROR: Line length mismatch. Expected: "));
 		Serial.print(expectedLength);
 		Serial.print(F(" Got: "));
@@ -99,7 +100,7 @@ void processiHexRecord(String line, HexRecord &record) {
 	// Extract address (low 16 bit)
 	//  uint16_t address = (hexToUint8(line.substring(3, 5)) << 8) |
 	//                     hexToUint8(line.substring(5, 7));
-	record.address = pgmstatus.extendedLinearAddress;
+	record.address = promwriter.extendedLinearAddress;
 	record.address <<= 16;
 	record.address |= (uint16_t(hexToUint8(line, 3)) << 8) | hexToUint8(line, 5);
 
@@ -116,11 +117,11 @@ void processiHexRecord(String line, HexRecord &record) {
 	if (! validateiHexChecksum(record)) {
 		Serial.println(F("ERROR: Checksum validation failed for line:"));
 		Serial.println(line);
-		pgmstatus.checksumErrors++;
+		promwriter.checksumErrors++;
 		return;
 	}
 
-	pgmstatus.recordCount++;
+	promwriter.recordCount++;
 
 	// Handle record types
 	switch ((char) record.type[1]) {
@@ -154,8 +155,9 @@ void processiHexRecord(String line, HexRecord &record) {
  */
 void handleiHexDataRecord(const HexRecord & record) {
 	// Check if address is within memory bounds
+	char buf128[128];
 	if ( record.address +  record.datalength > 0x20000) {
-		pgmstatus.errorCount += 1;
+		promwriter.errorCount += 1;
 		Serial.print(F("ERROR: Address out of memory bounds: "));
 		snprintf(buf128, 127, "0x%04lx (size: 0x%04lx)",  record.address, 0x20000);
 		Serial.println(buf128);
@@ -166,22 +168,22 @@ void handleiHexDataRecord(const HexRecord & record) {
 	pagearray.append_bytes(record.address, record.data, record.datalength);
 //	uint8_t * ptr = (uint8_t *) & record;
 //	for (uint32_t ix = 0; ix < record.header_size(); ++ix, ++ptr) {
-//		auxsram.write(pgmstatus.start_ix + ix, *ptr);
+//		auxsram.write(promwriter.start_ix + ix, *ptr);
 //	}
 //	for (uint32_t ix = 0; ix < record.datalength; ++ix, ++ptr) {
-//		auxsram.write(pgmstatus.start_ix + record.header_size() + ix, *ptr);
+//		auxsram.write(promwriter.start_ix + record.header_size() + ix, *ptr);
 //	}
-//	pgmstatus.start_ix += record.header_size() + record.datalength;
-//	auxsram.write(pgmstatus.start_ix, 0x00);
+//	promwriter.start_ix += record.header_size() + record.datalength;
+//	auxsram.write(promwriter.start_ix, 0x00);
 
-	pgmstatus.totalBytesWritten +=  record.datalength;
+	promwriter.totalBytesWritten +=  record.datalength;
 
 	Serial.print(F("OK: I DATA "));
 	Serial.print( record.address, HEX);
 	Serial.print(F(" -- "));
 	Serial.println( record.address +  record.datalength - 1, HEX);
 
-	pgmstatus.totalBytesWritten +=  record.datalength;
+	promwriter.totalBytesWritten +=  record.datalength;
 }
 
 /*
@@ -189,8 +191,9 @@ void handleiHexDataRecord(const HexRecord & record) {
  * Sets the upper 16 bits of the address
  */
 void handleiHexExtendedLinearAddress(HexRecord &hexrecord) {
+	char buf128[128];
 	if (hexrecord.datalength != 2) {
-		pgmstatus.errorCount += 1;
+		promwriter.errorCount += 1;
 		snprintf(buf128, 127,
 				"ERROR: Extended Linear Address record must have 2 bytes, got: %d",
 				hexrecord.datalength);
@@ -198,10 +201,10 @@ void handleiHexExtendedLinearAddress(HexRecord &hexrecord) {
 		return;
 	}
 
-	pgmstatus.extendedLinearAddress = (uint16_t(hexrecord.data[0]) << 8) | hexrecord.data[1];
+	promwriter.extendedLinearAddress = (uint16_t(hexrecord.data[0]) << 8) | hexrecord.data[1];
 
 	Serial.print(F("OK: Extended Linear Address (high 16bit) set to 0x"));
-	Serial.println(pgmstatus.extendedLinearAddress, HEX);
+	Serial.println(promwriter.extendedLinearAddress, HEX);
 }
 
 /*
@@ -222,10 +225,10 @@ void handleiHexStartLinearAddress(HexRecord & hexrecord) { //uint8_t byteCount, 
   startaddress |= hexrecord.data[2];
   startaddress <<= 8;
   startaddress |= hexrecord.data[3];
-  pgmstatus.startLinearAddress = startaddress;
+  promwriter.startLinearAddress = startaddress;
 
   Serial.print(F("OK: Start Linear Address changed to: 0x"));
-  Serial.println(pgmstatus.startLinearAddress, HEX);
+  Serial.println(promwriter.startLinearAddress, HEX);
 }
 
 /*
@@ -277,7 +280,7 @@ boolean processS19Record(const String &line, HexRecord &record) {
 	if (line.length() < 4) {
 		Serial.println(F("Error: Too short line length "));
 		Serial.println(line.length(), DEC);
-		pgmstatus.errorCount++;
+		promwriter.errorCount++;
 		return false;
 	}
 	//SREC_RecordType
@@ -296,7 +299,7 @@ boolean processS19Record(const String &line, HexRecord &record) {
 		// At least address + checksum
 		Serial.print(F("Error: Too small byte count "));
 		Serial.println(byteCount, DEC);
-		pgmstatus.errorCount++;
+		promwriter.errorCount++;
 		return false;
 	}
 
@@ -308,7 +311,7 @@ boolean processS19Record(const String &line, HexRecord &record) {
 		Serial.print(F(" but got "));
 		Serial.println(line.length());
 		Serial.println(line);
-		pgmstatus.errorCount++;
+		promwriter.errorCount++;
 		return false;
 	}
 
@@ -365,12 +368,12 @@ boolean processS19Record(const String &line, HexRecord &record) {
 	// Verify checksum
 	if ( calcS19Checksum(line) != record.checksum ) {
 		Serial.println(F("Error: Checksum error."));
-		pgmstatus.checksumErrors++;
+		promwriter.checksumErrors++;
 		return false;
 	}
 
 	// record is loaded.
-	pgmstatus.recordCount++;
+	promwriter.recordCount++;
 
 	// Process based on record type
 	switch ((char) record.type[1]) {
@@ -409,6 +412,7 @@ boolean processS19Record(const String &line, HexRecord &record) {
 }
 
 boolean processS19Header(const HexRecord & hexrecord) { //uint8_t byteCount) {
+	char buf128[128];
   if (hexrecord.datalength > 0) {
     Serial.print(F("OK Header: "));
     for (int i = 0; i < hexrecord.datalength; i++) {
@@ -434,7 +438,7 @@ boolean processS19DataRecord(const HexRecord &record) {
 		Serial.print(record.address, HEX);
 		Serial.print(F(" length "));
 		Serial.println(record.datalength);
-		pgmstatus.errorCount++;
+		promwriter.errorCount++;
 		return false;
 	}
 
@@ -447,15 +451,15 @@ boolean processS19DataRecord(const HexRecord &record) {
 	pagearray.append_bytes(record.address, record.data, record.datalength );
 //	uint8_t * ptr = (uint8_t *) & record;
 //	for (uint32_t ix  = 0; ix < HexRecord::header_size(); ++ix, ++ptr) {
-//		auxsram.write(pgmstatus.start_ix + ix, *ptr);
+//		auxsram.write(promwriter.start_ix + ix, *ptr);
 //	}
 //	for (uint32_t i = 0; i < record.datalength; ++i, ++ptr) {
-//		auxsram.write(pgmstatus.start_ix +  HexRecord::header_size() + i, *ptr);
+//		auxsram.write(promwriter.start_ix +  HexRecord::header_size() + i, *ptr);
 //	}
-//	pgmstatus.start_ix += HexRecord::header_size() + record.datalength;
-//	auxsram.write(pgmstatus.start_ix, 0x00);
+//	promwriter.start_ix += HexRecord::header_size() + record.datalength;
+//	auxsram.write(promwriter.start_ix, 0x00);
 
-	pgmstatus.totalBytesWritten += record.datalength;
+	promwriter.totalBytesWritten += record.datalength;
 
 	Serial.print("OK: S");
 	Serial.print(record.type[1]);
@@ -470,7 +474,7 @@ boolean processS19DataRecord(const HexRecord &record) {
 boolean processS19StartAddress(const HexRecord & record) {
   // Parse start address
 	// usually used to represent the end
-	pgmstatus.startLinearAddress = record.address;
+	promwriter.startLinearAddress = record.address;
   Serial.print(F("OK: Start address: 0x"));
   Serial.println(record.address, HEX);
 

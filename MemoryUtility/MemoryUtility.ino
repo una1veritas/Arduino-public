@@ -22,9 +22,12 @@ Replace yourfile.hex with your Intel HEX filename
 
 #include <SPI.h>
 #include <SPISRAM.h>
+
 #include <MCP23S08.h>
 //#include <MCP23S17.h>
 #include <ShiftRegister.h>
+
+#include "promwriter.h"
 
 #include "hex_processor.h"
 
@@ -34,89 +37,31 @@ Replace yourfile.hex with your Intel HEX filename
 
 #include "memory.h"
 
-		// uint8_t addrbus_cs = 8,
-		// uint8_t addrbus_oe = 7,
-		// uint8_t databus_cs = 9,
-		// uint8_t CE_pin = A1,
-		// uint8_t OE_pin = A2,
-		// uint8_t WE_pin = A0
+enum PIN_ASSIGNMENT {
+	addrbus_cs = 8,
+	addrbus_oe = 7,
+	databus_cs = 9,
+	ROM_CE = A1,
+	ROM_OE = A2,
+	ROM_WE = A0,
 
-
-enum MEM_TYPE {
-	SRAM = 1,
-	DRAM = 2,
-	ROM = 3, 		// mask rom
-	EPPROM = 4, 	// UV-EPROM
-	EEPROM = 5,		// E-EPROM
-	FLASH = 6,
+	SPISRAM_23LC1024_CS = 10,
 };
-
-struct MEM_INFO {
-	String partname;
-	uint32_t capacity_inbits;
-	uint8_t type;
-	int16_t page_size;
-	bool SDP;
-
-	MEM_INFO& operator=(const MEM_INFO &src) {
-		partname = src.partname;
-		capacity_inbits = src.capacity_inbits;
-		type = src.type;
-		page_size = src.page_size;
-		return *this;
-	}
-};
-
-const MEM_INFO meminfo_db [] = {
-		{ "AT28C64", 	Memory::EEPROM64KBITS, 	EEPROM, 	0, 	false },
-		{ "AT28C64B", 	Memory::EEPROM64KBITS, 	EEPROM, 	64,	true },
-		{ "AT28C256", 	Memory::EEPROM256KBITS, EEPROM, 	64,	true },
-		{ "AT29C256", 	Memory::EEPROM256KBITS, FLASH,	 	64,	true },
-		{ "HN58C256", 	Memory::EEPROM256KBITS, EEPROM, 	64, false },
-		{ "HN58C256A", 	Memory::EEPROM256KBITS, EEPROM, 	64, true },
-		{ "SRAM64KBITS", Memory::SRAM64KBITS, 	SRAM, 		0, 	false },
-		{ "SRAM256KBITS", Memory::SRAM64KBITS, 	SRAM, 		0, 	false },
-		{ "SRAM1MBITS", Memory::SRAM1MBITS, 	SRAM, 		0, 	false },
-		{ "SRAM4MBITS", Memory::SRAM4MBITS, 	SRAM, 		0, 	false },
-		{ "", 0, 0, },
-};
-
-const MEM_INFO & get_meminfo_byname(const String & name) {
-	uint8_t ix;
-	for(ix = 0; meminfo_db[ix].partname != "" ; ++ix) {
-		if ( meminfo_db[ix].partname.equalsIgnoreCase(name) )
-			break;
-	}
-	return meminfo_db[ix];
-}
-
-void list_target_types(void) {
-	for(uint8_t ix = 0; meminfo_db[ix].capacity_inbits != 0; ++ix ) {
-		const MEM_INFO & minfo = meminfo_db[ix];
-		snprintf(buf128, 127, "%d: %-12s %ldkbits ", ix, minfo.partname.c_str(), minfo.capacity_inbits / 1024);
-		Serial.print(buf128);
-		Serial.print(minfo.type);
-		Serial.print(" ");
-		Serial.print(minfo.page_size);
-		Serial.println(minfo.SDP ? " SDP" : "");
-	}
-
-}
 
 // Configuration
 #define SERIAL_BAUD 115200
 
-const uint8_t SPISRAM_23LC1024_CS = 10;
-
 PageArray pagearray(SPISRAM_23LC1024_CS);
-Memory targetmemory(Memory::EEPROM64KBITS);
 
-ProgrammerStatus pgmstatus;
+Memory targetmem(addrbus_cs, addrbus_oe, databus_cs, ROM_CE, ROM_OE, ROM_WE);
+
+PROMWriter promwriter;
+
 HexRecord record;
 
 char buf128[128];
 String line;
-MEM_INFO meminfo;
+MemoryInfo meminfo;
 
 bool char_isin(const char c, const char * str) {
 	const char * p;
@@ -171,24 +116,25 @@ void write_to_rom(const bool);
 void setup() {
 
 	Serial.begin(SERIAL_BAUD);
-	Serial.println("Hello.");
+	while (!Serial) ;
 
 	SPI.begin();
 	pagearray.begin();
-	targetmemory.begin();
+	targetmem.begin();
 
 	while (!Serial) { }
 	printWelcome();
 	Serial.setTimeout(10000);
 
 	line = "";
-	meminfo = meminfo_db[1];
+	get_meminfo_byindex(0, meminfo);
 
 }
 
 void loop() {
-	char *ptr;
 	uint32_t start, stop;
+	char * ptr;
+
 	if (readStringUntilCrLf(line, 256) > 0) {
 		line.trim();
 		if (line.length() == 0) {
@@ -198,57 +144,78 @@ void loop() {
 		if (line[0] == '!') {
 			// process the command
 			switch (line[1]) {
-			case 'D':
-			case 'd':
-				Serial.println();
-				start = Stringtoul(line.substring(2), line, 16);
-				stop = Stringtoul(line, line, 16);
-				dump_auxmem(start, stop);
-				Serial.println(F("Dump loaded data finished."));
-				break;
-
-			case 'L':
-			case 'l':
+			case 'C':
+			case 'c':
 				Serial.println();
 				Serial.println(F("Start to load new data."));
 				pagearray.clear();
-				pgmstatus.clear();
+				promwriter.clear();
 				break;
 
-			case 'H':
-			case 'h':
-				printHelp();
-				break;
+			// case 'H':
+			// case 'h':
+			// 	printHelp();
+			// 	break;
 
-			case 'X':
-			case 'x':
-				Serial.println();
-				Serial.println("Do test.");
-				break;
+//			case 'X':
+//			case 'x':
+//				Serial.println();
+//				Serial.println("Do test.");
+//				unsigned long swatch = millis();
+//				for(uint16_t i = 0; i < 40000; ++i) {
+//					Memory::delay4clocks(200);
+//				}
+//				swatch = millis() - swatch;
+//				Serial.print(swatch);
+//				Serial.print(" millis.");
+//				break;
 
 			case 'S':
 			case 's':
-				show_pgmstatus();
+				show_status();
 				break;
 
 			case 'P':
 				Serial.println();
 				if ( line.length() >= 3 and line[2] == 'D' ) {
-					targetmemory.disable_SDP();
+					targetmem.disable_SDP();
 					Serial.println("Software data protection disabled.");
 				} else if ( line.length() >= 3 and line[2] == 'E' ) {
-					targetmemory.enable_SDP();
+					targetmem.enable_SDP();
 					Serial.println("Software data protection enabled.");
 				}
+				break;
+
+			case 'D':
+			case 'd':
+				Serial.println();
+				Serial.println(F("Dump loaded data,"));
+				line = line.substring(2);
+				start = strtoul(line.c_str(), &ptr, 16);
+				stop = strtoul(ptr, &ptr, 16);
+				dump_auxmem(start, stop);
+				Serial.println(F("Finished."));
 				break;
 
 			case 'R':
 			case 'r':
 				Serial.println();
-				start = Stringtoul(line.substring(2), line, 16);
-				stop = Stringtoul(line, line, 16);
+				Serial.println(F("Reading target memory..."));
+				line = line.substring(2);
+				start = strtoul(line.c_str(), &ptr, 16);
+				stop = strtoul(ptr, &ptr, 16);
 				dump_target(start, stop);
-				Serial.println(F("Dump memory content finished."));
+				Serial.println(F("Finished."));
+				break;
+
+			case 'W':
+			case 'w':
+				Serial.println();
+				line = line.substring(2);
+				start = strtoul(line.c_str(), &ptr, 16);
+				stop = strtoul(ptr, &ptr, 16);
+				write_to_rom(start, stop);
+				Serial.println(F("Finished."));
 				break;
 
 			case 'T':
@@ -257,29 +224,58 @@ void loop() {
 				list_target_types();
 				line = line.substring(2);
 				line.trim();
-				if (line.length() > 0) {
-					MEM_INFO tmp = get_meminfo_byname(line);
-					if (tmp.partname != "")
-						meminfo = tmp;
+				uint8_t id = 0;
+				if ( line.length() > 0) {
+					id = strtoul(line.c_str(), &ptr, 10);
+					if ( id != 0 ) {
+						get_meminfo_byindex(id, meminfo);
+					} else {
+						get_meminfo_byname(line.c_str(), meminfo);
+					}
+					Serial.println(F("Selected target memory:"));
 				} else {
-					Serial.println(F("Current target memory type:"));
+					Serial.println(F("Current target memory:"));
 				}
-				Serial.println(meminfo.partname);
+				Serial.print(meminfo.partname);
+				Serial.print(F("  "));
+				switch(meminfo.type) {
+					case SRAM:
+					Serial.print(F("SRAM, "));
+					break;
+					case DRAM:
+					case ROM: 		// mask rom
+					break;
+					case EPPROM: 	// UV-EPROM
+					Serial.print(F("UV ePROM, "));
+					break;
+					case EEPROM:		// E-EPROM
+					Serial.print(F("EEPROM, "));
+					break;
+					case FLASH: 
+					Serial.print(F("Flash, "));
+					break;
+					default:
+					Serial.print(F("Unknown, "));
+					break;
+				}
+				Serial.print(meminfo.capacity_inbits>>13);
+				Serial.print(F("K bytes, "));
+				Serial.print(F("speed class "));
+				Serial.print(meminfo.read_delay);
+				Serial.print(", ");
 				if (meminfo.page_size == 0) {
-					Serial.print("No page write supported.");
+					Serial.print(F("no page write"));
 				} else {
-					Serial.print("Page write suppored, page-size = ");
-					Serial.println(meminfo.page_size);
+					Serial.print(meminfo.page_size);
+					Serial.print(F(" bytes page write"));
+				}
+				if (meminfo.SDP) {
+					Serial.println(F(", has SDP."));
+				} else {
+					Serial.println(F("."));
 				}
 				break;
 
-			case 'W':
-				Serial.println();
-				start = Stringtoul(line.substring(2), line, 16);
-				stop = Stringtoul(line, line, 16);
-				write_to_rom(start, stop);
-				Serial.println(F("Finished."));
-				break;
 			}
 		} else if (line[0] == ':') {
 			// Process Intel HEX record
@@ -301,8 +297,6 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 	uint32_t lowestaddr = pagearray.lowest_address();
 	uint32_t endaddr = pagearray.end_address();
 
-	Serial.println(lowestaddr, HEX);
-	Serial.println(endaddr, HEX);
 	if (startaddr == 0 and stopaddr == 0) {
 		startaddr = lowestaddr;
 		stopaddr = endaddr;
@@ -311,12 +305,12 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 		Serial.println(F("No data to write."));
 		return;
 	}
-	Serial.print(F("pages "));
-	Serial.print(pagearray.size());
-	Serial.print(F(", start "));
-	Serial.print(startaddr, HEX);
-	Serial.print(F(", stop "));
-	Serial.println(stopaddr, HEX);
+//	Serial.print(F("pages "));
+//	Serial.print(pagearray.size());
+//	Serial.print(F(", start "));
+//	Serial.print(startaddr, HEX);
+//	Serial.print(F(", stop "));
+//	Serial.println(stopaddr, HEX);
 
 	uint32_t ix;
 	for(ix = 0; ix < pagearray.size() ; ++ix) {
@@ -326,14 +320,10 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 		}
 		bool err_flag = false;
 
-		if ( page.address >> 16 != 0 ) {
-			snprintf(buf128, 127, "%08lX ", page.address);
-		} else {
-			snprintf(buf128, 127, "%04lX ", page.address);
-		}
+		snprintf(buf128, 127, "%04lX ", page.address);
 		Serial.print(buf128);
 
-		uint32_t addrmask = targetmemory.size() - 1;
+		uint32_t addrmask = meminfo.size_inbytes() - 1;
 		// determine byte write or page write
 
 		if ( page.address != (addrmask & page.address) ) {
@@ -346,15 +336,16 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 				) {
 			//Serial.println(meminfo.page_size);
 			//Serial.println(page.address, HEX);
+
 			Serial.print("Byte write ");
 			uint16_t i;
 			for(i = 0; i < page.length; ++i) {
-				bool succ = targetmemory.program_byte( (page.address + i) & addrmask, page.data[i]);
+				bool succ = targetmem.program_byte_100ns( (page.address + i) & addrmask, page.data[i]);
 				if ( succ ) {
 					snprintf(buf128, 127, "%02X ", page.data[i]);
 					Serial.print(buf128);
 				} else {
-					pgmstatus.errorCount += 1;
+					promwriter.errorCount += 1;
 					err_flag = true;
 					Serial.print(F("Error: Write failed at $"));
 					Serial.println(page.address + i, HEX);
@@ -362,10 +353,10 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 			}
 		} else {
 			Serial.print("Page write ");
-			bool succ = targetmemory.program_page(page.address & addrmask, page.data, meminfo.page_size);
+			bool succ = targetmem.program_page(page.address & addrmask, page.data, meminfo.page_size);
 			if ( !succ ) {
 				err_flag = true;
-				pgmstatus.errorCount += 1;
+				promwriter.errorCount += 1;
                 Serial.print("Error: Page write failed at 0x");
                 snprintf(buf128, 127, "%04X", page.address & addrmask);
                 Serial.println(buf128);
@@ -386,11 +377,10 @@ void dump_auxmem(uint32_t start, uint32_t stop) {
 	if ( stop == 0 ) {
 		stop = 0xffffffff;
 	}
-	uint32_t rcount;
 	uint32_t ix;
-	for ( ix = 0, rcount = 0; ix < pagearray.size() and rcount < pgmstatus.recordCount; ++ix, ++rcount) {
+	for ( ix = 0; ix < pagearray.size(); ++ix) {
 		pagearray.load(page, ix);
-		if ( start <= page.address and page.address - 1 + page.length <= stop) {
+		if ( start <= page.address and page.address + page.length < stop) {
 			page.printOn(Serial);
 		}
 	}
@@ -399,19 +389,16 @@ void dump_auxmem(uint32_t start, uint32_t stop) {
 
 void dump_target(const uint32_t & startaddr, const uint32_t & stopaddr) {
 	uint32_t addr = startaddr & 0xfffffff0;
-	while ( addr <= stopaddr ) {
+	while ( addr < stopaddr ) {
         Serial.print(F("0x"));
         snprintf(buf128, 127, "%04X: ", addr);
         Serial.print(buf128);
         for (int i = 0; i < 16; ++i) {
-            uint8_t val = targetmemory.read(addr + i);
+            uint8_t val = targetmem.read_200ns(addr + i);
             snprintf(buf128, 127, "%02X ", val);
             Serial.print(buf128);
         }
         Serial.println();
-        if ( addr == stopaddr ) {
-            break;
-        }
         addr += 16;
 	}
 }
@@ -422,29 +409,17 @@ void printWelcome() {
 	Serial.println(F("========================================"));
 }
 
-void printHelp() {
-	Serial.println(F("Commands:"));
-	Serial.println(F("  !L - Wait and load hex data from UART"));
-	Serial.println(F("  !P - Show statistics"));
-	Serial.println(F("  !V - Verify loaded data"));
-	Serial.println(F("  !C - Clear statistics"));
-	Serial.println(F("  !H - Help"));
-	Serial.println(F("========================================\n"));
-}
-
-void show_pgmstatus() {
+void show_status() {
 	Serial.println();
 	Serial.println(F("--- Status and Statistics ---"));
 	Serial.print(F("Records processed: "));
-	Serial.println(pgmstatus.recordCount);
+	Serial.println(pagearray.size());
 	Serial.print(F("Record errors: "));
-	Serial.println(pgmstatus.errorCount);
+	Serial.println(promwriter.errorCount);
 	Serial.print(F("Checksum errors: "));
-	Serial.println(pgmstatus.checksumErrors);
+	Serial.println(promwriter.checksumErrors);
 	Serial.print(F("Total bytes loaded: "));
-	Serial.println(pgmstatus.totalBytesWritten);
-	Serial.print(F("start_ix: "));
-	Serial.println(pgmstatus.start_ix);
+	Serial.println(promwriter.totalBytesWritten);
 	Serial.print(F("Target memory type: "));
 	Serial.println(meminfo.partname);
 	Serial.println();
