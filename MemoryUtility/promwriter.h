@@ -38,7 +38,7 @@ struct MemoryInfo {
 	char partname[16];
 	uint32_t capacity_inbits;
 	uint8_t type;
-	uint16_t read_delay; 	// address or /CE to valid data delay time
+	uint16_t access_time; 	// address or /CE to valid data read delay time
 	int16_t page_size;
 	bool SDP;
 
@@ -51,6 +51,7 @@ struct MemoryInfo {
 		partname[15] = 0;
 		capacity_inbits = src.capacity_inbits;
 		type = src.type;
+		access_time = src.access_time;
 		page_size = src.page_size;
 		return *this;
 	}
@@ -63,6 +64,7 @@ const MemoryInfo MEMINFO_DB[] PROGMEM = {
 		{ "AT29C256-15", 	EEPROM256KBITS, FLASH,	 	100, 	64,	true },
 		{ "HN58C256", 		EEPROM256KBITS, EEPROM, 	200,	64, false },
 		{ "HN58C256A", 		EEPROM256KBITS, EEPROM, 	200,	64, true },
+		{ "X28C256-20", 	EEPROM256KBITS, EEPROM, 	200,	64, true },
 		{ "SRAM64KBITS", 	SRAM64KBITS, 	SRAM, 		100, 	0, 	false },
 		{ "SRAM256KBITS", 	SRAM64KBITS, 	SRAM, 		100, 	0, 	false },
 		{ "SRAM1MBITS", 	SRAM1MBITS, 	SRAM, 		100, 	0, 	false },

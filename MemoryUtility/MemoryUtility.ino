@@ -1,4 +1,4 @@
- /*
+/*
  * Intel HEX EEPROM Programmer for Arduino
  * Reads Intel HEX formatted data from serial (UART)
  * Validates checksums and handles major record types
@@ -6,7 +6,7 @@
 
  avrdude -c arduino -p m328p -P /dev/ttyUSB0 -b 115200 -U eeprom:w:yourfile.hex:i
 
- -c arduino – Programmer type (Arduino bootloader)
+-c arduino – Programmer type (Arduino bootloader)
 -p m328p – Microcontroller (ATmega328P; adjust for your board: m2560, m32u4, etc.)
 -P /dev/ttyUSB0 – Serial port (use COM3 on Windows, /dev/ttyUSB0 on Linux, /dev/tty.usbserial-* on macOS)
 -b 115200 – Baud rate (must match your sketch: SERIAL_BAUD)
@@ -16,7 +16,7 @@ Adjust for your setup:
 Replace m328p with your MCU (e.g., m2560 for Mega, m32u4 for Leonardo)
 Replace /dev/ttyUSB0 with your actual serial port
 Replace yourfile.hex with your Intel HEX filename
- */
+*/
 
 //#include <Arduino.h>
 
@@ -24,7 +24,6 @@ Replace yourfile.hex with your Intel HEX filename
 #include <SPISRAM.h>
 
 #include <MCP23S08.h>
-//#include <MCP23S17.h>
 #include <ShiftRegister.h>
 
 #include "promwriter.h"
@@ -132,7 +131,8 @@ void setup() {
 }
 
 void loop() {
-	uint32_t start, stop;
+	uint8_t data, val;
+	uint32_t addr, start, stop;
 	char * ptr;
 
 	if (readStringUntilCrLf(line, 256) > 0) {
@@ -144,6 +144,30 @@ void loop() {
 		if (line[0] == '!') {
 			// process the command
 			switch (line[1]) {
+			case 'B':
+				Serial.println();
+				Serial.println(F("SRAM R/W test"));
+				randomSeed(0);
+				for(addr = 0; addr < 256; ++addr) {
+					data = random(256);
+					targetmem.write(addr, data);
+				}
+				randomSeed(0);
+				for(addr = 0; addr < 256; ++addr) {
+					data = random(256);
+					val = targetmem.read(addr);
+					if ( data == val ) {
+						Serial.print("O ");
+					} else {
+						Serial.print("X ");
+					}
+					if ( (addr & 0x0f) == 0x0f ) {
+						Serial.println();
+					}
+				}
+				Serial.println();
+				break;
+
 			case 'C':
 			case 'c':
 				Serial.println();
@@ -157,19 +181,6 @@ void loop() {
 			// 	printHelp();
 			// 	break;
 
-//			case 'X':
-//			case 'x':
-//				Serial.println();
-//				Serial.println("Do test.");
-//				unsigned long swatch = millis();
-//				for(uint16_t i = 0; i < 40000; ++i) {
-//					Memory::delay4clocks(200);
-//				}
-//				swatch = millis() - swatch;
-//				Serial.print(swatch);
-//				Serial.print(" millis.");
-//				break;
-
 			case 'S':
 			case 's':
 				show_status();
@@ -177,12 +188,13 @@ void loop() {
 
 			case 'P':
 				Serial.println();
+				Serial.println(F("Software data protection "));
 				if ( line.length() >= 3 and line[2] == 'D' ) {
 					targetmem.disable_SDP();
-					Serial.println("Software data protection disabled.");
+					Serial.println(F(" disabled."));
 				} else if ( line.length() >= 3 and line[2] == 'E' ) {
 					targetmem.enable_SDP();
-					Serial.println("Software data protection enabled.");
+					Serial.println(F(" enabled."));
 				}
 				break;
 
@@ -208,6 +220,27 @@ void loop() {
 				Serial.println(F("Finished."));
 				break;
 
+			case 'T':
+			case 't':
+				Serial.println();
+				list_target_types();
+				line = line.substring(2);
+				line.trim();
+				val = 0;
+				if ( line.length() > 0) {
+					val = strtoul(line.c_str(), &ptr, 10);
+					if ( val != 0 ) {
+						get_meminfo_byindex(val, meminfo);
+					} else {
+						get_meminfo_byname(line.c_str(), meminfo);
+					}
+					Serial.println(F("Selected: "));
+				} else {
+					Serial.println(F("Current: "));
+				}
+				print_meminfo(meminfo);
+				break;
+
 			case 'W':
 			case 'w':
 				Serial.println();
@@ -218,63 +251,18 @@ void loop() {
 				Serial.println(F("Finished."));
 				break;
 
-			case 'T':
-			case 't':
-				Serial.println();
-				list_target_types();
-				line = line.substring(2);
-				line.trim();
-				uint8_t id = 0;
-				if ( line.length() > 0) {
-					id = strtoul(line.c_str(), &ptr, 10);
-					if ( id != 0 ) {
-						get_meminfo_byindex(id, meminfo);
-					} else {
-						get_meminfo_byname(line.c_str(), meminfo);
-					}
-					Serial.println(F("Selected target memory:"));
-				} else {
-					Serial.println(F("Current target memory:"));
-				}
-				Serial.print(meminfo.partname);
-				Serial.print(F("  "));
-				switch(meminfo.type) {
-					case SRAM:
-					Serial.print(F("SRAM, "));
-					break;
-					case DRAM:
-					case ROM: 		// mask rom
-					break;
-					case EPPROM: 	// UV-EPROM
-					Serial.print(F("UV ePROM, "));
-					break;
-					case EEPROM:		// E-EPROM
-					Serial.print(F("EEPROM, "));
-					break;
-					case FLASH: 
-					Serial.print(F("Flash, "));
-					break;
-					default:
-					Serial.print(F("Unknown, "));
-					break;
-				}
-				Serial.print(meminfo.capacity_inbits>>13);
-				Serial.print(F("K bytes, "));
-				Serial.print(F("speed class "));
-				Serial.print(meminfo.read_delay);
-				Serial.print(", ");
-				if (meminfo.page_size == 0) {
-					Serial.print(F("no page write"));
-				} else {
-					Serial.print(meminfo.page_size);
-					Serial.print(F(" bytes page write"));
-				}
-				if (meminfo.SDP) {
-					Serial.println(F(", has SDP."));
-				} else {
-					Serial.println(F("."));
-				}
-				break;
+				//			case 'X':
+				//			case 'x':
+				//				Serial.println();
+				//				Serial.println("Do test.");
+				//				unsigned long swatch = millis();
+				//				for(uint16_t i = 0; i < 40000; ++i) {
+				//					Memory::delay4clocks(200);
+				//				}
+				//				swatch = millis() - swatch;
+				//				Serial.print(swatch);
+				//				Serial.print(" millis.");
+				//				break;
 
 			}
 		} else if (line[0] == ':') {
@@ -400,6 +388,48 @@ void dump_target(const uint32_t & startaddr, const uint32_t & stopaddr) {
         }
         Serial.println();
         addr += 16;
+	}
+}
+
+void print_meminfo(const MemoryInfo &meminfo) {
+	Serial.print(meminfo.partname);
+	Serial.print(F("  "));
+	switch (meminfo.type) {
+	case SRAM:
+		Serial.print(F("SRAM, "));
+		break;
+//	case DRAM:
+//		Serial.print(F("DRAM, "));
+//	case ROM: 		// mask rom
+//		break;
+	case EPPROM: 	// UV-EPROM
+		Serial.print(F("UV EPROM, "));
+		break;
+	case EEPROM:		// E-EPROM
+		Serial.print(F("EEPROM, "));
+		break;
+	case FLASH:
+		Serial.print(F("Flash, "));
+		break;
+	default:
+		Serial.print(F("Unknown, "));
+		break;
+	}
+	Serial.print(meminfo.capacity_inbits >> 13);
+	Serial.print(F("K bytes, "));
+	Serial.print(F("access time "));
+	Serial.print(meminfo.access_time);
+	Serial.print(", ");
+	if (meminfo.page_size == 0) {
+		Serial.print(F("no page write"));
+	} else {
+		Serial.print(meminfo.page_size);
+		Serial.print(F(" bytes page write"));
+	}
+	if (meminfo.SDP) {
+		Serial.println(F(", has SDP."));
+	} else {
+		Serial.println(F("."));
 	}
 }
 
