@@ -44,15 +44,15 @@ void setup() {
   ioxt.hw_address_enable();
   Serial.println("IO Expander started.");
   
-  ioxt.set_outputA();
-  ioxt.set_outputB();
-  ioxt.gpioA(0xff);
+  ioxt.set_gpioA_output();
+  ioxt.set_gpioB_output();
+  ioxt.write(0xff);
 }
 
 void loop() {
   long sec = millis()/1000;
   uint8_t bits = ten_secs[(sec/10) % 6] | (sec & 1 ? 0 : G) | (sec & 1 ? DP : 0);
-  ioxt.gpio16( bits^0x00ff );
+  ioxt.write16( bits^0x00ff );
   delay(100);
 }
 
