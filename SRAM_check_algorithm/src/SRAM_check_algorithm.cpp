@@ -37,58 +37,129 @@ void March_Cminus(ROMINFO & meminfo) {
 	for(addr = 0; addr < capacity_inbytes; addr += block_size) {
 		errcount = 0;
 		printf("%04X -- %04X: ", addr, addr + block_size - 1);
-		// ⇕(w0);
+		// ⇕0(w00000000);
 		for(ix = 0; ix < block_size; ++ix) {
 			mem.write(addr+ix, 0);
 		}
 		for(ix = 0; ix < block_size; ++ix) {
 			mem.write(addr + block_size - 1 - ix, 0);
 		}
-		// ⇑(r0,w1);
+		//⇑1(r00000000,w11111111);
 		for(ix = block_size; ix > 0; ) {
 			--ix;
 			val = mem.read(addr + ix);
 			if ( val != 0 ) {
 				errcount++;
 			}
-			mem.write(addr + ix, 1);
+			mem.write(addr + ix, 0xff);
 		}
-		// ⇑(r1,w0);
+		// ⇑2(r11111111,w00000000);
 		for(ix = block_size; ix > 0; ) {
 			--ix;
 			val = mem.read(addr + ix);
-			if ( val != 1 ) {
+			if ( val != 0xff ) {
 				errcount++;
 			}
 			mem.write(addr + ix, 0);
 		}
-		// ⇓(r0,w1);
+
+		// ⇓3(r00000000,w11111111);
 		for(ix = 0; ix < block_size; ++ix) {
 			val = mem.read(addr+ix);
 			if ( val != 0 ) {
 				errcount++;
 			}
-			mem.write(addr + ix, 1);
+			mem.write(addr + ix, 0xff);
 		}
-		// ⇓(r1,w0);
+		//⇓4(r11111111,w00000000);
 		for(ix = 0; ix < block_size; ++ix) {
 			val = mem.read(addr+ix);
-			if ( val != 1 ) {
+			if ( val != 0xff ) {
 				errcount++;
 			}
 			mem.write(addr + ix, 0);
 		}
-		// ⇕(r0)
+
+		// ⇓5(r00000000, w01010101); ⇑6 (r01010101, w10101010);
 		for(ix = 0; ix < block_size; ++ix) {
 			val = mem.read(addr+ix);
 			if ( val != 0 ) {
 				errcount++;
 			}
+			mem.write(addr + ix, 0x55);
 		}
 		for(ix = block_size; ix > 0; ) {
 			--ix;
+			val = mem.read(addr + ix);
+			if ( val != 0x55 ) {
+				errcount++;
+			}
+			mem.write(addr + ix, 0xaa);
+		}
+
+		// ⇓7(r10101010, w01010101); ⇑8(r01010101, w00110011);
+		for(ix = 0; ix < block_size; ++ix) {
 			val = mem.read(addr+ix);
-			if ( val != 0 ) {
+			if ( val != 0xaa ) {
+				errcount++;
+			}
+			mem.write(addr + ix, 0x55);
+		}
+		for(ix = block_size; ix > 0; ) {
+			--ix;
+			val = mem.read(addr + ix);
+			if ( val != 0x55 ) {
+				errcount++;
+			}
+			mem.write(addr + ix, 0x33);
+		}
+
+		// ⇓9(r00110011, w11001100); ⇑10(r11001100, w00110011);
+		for(ix = 0; ix < block_size; ++ix) {
+			val = mem.read(addr+ix);
+			if ( val != 0x33 ) {
+				errcount++;
+			}
+			mem.write(addr + ix, 0xcc);
+		}
+		for(ix = block_size; ix > 0; ) {
+			--ix;
+			val = mem.read(addr + ix);
+			if ( val != 0xcc ) {
+				errcount++;
+			}
+			mem.write(addr + ix, 0x33);
+		}
+
+		// ⇓11(r00110011, w00001111); ⇑12(r00001111, w11110000);
+		for(ix = 0; ix < block_size; ++ix) {
+			val = mem.read(addr+ix);
+			if ( val != 0x33 ) {
+				errcount++;
+			}
+			mem.write(addr + ix, 0x0f);
+		}
+		for(ix = block_size; ix > 0; ) {
+			--ix;
+			val = mem.read(addr + ix);
+			if ( val != 0x0f ) {
+				errcount++;
+			}
+			mem.write(addr + ix, 0xf0);
+		}
+
+		// ⇓13(r11110000, w00001111); ⇑14(r00001111)}
+		for(ix = 0; ix < block_size; ++ix) {
+			val = mem.read(addr+ix);
+			if ( val != 0xf0 ) {
+				errcount++;
+			}
+			mem.write(addr + ix, 0x0f);
+		}
+		for(ix = block_size; ix > 0; ) {
+			--ix;
+			val = mem.read(addr + ix);
+			if ( val != 0x0f ) {
 				errcount++;
 			}
 		}
