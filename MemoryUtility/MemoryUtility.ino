@@ -145,27 +145,7 @@ void loop() {
 			// process the command
 			switch (line[1]) {
 			case 'B':
-				Serial.println();
-				Serial.println(F("SRAM R/W test"));
-				randomSeed(0);
-				for(addr = 0; addr < 256; ++addr) {
-					data = random(256);
-					targetmem.write(addr, data);
-				}
-				randomSeed(0);
-				for(addr = 0; addr < 256; ++addr) {
-					data = random(256);
-					val = targetmem.read(addr);
-					if ( data == val ) {
-						Serial.print("O ");
-					} else {
-						Serial.print("X ");
-					}
-					if ( (addr & 0x0f) == 0x0f ) {
-						Serial.println();
-					}
-				}
-				Serial.println();
+				sram_test();
 				break;
 
 			case 'C':
@@ -431,6 +411,41 @@ void print_meminfo(const MemoryInfo &meminfo) {
 	} else {
 		Serial.println(F("."));
 	}
+}
+
+void sram_test() {
+	Serial.println(F("\nSRAM R/W test"));
+	uint32_t start = 0;
+	uint32_t end = meminfo.capacity_inbits >> 3 ;
+	uint32_t errcount = 0;
+
+	randomSeed(millis());
+	const uint32_t block_size = 1024;
+	uint8_t rndval, data;
+	for(uint32_t base_addr = start; base_addr < end; base_addr += block_size) {
+		rndval = random(256);
+		for(uint32_t offset = 0; offset < block_size; offset += 128) {
+			for(uint32_t i = 0; i < 128; ++i)
+				buf128[i] = targetmem.read(base_addr + offset + i);
+			for(uint32_t i = 0; i < 128; ++i)  {
+				targetmem.write(base_addr + offset + i, buf128[i] ^ rndval);
+			}
+			for(uint32_t i = 0; i < 128; ++i) {
+				data = targetmem.read(base_addr + offset + i);
+				if ( buf128[i] != (data^rndval) ) {
+					errcount ++;
+				}
+				targetmem.write(base_addr + offset + i, buf128[i]);
+			}
+		}
+		Serial.print(base_addr, HEX);
+		Serial.print(" -- ");
+		Serial.print(base_addr + block_size -1, HEX);
+		Serial.print(" : errors ");
+		Serial.println(errcount);
+	}
+	Serial.println(errcount);
+	Serial.println();
 }
 
 void printWelcome() {
