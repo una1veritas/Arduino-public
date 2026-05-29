@@ -109,14 +109,17 @@ private:
 	}
 
 	// use only 24 bits
-	inline void write_address(const uint32_t &addr) {
+	inline void write_addressbus(const uint32_t &addr) {
 		addrbus.write_bytes((const uint8_t*) &addr, 3);
 	}
+
+	uint8_t get_byte(const uint32_t & addr) const;
 
 	void put_byte(const uint32_t &addr, const uint8_t data);
 	void put_byte_100ns(const uint32_t& addr, const uint8_t data);
 
 	bool waitfor_write_cycle_end(const uint8_t &data, const uint16_t & count);
+
 
 public:
 	uint8_t read(const uint32_t &addr) const;
@@ -132,6 +135,14 @@ public:
 
 	bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size);
 
+private:
+	void down_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t val);
+	void up_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t val);
+	uint32_t down_read_verify_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t vval, uint8_t wval);
+	uint32_t up_read_verify_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t vval, uint8_t wval);
+
+public:
+	uint32_t sram_check(const uint32_t & start, const uint32_t & end);
 };
 
 

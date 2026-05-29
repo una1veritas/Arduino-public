@@ -23,7 +23,7 @@ uint8_t Memory::read(const uint32_t & addr) const {
   //output_disable();
   //write_disable();
   set_databus_mode(INPUT);
-  write_address(addr);
+  write_addressbus(addr);
   select();  		// more than 62.5ns
   output_enable(); 	// 62.5ns
   delay1clock(); 	// 62.5ns
@@ -43,7 +43,7 @@ uint8_t Memory::read_200ns(const uint32_t & addr) const {
   //output_disable();
   //write_disable();
   set_databus_mode(INPUT);
-  write_address(addr);
+  write_addressbus(addr);
   select();  		// more than 62.5 ns
   output_enable(); 	// 62.5 ns
   delay1clock(); 	// 62.5 ns
@@ -58,9 +58,9 @@ uint8_t Memory::read_200ns(const uint32_t & addr) const {
 // basic write to SRAM with 1 clock wait after /CE and 1 clock after /WE
 void Memory::write(const uint32_t & addr, const uint8_t data) {
   set_databus_mode(OUTPUT);
-  output_disable();
+  //output_disable();
   //write_disable();
-  write_address(addr);
+  write_addressbus(addr);
   write_databus(data);
   select();
   delay1clock();
@@ -68,6 +68,7 @@ void Memory::write(const uint32_t & addr, const uint8_t data) {
   delay1clock();
   write_disable();
   deselect();
+  set_databus_mode(INPUT);
   return;
 }
 
@@ -75,9 +76,9 @@ void Memory::write(const uint32_t & addr, const uint8_t data) {
 // succeeded with at28c64
 bool Memory::program_byte(const uint32_t& addr, const uint8_t data) {
   set_databus_mode(OUTPUT);
-  output_disable();
+  //output_disable();
   write_disable(); 	// to ensure pulse
-  write_address(addr);
+  write_addressbus(addr);
   write_databus(data);
   select();
   delay1clock();
@@ -95,9 +96,9 @@ bool Memory::program_byte(const uint32_t& addr, const uint8_t data) {
 // OK w/ HN58C256
 bool Memory::program_byte_100ns(const uint32_t& addr, const uint8_t data) {
   set_databus_mode(OUTPUT);
-  output_disable();
+  //output_disable();
   write_disable(); 	// to ensure pulse
-  write_address(addr);
+  write_addressbus(addr);
   write_databus(data);
   select();
   delay1clock();
@@ -107,17 +108,29 @@ bool Memory::program_byte_100ns(const uint32_t& addr, const uint8_t data) {
   delay1clock();
   write_disable();
 
+  set_databus_mode(INPUT);
   bool succ = waitfor_write_cycle_end(data, 10000);
   deselect();
-  set_databus_mode(INPUT);
 
   return succ;
+}
+
+uint8_t Memory::get_byte(const uint32_t & addr) const {
+  //output_disable();
+  //write_disable();
+  write_addressbus(addr);
+  delay1clock(); 	// 62.5 ns
+  output_enable(); 	// 62.5 ns
+  delay1clock(); 	// 62.5 ns
+  uint8_t val = read_databus();
+  output_disable();
+  return val;
 }
 
 
 // partial eeprom write sequence after bus mode change and /CE, before CE, with address change
 void Memory::put_byte(const uint32_t& addr, const uint8_t data) {
-  write_address(addr);
+  write_addressbus(addr);
   write_enable();
   delay1clock();
   write_databus(data);
@@ -128,7 +141,7 @@ void Memory::put_byte(const uint32_t& addr, const uint8_t data) {
 
 // OK w/ HN58C256
 void Memory::put_byte_100ns(const uint32_t& addr, const uint8_t data) {
-  write_address(addr);
+  write_addressbus(addr);
   write_enable();
   delay1clock();
   delay1clock();
@@ -150,6 +163,7 @@ bool Memory::program_page(const uint32_t & addr, const uint8_t data[], uint16_t 
 	  val = data[ix];
 	  put_byte_100ns(baseaddr + ix, val);
   }
+  set_databus_mode(INPUT);
   bool succ = waitfor_write_cycle_end(val, 10000);
   deselect();
   return succ;
@@ -158,7 +172,7 @@ bool Memory::program_page(const uint32_t & addr, const uint8_t data[], uint16_t 
 // OK w/ HN58C256
 bool Memory::waitfor_write_cycle_end(const uint8_t & data, const uint16_t & count) {
 	uint8_t val0, val1;
-	set_databus_mode(INPUT);
+	//set_databus_mode(INPUT);
 	for(uint16_t i = 0; i < count; ++i) {
 		select();
 	    output_enable();
@@ -183,8 +197,8 @@ bool Memory::waitfor_write_cycle_end(const uint8_t & data, const uint16_t & coun
 bool Memory::disable_SDP() {
     //disableOutput();
     //disableWrite();
-    select();
     set_databus_mode(OUTPUT);
+    select();
 
     put_byte(0x5555, 0xaa);
     put_byte(0x2aaa, 0x55);
@@ -193,8 +207,8 @@ bool Memory::disable_SDP() {
     put_byte(0x2aaa, 0x55);
     put_byte(0x5555, 0x20);
 
-    set_databus_mode(INPUT);
     deselect();
+    set_databus_mode(INPUT);
 
     return true;
 }
@@ -203,16 +217,119 @@ bool Memory::disable_SDP() {
 bool Memory::enable_SDP() {
     //disableOutput();
     //disableWrite();
-    select();
     set_databus_mode(OUTPUT);
+    select();
 
     put_byte(0x5555, 0xaa);
     put_byte(0x2aaa, 0x55);
     put_byte(0x5555, 0xa0);
 
-    set_databus_mode(INPUT);
     deselect();
+    set_databus_mode(INPUT);
 
     return true;
 }
 
+void Memory::down_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t val) {
+	for(uint32_t ix = 0; ix < block_size; ++ix) {
+		write(base_addr + ix, val);
+	}
+}
+
+void Memory::up_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t val) {
+	for(uint32_t ix = block_size; ix > 0; ) {
+		--ix;
+		write(base_addr + ix, val);
+	}
+}
+
+uint32_t Memory::down_read_verify_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t vval, uint8_t wval) {
+	uint32_t errcount = 0;
+	select();
+	for(uint32_t ix = 0; ix < block_size; ++ix) {
+	    set_databus_mode(INPUT);
+		uint8_t val = get_byte(base_addr + ix);
+		if ( val != vval )
+			++errcount;
+		// write without set address bus
+	    set_databus_mode(OUTPUT);
+	    write_enable();
+	    delay1clock();
+	    write_databus(wval);
+	    delay1clock();
+	    write_disable();
+	    delay1clock();
+	}
+    set_databus_mode(INPUT);
+	deselect();
+	return errcount;
+}
+
+uint32_t Memory::up_read_verify_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t vval, uint8_t wval) {
+	uint32_t errcount = 0;
+	select();
+	for(uint32_t ix = block_size; ix > 0; ) {
+	    set_databus_mode(INPUT);
+		--ix;
+		uint8_t val = get_byte(base_addr + ix);
+		if ( val != vval )
+			++errcount;
+		// write without set address bus
+	    set_databus_mode(OUTPUT);
+	    write_enable();
+	    delay1clock();
+	    write_databus(wval);
+	    delay1clock();
+	    write_disable();
+	    delay1clock();
+	}
+    set_databus_mode(INPUT);
+	deselect();
+	return errcount;
+}
+
+// March C- 8bit
+uint32_t Memory::sram_check(const uint32_t & start, const uint32_t & block_size) {
+	uint32_t errcount = 0 ;
+	uint32_t addr, ix;
+	uint8_t val;
+
+	errcount = 0;
+	// ⇕0(w00000000);
+	down_write(addr, block_size, 0);
+	up_write(addr, block_size, 0);
+
+	//⇑1(r00000000,w11111111);
+	errcount += up_read_verify_write(addr, block_size, 0, 0xff);
+
+	// ⇑2(r11111111,w00000000);
+	errcount += up_read_verify_write(addr, block_size, 0xff, 0);
+
+	// ⇓3(r00000000,w11111111);
+	errcount += down_read_verify_write(addr, block_size, 0, 0xff);
+
+	//⇓4(r11111111,w00000000);
+	errcount += down_read_verify_write(addr, block_size, 0xff, 0);
+
+	// ⇓5(r00000000, w01010101); ⇑6 (r01010101, w10101010);
+	errcount += down_read_verify_write(addr, block_size, 0, 0x55);
+	errcount += up_read_verify_write(addr, block_size, 0x55, 0xaa);
+
+	// ⇓7(r10101010, w01010101); ⇑8(r01010101, w00110011);
+	errcount += down_read_verify_write(addr, block_size, 0xaa, 0x55);
+	errcount += up_read_verify_write(addr, block_size, 0x55, 0x33);
+
+	// ⇓9(r00110011, w11001100); ⇑10(r11001100, w00110011);
+	errcount += down_read_verify_write(addr, block_size, 0x33, 0xcc);
+	errcount += up_read_verify_write(addr, block_size, 0xcc, 0x33);
+
+	// ⇓11(r00110011, w00001111); ⇑12(r00001111, w11110000);
+	errcount += down_read_verify_write(addr, block_size, 0x33, 0x0f);
+	errcount += up_read_verify_write(addr, block_size, 0x0f, 0xf0);
+
+	// ⇓13(r11110000, w00001111); ⇑14(r00001111)}
+	errcount += down_read_verify_write(addr, block_size, 0xf0, 0x0f);
+	errcount += up_read_verify_write(addr, block_size, 0x0f, 0);
+
+	return errcount;
+}

@@ -140,7 +140,6 @@ void loop() {
 		if (line.length() == 0) {
 			return; // go to the next itertion of the loop()
 		}
-
 		if (line[0] == '!') {
 			// process the command
 			switch (line[1]) {
@@ -273,13 +272,6 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 		Serial.println(F("No data to write."));
 		return;
 	}
-//	Serial.print(F("pages "));
-//	Serial.print(pagearray.size());
-//	Serial.print(F(", start "));
-//	Serial.print(startaddr, HEX);
-//	Serial.print(F(", stop "));
-//	Serial.println(stopaddr, HEX);
-
 	uint32_t ix;
 	for(ix = 0; ix < pagearray.size() ; ++ix) {
 		pagearray.load(page, ix);
@@ -418,32 +410,31 @@ void sram_test() {
 	uint32_t start = 0;
 	uint32_t end = meminfo.capacity_inbits >> 3 ;
 	uint32_t errcount = 0;
+	uint32_t tmperr = 0;
 
-	randomSeed(millis());
-	const uint32_t block_size = 1024;
-	uint8_t rndval, data;
+	const uint32_t block_size = end > 0x1000 ? 0x1000 : end;
 	for(uint32_t base_addr = start; base_addr < end; base_addr += block_size) {
-		rndval = random(256);
-		for(uint32_t offset = 0; offset < block_size; offset += 128) {
-			for(uint32_t i = 0; i < 128; ++i)
-				buf128[i] = targetmem.read(base_addr + offset + i);
-			for(uint32_t i = 0; i < 128; ++i)  {
-				targetmem.write(base_addr + offset + i, buf128[i] ^ rndval);
-			}
-			for(uint32_t i = 0; i < 128; ++i) {
-				data = targetmem.read(base_addr + offset + i);
-				if ( buf128[i] != (data^rndval) ) {
-					errcount ++;
-				}
-				targetmem.write(base_addr + offset + i, buf128[i]);
-			}
-		}
-		Serial.print(base_addr, HEX);
+		snprintf(buf128, 127, "%04X", base_addr);
+		Serial.print(buf128);
 		Serial.print(" -- ");
-		Serial.print(base_addr + block_size -1, HEX);
-		Serial.print(" : errors ");
-		Serial.println(errcount);
+		snprintf(buf128, 127, "%04X", base_addr + block_size -1);
+		Serial.print(buf128);
+		Serial.print(" : ");
+		Serial.flush();
+		tmperr += targetmem.sram_check(base_addr, block_size);
+		if ( tmperr == 0 ) {
+			Serial.println(F("OK."));
+		} else {
+			Serial.print(tmperr);
+			Serial.println(F(" errors."));
+		}
+		errcount += tmperr;
+		if ( errcount > block_size ) {
+			Serial.println(F("Too many errors, abandon."));
+			break;
+		}
 	}
+	Serial.print(F("Total error count = "));
 	Serial.println(errcount);
 	Serial.println();
 }
