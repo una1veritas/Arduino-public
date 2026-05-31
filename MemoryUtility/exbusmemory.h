@@ -45,12 +45,13 @@ public:
 		pinMode(power_en, OUTPUT);
 	}
 
-	inline static void delay1clock() {
+	inline static void delay1nop() {
 		__asm__ __volatile__("nop\n\t");
 	}  // about 62.5 ns at 16MHz
 
-	static void delay4clocks(uint8_t t = 1) {
-		for(; t > 0; --t)
+	// delays n + 3 clocks
+	static void delay_nops(uint8_t n = 1) {
+		for(; n > 0; --n)
 			__asm__ __volatile__("nop\n\t");
 	}
 
@@ -140,17 +141,18 @@ private:
 
 public:
 	uint8_t read(const uint32_t &addr) const;
-	uint8_t read_200ns(const uint32_t & addr) const;
+	uint8_t read_with_waits(const uint32_t & addr, const uint8_t n) const;
+
 	void write(const uint32_t &addr, const uint8_t data);
 
 	// Write the special six-byte code to turn off Software Data Protection.
 	bool disable_SDP();
 	bool enable_SDP();
 
-	bool program_byte(const uint32_t &addr, const uint8_t data);
-	bool program_byte_100ns(const uint32_t& addr, const uint8_t data);
+	bool program_byte(const uint32_t &addr, const uint8_t data, const uint16_t access_time = 150);
+//	bool program_byte_100ns(const uint32_t& addr, const uint8_t data);
 
-	bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size);
+	bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size, const uint16_t access_time = 150);
 
 private:
 	void down_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t val);

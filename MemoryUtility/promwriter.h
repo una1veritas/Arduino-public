@@ -120,7 +120,7 @@ const MemoryInfo MEMINFO_DB[] PROGMEM = {
 	//	{ "X28C256-20", 	EEPROM256KBITS, EEPROM, 	200,	64, 	true },
 		{ "X28C512-20", 	EEPROM512KBITS, EEPROM, 	200,	128,	true }, 	// page write allows 2 to 128 bytes
 		{ "SRAM64KBITS", 	SRAM64KBITS, 	SRAM, 		100, 	0, 		false },
-		{ "SRAM256KBITS", 	SRAM64KBITS, 	SRAM, 		100, 	0, 		false },
+		{ "SRAM256KBITS", 	SRAM256KBITS, 	SRAM, 		100, 	0, 		false },
 		{ "SRAM1MBITS", 	SRAM1MBITS, 	SRAM, 		100, 	0, 		false },
 		{ "SRAM4MBITS", 	SRAM4MBITS, 	SRAM, 		100, 	0, 		false },
 		{ "", 0, 0, 0, },

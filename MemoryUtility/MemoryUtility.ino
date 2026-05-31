@@ -300,10 +300,9 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 			Serial.print("Byte write ");
 			uint16_t i;
 			for(i = 0; i < page.length; ++i) {
-				bool succ = exbusmem.program_byte_100ns( (page.address + i) & addrmask, page.data[i]);
+				bool succ = exbusmem.program_byte( (page.address + i) & addrmask, page.data[i], meminfo.access_time);
 				if ( succ ) {
-					snprintf(buf128, 127, "%02X ", page.data[i]);
-					Serial.print(buf128);
+					Serial.print('.');
 				} else {
 					promwriter.errorCount += 1;
 					err_flag = true;
@@ -313,7 +312,7 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 			}
 		} else {
 			Serial.print("Page write ");
-			bool succ = exbusmem.program_page(page.address & addrmask, page.data, meminfo.page_size);
+			bool succ = exbusmem.program_page(page.address & addrmask, page.data, meminfo.page_size, meminfo.access_time);
 			if ( !succ ) {
 				err_flag = true;
 				promwriter.errorCount += 1;
@@ -350,11 +349,10 @@ void dump_auxmem(uint32_t start, uint32_t stop) {
 void dump_target(const uint32_t & startaddr, const uint32_t & stopaddr) {
 	uint32_t addr = startaddr & 0xfffffff0;
 	while ( addr < stopaddr ) {
-        Serial.print(F("0x"));
         snprintf(buf128, 127, "%04X: ", addr);
         Serial.print(buf128);
         for (int i = 0; i < 16; ++i) {
-            uint8_t val = exbusmem.read_200ns(addr + i);
+            uint8_t val = exbusmem.read_with_waits(addr + i, 1);
             snprintf(buf128, 127, "%02X ", val);
             Serial.print(buf128);
         }

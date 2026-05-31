@@ -39,7 +39,7 @@ void list_target_types(MemoryInfo & meminfo) {
 		memcpy_P(&tmp, &MEMINFO_DB[ix], sizeof(MemoryInfo));
 		if (tmp.partname[0] == '\0' )
 			break;
-		snprintf(buf64, 64, "%c%2d %-12s %ldkbit ", (meminfo == tmp ? '*' : ' '), ix, tmp.partname, tmp.capacity_inbits / 1024);
+		snprintf(buf64, 64, "%c%2d %-12s %ldk ", (meminfo == tmp ? '*' : ' '), ix, tmp.partname, (tmp.capacity_inbits>>3) / 1024);
 		len = Serial.print(buf64);
 		switch (tmp.type) {
 		case SRAM:
