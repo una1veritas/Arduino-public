@@ -134,14 +134,14 @@ private:
 	uint8_t get_byte(const uint32_t & addr) const;
 
 	void put_byte(const uint32_t &addr, const uint8_t data);
-	void put_byte_100ns(const uint32_t& addr, const uint8_t data);
+	void put_byte(const uint32_t& addr, const uint8_t data, const uint8_t n);
 
 	bool waitfor_write_cycle_end(const uint8_t &data, const uint16_t & count);
 
 
 public:
 	uint8_t read(const uint32_t &addr) const;
-	uint8_t read_with_waits(const uint32_t & addr, const uint8_t n) const;
+	uint8_t read(const uint32_t & addr, const uint8_t n) const;
 
 	void write(const uint32_t &addr, const uint8_t data);
 
@@ -149,10 +149,10 @@ public:
 	bool disable_SDP();
 	bool enable_SDP();
 
-	bool program_byte(const uint32_t &addr, const uint8_t data, const uint16_t access_time = 150);
-//	bool program_byte_100ns(const uint32_t& addr, const uint8_t data);
+	bool program_byte(const uint32_t& addr, const uint8_t data);
+	bool program_byte(const uint32_t &addr, const uint8_t data, const uint8_t n);
 
-	bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size, const uint16_t access_time = 150);
+	bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size, const uint8_t n);
 
 private:
 	void down_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t val);

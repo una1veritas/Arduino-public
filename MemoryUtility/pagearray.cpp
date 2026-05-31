@@ -13,11 +13,11 @@ size_t Page64::printOn(Stream &out) const {
 	size_t count = 0;
 	for (uint16_t i = 0; i < length; ++i) {
 		if (i == 0) {
-			snprintf(tmp16, 15, "%04lX : ", address + i);
+			snprintf(tmp16, 15, "%04lX: ", address + i);
 			count += out.print(tmp16);
 		} else if ( i % 16 == 0 ) {
 			count += out.println();
-			count += out.print(F("       ") );
+			count += out.print(F("      ") );
 		}
 		snprintf(tmp16, 15, "%02X ", data[i]);
 		count += out.print(tmp16);
