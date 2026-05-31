@@ -5,15 +5,15 @@
  *      Author: sin
  */
 
-#ifndef MEMORY_H_
-#define MEMORY_H_
+#ifndef EXBUSMEMORY_H_
+#define EXBUSMEMORY_H_
 
 #include "ShiftRegister.h"
 #include "MCP23S08.h"
 
 #include "MemoryDevice.h"
 
-class Memory : public MemoryDevice{
+class ExBusMemory : public MemoryDevice{
 private:
 	int MEM_CE;
 	int MEM_OE;
@@ -24,20 +24,25 @@ private:
 	ShiftRegister addrbus;
 	MCP23S08 databus;
 
+	int power_en;  // power enable
+
 public:
 
-	Memory(uint8_t addrbus_cs = 8,
+	ExBusMemory(uint8_t addrbus_cs = 8,
 			uint8_t addrbus_oe = 7, uint8_t databus_cs = 9, uint8_t CE_pin = A1,
-			uint8_t OE_pin = A2, uint8_t WE_pin = A0) :
+			uint8_t OE_pin = A2, uint8_t WE_pin = A0, uint8_t power = 2) :
 			MEM_CE(CE_pin), MEM_OE(OE_pin), MEM_WE(WE_pin),
 			addrbus( ShiftRegister(addrbus_cs, addrbus_oe, ShiftRegister::MSB_FIRST) ),
-			databus( MCP23S08(databus_cs, 0) ) {
+			databus( MCP23S08(databus_cs, 0) ),
+			power_en(power) {
 		deselect();
 		pinMode(MEM_CE, OUTPUT);
 		output_disable();
 		pinMode(MEM_OE, OUTPUT);
 		write_disable();
 		pinMode(MEM_WE, OUTPUT);
+		power_off();
+		pinMode(power_en, OUTPUT);
 	}
 
 	inline static void delay1clock() {
@@ -84,6 +89,8 @@ public:
 		addrbus.output_enable();
 		databus.begin();
 		set_databus_mode(INPUT);
+		//
+		power_on();
 	}
 
 	// inactivate
@@ -95,6 +102,16 @@ public:
 		addrbus.output_disable();
 		databus.set_gpio_input();
 		databus.disable_gpio_pullup();
+		//
+		power_off();
+	}
+
+	void power_on() {
+		digitalWrite(power_en, LOW);
+	}
+
+	void power_off() {
+		digitalWrite(power_en, HIGH);
 	}
 
 private:
@@ -146,4 +163,4 @@ public:
 };
 
 
-#endif /* MEMORY_H_ */
+#endif /* EXBUSMEMORY_H_ */

@@ -5,9 +5,9 @@
  *      Author: sin
  */
 
-#include "memory.h"
+#include "exbusmemory.h"
 
-void Memory::set_databus_mode(const uint8_t inout) {
+void ExBusMemory::set_databus_mode(const uint8_t inout) {
 	if (inout == INPUT) {
 		databus.enable_gpio_pullup();
 		databus.set_gpio_input();
@@ -19,7 +19,7 @@ void Memory::set_databus_mode(const uint8_t inout) {
 
 // basic read sequence with additional 1 clock wait between /OE to read databus
 // certified w/ /CE to data valid 150 ns, /OE to data valid 70 ns
-uint8_t Memory::read(const uint32_t & addr) const {
+uint8_t ExBusMemory::read(const uint32_t & addr) const {
   //output_disable();
   //write_disable();
   set_databus_mode(INPUT);
@@ -39,7 +39,7 @@ uint8_t Memory::read(const uint32_t & addr) const {
 // /OE to output delay >= 10 ns, <= 90 ns,
 // /OE, /CE high to output float <= 70 ns
 // OK for HN58C256
-uint8_t Memory::read_200ns(const uint32_t & addr) const {
+uint8_t ExBusMemory::read_200ns(const uint32_t & addr) const {
   //output_disable();
   //write_disable();
   set_databus_mode(INPUT);
@@ -56,7 +56,7 @@ uint8_t Memory::read_200ns(const uint32_t & addr) const {
 }
 
 // basic write to SRAM with 1 clock wait after /CE and 1 clock after /WE
-void Memory::write(const uint32_t & addr, const uint8_t data) {
+void ExBusMemory::write(const uint32_t & addr, const uint8_t data) {
   set_databus_mode(OUTPUT);
   //output_disable();
   //write_disable();
@@ -74,7 +74,7 @@ void Memory::write(const uint32_t & addr, const uint8_t data) {
 
 // write to EEPROM
 // succeeded with at28c64
-bool Memory::program_byte(const uint32_t& addr, const uint8_t data) {
+bool ExBusMemory::program_byte(const uint32_t& addr, const uint8_t data) {
   set_databus_mode(OUTPUT);
   //output_disable();
   write_disable(); 	// to ensure pulse
@@ -94,7 +94,7 @@ bool Memory::program_byte(const uint32_t& addr, const uint8_t data) {
 }
 
 // OK w/ HN58C256
-bool Memory::program_byte_100ns(const uint32_t& addr, const uint8_t data) {
+bool ExBusMemory::program_byte_100ns(const uint32_t& addr, const uint8_t data) {
   set_databus_mode(OUTPUT);
   //output_disable();
   write_disable(); 	// to ensure pulse
@@ -115,7 +115,7 @@ bool Memory::program_byte_100ns(const uint32_t& addr, const uint8_t data) {
   return succ;
 }
 
-uint8_t Memory::get_byte(const uint32_t & addr) const {
+uint8_t ExBusMemory::get_byte(const uint32_t & addr) const {
   //output_disable();
   //write_disable();
   write_addressbus(addr);
@@ -129,7 +129,7 @@ uint8_t Memory::get_byte(const uint32_t & addr) const {
 
 
 // partial eeprom write sequence after bus mode change and /CE, before CE, with address change
-void Memory::put_byte(const uint32_t& addr, const uint8_t data) {
+void ExBusMemory::put_byte(const uint32_t& addr, const uint8_t data) {
   write_addressbus(addr);
   write_enable();
   delay1clock();
@@ -140,7 +140,7 @@ void Memory::put_byte(const uint32_t& addr, const uint8_t data) {
 }
 
 // OK w/ HN58C256
-void Memory::put_byte_100ns(const uint32_t& addr, const uint8_t data) {
+void ExBusMemory::put_byte_100ns(const uint32_t& addr, const uint8_t data) {
   write_addressbus(addr);
   write_enable();
   delay1clock();
@@ -154,7 +154,7 @@ void Memory::put_byte_100ns(const uint32_t& addr, const uint8_t data) {
 
 // write to EEPROM
 // OK w/ HN58C256
-bool Memory::program_page(const uint32_t & addr, const uint8_t data[], uint16_t page_size) {
+bool ExBusMemory::program_page(const uint32_t & addr, const uint8_t data[], uint16_t page_size) {
 	uint8_t val;
   uint32_t baseaddr = (~uint32_t(page_size - 1)) & addr;
   set_databus_mode(OUTPUT);
@@ -170,7 +170,7 @@ bool Memory::program_page(const uint32_t & addr, const uint8_t data[], uint16_t 
 }
 
 // OK w/ HN58C256
-bool Memory::waitfor_write_cycle_end(const uint8_t & data, const uint16_t & count) {
+bool ExBusMemory::waitfor_write_cycle_end(const uint8_t & data, const uint16_t & count) {
 	uint8_t val0, val1;
 	//set_databus_mode(INPUT);
 	for(uint16_t i = 0; i < count; ++i) {
@@ -194,7 +194,7 @@ bool Memory::waitfor_write_cycle_end(const uint8_t & data, const uint16_t & coun
 
 
 // Write the special six-byte code to turn off Software Data Protection.
-bool Memory::disable_SDP() {
+bool ExBusMemory::disable_SDP() {
     //disableOutput();
     //disableWrite();
     set_databus_mode(OUTPUT);
@@ -214,7 +214,7 @@ bool Memory::disable_SDP() {
 }
 
 // Write the special three-byte code to turn on Software Data Protection.
-bool Memory::enable_SDP() {
+bool ExBusMemory::enable_SDP() {
     //disableOutput();
     //disableWrite();
     set_databus_mode(OUTPUT);
@@ -230,20 +230,20 @@ bool Memory::enable_SDP() {
     return true;
 }
 
-void Memory::down_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t val) {
+void ExBusMemory::down_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t val) {
 	for(uint32_t ix = 0; ix < block_size; ++ix) {
 		write(base_addr + ix, val);
 	}
 }
 
-void Memory::up_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t val) {
+void ExBusMemory::up_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t val) {
 	for(uint32_t ix = block_size; ix > 0; ) {
 		--ix;
 		write(base_addr + ix, val);
 	}
 }
 
-uint32_t Memory::down_read_verify_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t vval, uint8_t wval) {
+uint32_t ExBusMemory::down_read_verify_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t vval, uint8_t wval) {
 	uint32_t errcount = 0;
 	select();
 	for(uint32_t ix = 0; ix < block_size; ++ix) {
@@ -265,7 +265,7 @@ uint32_t Memory::down_read_verify_write(const uint32_t & base_addr, const uint32
 	return errcount;
 }
 
-uint32_t Memory::up_read_verify_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t vval, uint8_t wval) {
+uint32_t ExBusMemory::up_read_verify_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t vval, uint8_t wval) {
 	uint32_t errcount = 0;
 	select();
 	for(uint32_t ix = block_size; ix > 0; ) {
@@ -289,7 +289,7 @@ uint32_t Memory::up_read_verify_write(const uint32_t & base_addr, const uint32_t
 }
 
 // March C- 8bit
-uint32_t Memory::sram_check(const uint32_t & start, const uint32_t & block_size) {
+uint32_t ExBusMemory::sram_check(const uint32_t & start, const uint32_t & block_size) {
 	uint32_t errcount = 0 ;
 	uint32_t addr, ix;
 	uint8_t val;

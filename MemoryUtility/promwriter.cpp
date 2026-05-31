@@ -31,19 +31,47 @@ void get_meminfo_byname(const char name[], MemoryInfo & dst) {
 	return;
 }
 
-void list_target_types(void) {
+void list_target_types(MemoryInfo & meminfo) {
 	MemoryInfo tmp;
+	uint8_t len;
 	char buf64[64];
 	for (uint8_t ix = 0; ; ++ix) {
 		memcpy_P(&tmp, &MEMINFO_DB[ix], sizeof(MemoryInfo));
 		if (tmp.partname[0] == '\0' )
 			break;
-		snprintf(buf64, 64, "%d: %-12s %ldkbits ", ix, tmp.partname, tmp.capacity_inbits / 1024);
-		Serial.print(buf64);
-		Serial.print(tmp.type);
-		Serial.print(" ");
-		Serial.print(tmp.page_size);
-		Serial.println(tmp.SDP ? " SDP" : "");
+		snprintf(buf64, 64, "%c%2d %-12s %ldkbit ", (meminfo == tmp ? '*' : ' '), ix, tmp.partname, tmp.capacity_inbits / 1024);
+		len = Serial.print(buf64);
+		switch (tmp.type) {
+		case SRAM:
+			Serial.print(F("SRAM   "));
+			break;
+	//	case DRAM:
+	//		Serial.print(F("DRAM   "));
+	//	case ROM: 		// mask rom
+	//		break;
+		case EPPROM: 	// UV-EPROM
+			Serial.print(F("EPROM  "));
+			break;
+		case EEPROM:		// E-EPROM
+			Serial.print(F("EEPROM "));
+			break;
+		case FLASH:
+			Serial.print(F("Flash  "));
+			break;
+		default:
+			Serial.print(F("???    "));
+			break;
+		}
+		len += 7;
+		len += Serial.print(" ");
+		len += Serial.print(tmp.page_size > 0 ? "pw" : "");
+		len += Serial.print(tmp.SDP ? " SDP" : "");
+		for(; len < 40; ++len) {
+			Serial.print(' ');
+		}
+		if ( (ix & 1) == 1 )
+			Serial.println();
 	}
+	Serial.println();
 	return;
 }

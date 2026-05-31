@@ -26,6 +26,7 @@ Replace yourfile.hex with your Intel HEX filename
 #include <MCP23S08.h>
 #include <ShiftRegister.h>
 
+#include "exbusmemory.h"
 #include "promwriter.h"
 
 #include "hex_processor.h"
@@ -34,7 +35,6 @@ Replace yourfile.hex with your Intel HEX filename
 // data bus 8 through SPI by MCP23S08 IO Expander
 // Data buffer memory through SPI by SPI Serial SRAM 23C1024
 
-#include "memory.h"
 
 enum PIN_ASSIGNMENT {
 	addrbus_cs = 8,
@@ -52,7 +52,7 @@ enum PIN_ASSIGNMENT {
 
 PageArray pagearray(SPISRAM_23LC1024_CS);
 
-Memory targetmem(addrbus_cs, addrbus_oe, databus_cs, ROM_CE, ROM_OE, ROM_WE);
+ExBusMemory exbusmem(addrbus_cs, addrbus_oe, databus_cs, ROM_CE, ROM_OE, ROM_WE);
 
 PROMWriter promwriter;
 
@@ -119,7 +119,7 @@ void setup() {
 
 	SPI.begin();
 	pagearray.begin();
-	targetmem.begin();
+	exbusmem.begin();
 
 	while (!Serial) { }
 	printWelcome();
@@ -169,10 +169,10 @@ void loop() {
 				Serial.println();
 				Serial.println(F("Software data protection "));
 				if ( line.length() >= 3 and line[2] == 'D' ) {
-					targetmem.disable_SDP();
+					exbusmem.disable_SDP();
 					Serial.println(F(" disabled."));
 				} else if ( line.length() >= 3 and line[2] == 'E' ) {
-					targetmem.enable_SDP();
+					exbusmem.enable_SDP();
 					Serial.println(F(" enabled."));
 				}
 				break;
@@ -202,22 +202,9 @@ void loop() {
 			case 'T':
 			case 't':
 				Serial.println();
-				list_target_types();
 				line = line.substring(2);
 				line.trim();
-				val = 0;
-				if ( line.length() > 0) {
-					val = strtoul(line.c_str(), &ptr, 10);
-					if ( val != 0 ) {
-						get_meminfo_byindex(val, meminfo);
-					} else {
-						get_meminfo_byname(line.c_str(), meminfo);
-					}
-					Serial.println(F("Selected: "));
-				} else {
-					Serial.println(F("Current: "));
-				}
-				print_meminfo(meminfo);
+				memory_type(meminfo, line.c_str());
 				break;
 
 			case 'W':
@@ -230,18 +217,20 @@ void loop() {
 				Serial.println(F("Finished."));
 				break;
 
-				//			case 'X':
-				//			case 'x':
-				//				Serial.println();
-				//				Serial.println("Do test.");
-				//				unsigned long swatch = millis();
-				//				for(uint16_t i = 0; i < 40000; ++i) {
-				//					Memory::delay4clocks(200);
-				//				}
-				//				swatch = millis() - swatch;
-				//				Serial.print(swatch);
-				//				Serial.print(" millis.");
-				//				break;
+			case 'X':
+			case 'x':
+				Serial.println();
+				Serial.println("Memory power ");
+				if ( !promwriter.target_power ) {
+					exbusmem.begin();
+					promwriter.target_power  = true;
+					Serial.println("on.");
+				} else {
+					exbusmem.end();
+					promwriter.target_power  = false;
+					Serial.println("off.");
+				}
+				break;
 
 			}
 		} else if (line[0] == ':') {
@@ -257,6 +246,17 @@ void loop() {
 		line = "";
 
 	}
+}
+
+void memory_type(MemoryInfo & meminfo, const char * s) {
+	uint8_t val = strtoul(line.c_str(), NULL, 10);
+	if (val > 0) {
+		get_meminfo_byindex(val, meminfo);
+	} else {
+		get_meminfo_byname(s, meminfo);
+	}
+	list_target_types(meminfo);
+	meminfo.printOn(Serial);
 }
 
 void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
@@ -300,7 +300,7 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 			Serial.print("Byte write ");
 			uint16_t i;
 			for(i = 0; i < page.length; ++i) {
-				bool succ = targetmem.program_byte_100ns( (page.address + i) & addrmask, page.data[i]);
+				bool succ = exbusmem.program_byte_100ns( (page.address + i) & addrmask, page.data[i]);
 				if ( succ ) {
 					snprintf(buf128, 127, "%02X ", page.data[i]);
 					Serial.print(buf128);
@@ -313,7 +313,7 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 			}
 		} else {
 			Serial.print("Page write ");
-			bool succ = targetmem.program_page(page.address & addrmask, page.data, meminfo.page_size);
+			bool succ = exbusmem.program_page(page.address & addrmask, page.data, meminfo.page_size);
 			if ( !succ ) {
 				err_flag = true;
 				promwriter.errorCount += 1;
@@ -354,54 +354,12 @@ void dump_target(const uint32_t & startaddr, const uint32_t & stopaddr) {
         snprintf(buf128, 127, "%04X: ", addr);
         Serial.print(buf128);
         for (int i = 0; i < 16; ++i) {
-            uint8_t val = targetmem.read_200ns(addr + i);
+            uint8_t val = exbusmem.read_200ns(addr + i);
             snprintf(buf128, 127, "%02X ", val);
             Serial.print(buf128);
         }
         Serial.println();
         addr += 16;
-	}
-}
-
-void print_meminfo(const MemoryInfo &meminfo) {
-	Serial.print(meminfo.partname);
-	Serial.print(F("  "));
-	switch (meminfo.type) {
-	case SRAM:
-		Serial.print(F("SRAM, "));
-		break;
-//	case DRAM:
-//		Serial.print(F("DRAM, "));
-//	case ROM: 		// mask rom
-//		break;
-	case EPPROM: 	// UV-EPROM
-		Serial.print(F("UV EPROM, "));
-		break;
-	case EEPROM:		// E-EPROM
-		Serial.print(F("EEPROM, "));
-		break;
-	case FLASH:
-		Serial.print(F("Flash, "));
-		break;
-	default:
-		Serial.print(F("Unknown, "));
-		break;
-	}
-	Serial.print(meminfo.capacity_inbits >> 13);
-	Serial.print(F("K bytes, "));
-	Serial.print(F("access time "));
-	Serial.print(meminfo.access_time);
-	Serial.print(", ");
-	if (meminfo.page_size == 0) {
-		Serial.print(F("no page write"));
-	} else {
-		Serial.print(meminfo.page_size);
-		Serial.print(F(" bytes page write"));
-	}
-	if (meminfo.SDP) {
-		Serial.println(F(", has SDP."));
-	} else {
-		Serial.println(F("."));
 	}
 }
 
@@ -421,7 +379,7 @@ void sram_test() {
 		Serial.print(buf128);
 		Serial.print(" : ");
 		Serial.flush();
-		tmperr += targetmem.sram_check(base_addr, block_size);
+		tmperr += exbusmem.sram_check(base_addr, block_size);
 		if ( tmperr == 0 ) {
 			Serial.println(F("OK."));
 		} else {
