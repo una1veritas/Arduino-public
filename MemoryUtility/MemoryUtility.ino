@@ -249,11 +249,11 @@ void loop() {
 }
 
 void memory_type(MemoryInfo & meminfo, const char * s) {
-	uint8_t val = strtoul(line.c_str(), NULL, 10);
-	if (val > 0) {
-		get_meminfo_byindex(val, meminfo);
-	} else {
+	uint8_t val = strtoul(s, NULL, 10);
+	if ( strlen(s) != 0 and val == 0 ) {
 		get_meminfo_byname(s, meminfo);
+	} else if ( strlen(s) != 0 ){
+		get_meminfo_byindex(val, meminfo);
 	}
 	list_target_types(meminfo);
 	meminfo.printOn(Serial);
