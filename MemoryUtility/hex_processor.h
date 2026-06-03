@@ -24,7 +24,7 @@ struct HexRecord {
 	}
 };
 
-uint8_t hexToUint8(const String & hex, const uint16_t & startpos = 0);
+uint8_t hexToUint8(const char * str,  const uint16_t & startpos);
 
 // format specific definitions
 

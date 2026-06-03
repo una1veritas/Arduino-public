@@ -25,15 +25,12 @@ uint8_t charToNibble(char c) {
   return 0;
 }
 
-uint8_t hexToUint8(const String & hex, const uint16_t & startpos) {
-	if (startpos + 2 > hex.length()) {
-		return 0;
-	}
+uint8_t hexToUint8(const char * hex, const uint16_t & startpos) {
+	char * ptr = hex + startpos;
 	uint8_t val = 0;
+	val = charToNibble(*ptr++);
 	val <<= 4;
-	val |= charToNibble(hex[startpos]);
-	val <<= 4;
-	val |= charToNibble(hex[startpos + 1]);
+	val |= charToNibble(*ptr);
 	return val;
 }
 
@@ -69,7 +66,7 @@ void processiHexRecord(String line, HexRecord &record) {
 
 	// Extract byte count
 	//uint8_t byteCount
-	record.datalength = hexToUint8(line, 1);
+	record.datalength = hexToUint8(line.c_str(), 1);
 
 	// Validate line length: :LL + AAAA + TT + DD*2 + CC
 	unsigned int expectedLength = 11 + (record.datalength * 2);
@@ -102,17 +99,17 @@ void processiHexRecord(String line, HexRecord &record) {
 	//                     hexToUint8(line.substring(5, 7));
 	record.address = promwriter.extendedLinearAddress;
 	record.address <<= 16;
-	record.address |= (uint16_t(hexToUint8(line, 3)) << 8) | hexToUint8(line, 5);
+	record.address |= (uint16_t(hexToUint8(line.c_str(), 3)) << 8) | hexToUint8(line.c_str(), 5);
 
 	// Extract data bytes
 	//uint8_t data[256];
 	for (int i = 0; i < record.datalength; i++) {
-		record.data[i] = hexToUint8(line, 9 + (i << 1));
+		record.data[i] = hexToUint8(line.c_str(), 9 + (i << 1));
 	}
 
 	// Extract and validate checksum
 	//uint8_t checksum =
-	record.checksum = hexToUint8(line, 9 + (record.datalength << 1));
+	record.checksum = hexToUint8(line.c_str(), 9 + (record.datalength << 1));
 
 	if (! validateiHexChecksum(record)) {
 		Serial.println(F("ERROR: Checksum validation failed for line:"));
@@ -291,7 +288,7 @@ boolean processS19Record(const String &line, HexRecord &record) {
 //	Serial.println(record.type[1]);
 
 	// Parse byte count (position 2-3, in hex)
-	const uint8_t byteCount = hexToUint8(line, 2);
+	const uint8_t byteCount = hexToUint8(line.c_str(), 2);
 //	Serial.print("byteCount = ");
 //	Serial.println(byteCount, HEX);
 
@@ -352,17 +349,17 @@ boolean processS19Record(const String &line, HexRecord &record) {
 	record.address = 0;
 	for(int ix = 0; ix < addressbytes; ++ix) {
 		record.address <<= 8;
-		record.address |= hexToUint8(line, 4 + (ix << 1) );
+		record.address |= hexToUint8(line.c_str(), 4 + (ix << 1) );
 	}
 	//Serialsnprint(buf128, 127, "addr = %04x\n", record.address);
 
 	// parse data field
 	const uint16_t dataStartPos = 4 + (addressbytes << 1);
 	for (int i = 0; i < record.datalength; i++) {
-		record.data[i] = hexToUint8(line, dataStartPos + (i << 1));
+		record.data[i] = hexToUint8(line.c_str(), dataStartPos + (i << 1));
 	}
 
-	record.checksum = hexToUint8(line, 2 + (byteCount << 1));
+	record.checksum = hexToUint8(line.c_str(), 2 + (byteCount << 1));
 	//Serialsnprint(buf128, 127, "chksum = %02x, calced = %02x\n", record.checksum, calcChecksum(line));
 
 	// Verify checksum
@@ -485,9 +482,9 @@ boolean processS19StartAddress(const HexRecord & record) {
 uint8_t calcS19Checksum(const String & line) {
   // Calculate checksum of all bytes except the first byte "Sx" and the checksum itself
   uint8_t calculatedSum = 0;
-  uint8_t byteCount = hexToUint8(line, 2);
+  uint8_t byteCount = hexToUint8(line.c_str(), 2);
   for (int i = 0; i < byteCount; i++) {
-    calculatedSum += hexToUint8(line, 2 + (i << 1) );
+    calculatedSum += hexToUint8(line.c_str(), 2 + (i << 1) );
   }
 
   // Checksum is the one's complement of the calculated sum

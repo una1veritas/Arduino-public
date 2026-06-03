@@ -53,7 +53,7 @@ void list_target_types(MemoryInfo & meminfo) {
 	//		Serial.print(F("DRAM   "));
 	//	case ROM: 		// mask rom
 	//		break;
-		case EPPROM: 	// UV-EPROM
+		case EPROM: 	// UV-EPROM
 			Serial.print(F("EPROM  "));
 			break;
 		case EEPROM:		// E-EPROM
@@ -78,4 +78,46 @@ void list_target_types(MemoryInfo & meminfo) {
 	}
 	Serial.println();
 	return;
+}
+
+void MemoryInfo::printOn(Stream & out) const {
+	out.print(partname);
+	out.print(F("  "));
+	switch (type) {
+	case SRAM:
+		Serial.print(F("SRAM, "));
+		break;
+//	case DRAM:
+//		Serial.print(F("DRAM, "));
+//	case ROM: 		// mask rom
+//		break;
+	case EPROM: 	// UV-EPROM
+		Serial.print(F("UV EPROM, "));
+		break;
+	case EEPROM:		// E-EPROM
+		Serial.print(F("EEPROM, "));
+		break;
+	case FLASH:
+		Serial.print(F("Flash, "));
+		break;
+	default:
+		Serial.print(F("Unknown, "));
+		break;
+	}
+	out.print(capacity_inbits >> 13);
+	out.print(F("K bytes, "));
+	out.print(F("access time "));
+	out.print(access_time);
+	out.print(", ");
+	if (page_size == 0) {
+		out.print(F("no page write"));
+	} else {
+		out.print(page_size);
+		out.print(F(" bytes page write"));
+	}
+	if (SDP) {
+		out.println(F(", has SDP."));
+	} else {
+		out.println(F("."));
+	}
 }
