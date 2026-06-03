@@ -20,19 +20,18 @@ enum MEM_TYPE {
 };
 
 enum CAPACITY_INBITS {
-	SRAM32KBITS = 0x8000UL,   // 4k bytes
-	SRAM64KBITS = 0x10000UL,   // 8k bytes
-	SRAM128KBITS = 0x20000UL,   // 16k bytes
+	SRAM32KBIT = 0x8000UL,   // 4k bytes
+	SRAM64KBIT = 0x10000UL,   // 8k bytes
+	SRAM128KBIT = 0x20000UL,   // 16k bytes
 	SRAM832 = 0x40000UL,   // 32kbytes/256k bits
-	SRAM256KBITS = 0x40000UL,   // 32kbytes/256k bits
-	SRAM512KBITS = 0x80000UL,   // 64kbytes/512kbits
-	SRAM1MBITS = 0x100000UL,   // 64kbytes/512kbits
-	SRAM8512 = 0x400000UL,   // 64kbytes/512kbits
-	SRAM4MBITS = 0x400000UL,   // 64kbytes/512kbits
+	SRAM256KBIT = 0x40000UL,   // 32kbytes/256k bits
+	SRAM512KBIT = 0x80000UL,   // 64kbytes/512kbits
+	SRAM1MBIT = 0x100000UL,   // 64kbytes/512kbits
+	SRAM4MBIT = 0x400000UL,   // 64kbytes/512kbits
 
-	EEPROM64KBITS = 0x10000UL,
-	EEPROM256KBITS = 0x40000UL,
-	EEPROM512KBITS = 0x80000UL,
+	EEPROM64KBIT = 0x10000UL,
+	EEPROM256KBIT = 0x40000UL,
+	EEPROM512KBIT = 0x80000UL,
 };
 
 
@@ -111,18 +110,18 @@ void get_meminfo_byindex(const uint8_t ix, MemoryInfo & minfo);
 void list_target_types(MemoryInfo & meminfo);
 
 const MemoryInfo MEMINFO_DB[] PROGMEM = {
-		{ "AT28C64-15PC", 	EEPROM64KBITS, 	EEPROM, 	150,	0, 		false },
-		{ "AT28C64B", 		EEPROM64KBITS, 	EEPROM, 	150, 	64,		true },
-		{ "AT28C256-15", 	EEPROM256KBITS, EEPROM, 	150, 	64,		true },
-		{ "AT29C256-15", 	EEPROM256KBITS, FLASH,	 	100, 	64,		true },
-		{ "HN58C256", 		EEPROM256KBITS, EEPROM, 	200,	64, 	false },
-		{ "HN58C256A", 		EEPROM256KBITS, EEPROM, 	200,	64, 	true },
-	//	{ "X28C256-20", 	EEPROM256KBITS, EEPROM, 	200,	64, 	true },
-		{ "X28C512-20", 	EEPROM512KBITS, EEPROM, 	200,	128,	true }, 	// page write allows 2 to 128 bytes
-		{ "SRAM64KBITS", 	SRAM64KBITS, 	SRAM, 		100, 	0, 		false },
-		{ "SRAM256KBITS", 	SRAM256KBITS, 	SRAM, 		100, 	0, 		false },
-		{ "SRAM1MBITS", 	SRAM1MBITS, 	SRAM, 		100, 	0, 		false },
-		{ "SRAM4MBITS", 	SRAM4MBITS, 	SRAM, 		100, 	0, 		false },
+		{ "AT28C64-15", 	EEPROM64KBIT, 	EEPROM, 	150,	0, 		false },
+		{ "AT28C64B", 		EEPROM64KBIT, 	EEPROM, 	150, 	64,		true },
+		{ "AT28C256-15", 	EEPROM256KBIT, EEPROM, 	150, 	64,		true },
+		{ "AT29C256-15", 	EEPROM256KBIT, FLASH,	 	100, 	64,		true },
+		{ "HN58C256", 		EEPROM256KBIT, EEPROM, 	200,	64, 	false },
+		{ "HN58C256A", 		EEPROM256KBIT, EEPROM, 	200,	64, 	true },
+	//	{ "X28C256-20", 	EEPROM256KBIT, EEPROM, 	200,	64, 	true },
+		{ "X28C512-20", 	EEPROM512KBIT, EEPROM, 	200,	128,	true }, 	// page write allows 2 to 128 bytes
+		{ "SRAM64KBIT", 	SRAM64KBIT, 	SRAM, 		100, 	0, 		false },
+		{ "SRAM256KBIT", 	SRAM256KBIT, 	SRAM, 		100, 	0, 		false },
+		{ "SRAM1MBIT", 		SRAM1MBIT, 	SRAM, 		100, 	0, 		false },
+		{ "SRAM4MBIT", 		SRAM4MBIT, 	SRAM, 		100, 	0, 		false },
 		{ "", 0, 0, 0, },
 };
 

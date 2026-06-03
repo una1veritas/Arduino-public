@@ -24,7 +24,7 @@ private:
 	ShiftRegister addrbus;
 	MCP23S08 databus;
 
-	int power_en;  // power enable
+	int power_en;  // power enable pin
 
 public:
 
@@ -128,7 +128,7 @@ private:
 
 	// use only 24 bits
 	inline void write_addressbus(const uint32_t &addr) {
-		addrbus.write_bytes((const uint8_t*) &addr, 3);
+		addrbus.write_bytes((const uint8_t*) &addr, 3); 	// LSB first
 	}
 
 	uint8_t get_byte(const uint32_t & addr) const;

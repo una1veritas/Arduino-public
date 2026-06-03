@@ -140,6 +140,7 @@ void loop() {
 		if (line.length() == 0) {
 			return; // go to the next itertion of the loop()
 		}
+		Serial.println();
 		if (line[0] == '!') {
 			// process the command
 			switch (line[1]) {
@@ -149,16 +150,17 @@ void loop() {
 
 			case 'C':
 			case 'c':
-				Serial.println();
 				Serial.println(F("Start to load new data."));
 				pagearray.clear();
 				promwriter.clear();
 				break;
 
-			// case 'H':
-			// case 'h':
-			// 	printHelp();
-			// 	break;
+			case 'O':
+			case 'o':
+				Serial.println(F("Organize pages..."));
+				pagearray.sort_pages();
+				Serial.println(F("Done."));
+				break;
 
 			case 'S':
 			case 's':
@@ -166,7 +168,6 @@ void loop() {
 				break;
 
 			case 'P':
-				Serial.println();
 				Serial.println(F("Software data protection "));
 				if ( line.length() >= 3 and line[2] == 'D' ) {
 					exbusmem.disable_SDP();
@@ -179,7 +180,6 @@ void loop() {
 
 			case 'D':
 			case 'd':
-				Serial.println();
 				Serial.println(F("Dump loaded data,"));
 				line = line.substring(2);
 				start = strtoul(line.c_str(), &ptr, 16);
@@ -190,7 +190,6 @@ void loop() {
 
 			case 'R':
 			case 'r':
-				Serial.println();
 				Serial.println(F("Reading target memory..."));
 				line = line.substring(2);
 				start = strtoul(line.c_str(), &ptr, 16);
@@ -201,7 +200,6 @@ void loop() {
 
 			case 'T':
 			case 't':
-				Serial.println();
 				line = line.substring(2);
 				line.trim();
 				memory_type(meminfo, line.c_str());
@@ -209,7 +207,6 @@ void loop() {
 
 			case 'W':
 			case 'w':
-				Serial.println();
 				line = line.substring(2);
 				start = strtoul(line.c_str(), &ptr, 16);
 				stop = strtoul(ptr, &ptr, 16);
@@ -219,7 +216,6 @@ void loop() {
 
 			case 'X':
 			case 'x':
-				Serial.println();
 				Serial.println("Memory power ");
 				if ( !promwriter.target_power ) {
 					exbusmem.begin();
@@ -276,7 +272,7 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 
 	uint32_t ix;
 	for(ix = 0; ix < pagearray.size() ; ++ix) {
-		pagearray.load(page, ix);
+		pagearray.get_byindex(ix, page);
 		if ( (startaddr > page.address + page.length - 1) or (page.address >= stopaddr) ) {
 			continue;
 		}
@@ -294,7 +290,7 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 		}
 
 		if ( meminfo.page_size == 0	// the target memory has no page write mode
-				or (! page.is_aligned() ) // start address is not aligned
+				or (! page.is_page_aligned() ) // start address is not aligned
 				) {
 			//Serial.println(meminfo.page_size);
 			//Serial.println(page.address, HEX);
@@ -341,7 +337,7 @@ void dump_auxmem(uint32_t start, uint32_t stop) {
 	}
 	uint32_t ix;
 	for ( ix = 0; ix < pagearray.size(); ++ix) {
-		pagearray.load(page, ix);
+		pagearray.get_byindex(ix, page);
 		if ( start <= page.address and page.address + page.length < stop) {
 			page.printOn(Serial);
 		}
@@ -404,9 +400,9 @@ void sram_test() {
 }
 
 void printWelcome() {
-	Serial.println(F("\n========================================"));
-	Serial.println(F("   Arduino ihex/s19 Format Loader 202604"));
-	Serial.println(F("========================================"));
+	Serial.println(F("\n========================================="));
+	Serial.println(F(" Arduino ihex/s19 Format Loader 20260603"));
+	Serial.println(F("========================================="));
 }
 
 void show_status() {

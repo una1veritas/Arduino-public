@@ -26,13 +26,13 @@ size_t Page64::printOn(Stream &out) const {
 	return count;
 }
 
-void PageArray::load(Page64 & page, const uint32_t & index) const {
+void PageArray::get_byindex(const uint32_t & index, Page64 & page) const {
 	uint32_t auxaddr = start_offset + index * sizeof(Page64);
 	auxarray.read(auxaddr, (uint8_t*) & page , sizeof(Page64));
 	return;
 }
 
-void PageArray::store(const uint32_t & index, Page64 & page) {
+void PageArray::set_byindex(const uint32_t & index, Page64 & page) {
 	uint32_t auxaddr = start_offset + index * sizeof(Page64);
 	auxarray.write(auxaddr, (uint8_t*) & page, sizeof(Page64));
 	return;
@@ -42,7 +42,7 @@ uint32_t PageArray::total_bytes() const {
 	Page64 page;
 	uint32_t total = 0;
 	for(uint16_t ix = 0; ix < pages_count; ++ix) {
-		load(page, ix);
+		get_byindex(ix, page);
 		total += page.length;
 	}
 	return total;
@@ -53,10 +53,10 @@ uint32_t PageArray::lowest_address() const {
 	uint32_t addr = 0;
 	if ( pages_count == 0 )
 		return addr;
-	load(page, 0);
+	get_byindex(0, page);
 	addr = page.address;
 	for(uint16_t ix = 1; ix < pages_count; ++ix) {
-		load(page, ix);
+		get_byindex(ix, page);
 		if ( page.address < addr )
 			addr = page.address;
 	}
@@ -68,10 +68,10 @@ uint32_t PageArray::end_address() const {
 	if ( pages_count == 0 )
 		return addr;
 	Page64 page;
-	load(page, 0);
+	get_byindex(0, page);
 	addr = page.address + page.length;
 	for(uint16_t ix = 1; ix < pages_count; ++ix) {
-		load(page, ix);
+		get_byindex(ix, page);
 		if ( page.address + page.length > addr )
 			addr = page.address + page.length;
 	}
@@ -92,14 +92,14 @@ uint16_t PageArray::append_page(const uint32_t &addr, const uint8_t data[],
 	for (uint16_t i = 0; i < pagecache.length; ++i) {
 		pagecache[i] = data[i];
 	}
-	store(pages_count, pagecache); //store_page(pages_count * sizeof(Page64), pagecache);
+	set_byindex(pages_count, pagecache); //store_page(pages_count * sizeof(Page64), pagecache);
 	pages_count += 1;
 	return pagecache.length;
 }
 
 void PageArray::append_bytes(uint32_t address, const uint8_t *data, uint16_t length) {
 	Page64 lastpage;
-	load(lastpage, pages_count - 1); //load_page(head_ix + sizeof(Page64) * (pages_count - 1), lastpage);
+	get_byindex(pages_count - 1, lastpage); //load_page(head_ix + sizeof(Page64) * (pages_count - 1), lastpage);
 
 	uint16_t ix = 0; // offset index to data
 	// update to fill up the last page
@@ -109,7 +109,7 @@ void PageArray::append_bytes(uint32_t address, const uint8_t *data, uint16_t len
 			lastpage[lastpage.length + ix] = data[ix];
 		}
 		lastpage.length += ix;
-		store(pages_count - 1, lastpage); //store_page((pages_count - 1) * sizeof(Page64), lastpage); // now the last page block is full (to the page boundary)
+		set_byindex(pages_count - 1, lastpage); //store_page((pages_count - 1) * sizeof(Page64), lastpage); // now the last page block is full (to the page boundary)
 	}
 	// append new pages
 	for (; ix < length; ix += lastpage.page_size) {
@@ -123,9 +123,31 @@ size_t PageArray::printOn(Stream &out) {
 	Page64 page;
 	size_t count = 0;
 	for (uint16_t i = 0; i < pages_count; ++i) {
-		load(page, i);
+		get_byindex(i, page);
 		count += page.printOn(Serial);
 		count += Serial.println();
 	}
 	return count;
+}
+
+// sort pages in ascending order of their starting address in ascending by Shell-sort
+void PageArray::sort_pages() {
+	// Start with a large gap, then reduce it step by step
+	Page64 a, b; 	// temporaries
+    for (uint32_t gap = pages_count >> 1; gap > 0; gap >>= 1) {
+        // Perform "gapped" swaps, as far as the chain grow longer
+        for (uint32_t i = gap; i < pages_count; i++) {
+        	get_byindex(i, a);
+        	uint32_t j;
+            for (j = i; j >= gap; j -= gap ) {
+            	get_byindex(j - gap, b);
+            	if ( a.address < b.address ) {
+            		set_byindex(j, b);
+            	} else {
+            		break;
+            	}
+            }
+            set_byindex(j, a);
+        }
+    }
 }

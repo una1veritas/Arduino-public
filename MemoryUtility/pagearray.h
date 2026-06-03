@@ -67,7 +67,7 @@ struct Page64 {
 		return address + length == boundary;
 	}
 
-	bool is_aligned() const {
+	bool is_page_aligned() const {
 		return (address & (page_size - 1)) == 0 and is_filled();
 	}
 
@@ -110,12 +110,11 @@ struct PageArray {
 	// the first address appears in pages
 	uint32_t lowest_address() const;
 
-	// the next of the last address (= page.address + page.length) appears in pages
+	// the largest value of the next of the last address (= page.address + page.length) among all the pages
 	uint32_t end_address() const;
 
-	void load(Page64 & page, const uint32_t & index) const ;
-
-	void store(const uint32_t & index, Page64 &page) ;
+	void get_byindex(const uint32_t & index, Page64 & page) const ;
+	void set_byindex(const uint32_t & index, Page64 &page) ;
 
 	// create new page block then add to the next of the last, as tail page block.
 	uint16_t append_page(const uint32_t & addr, const uint8_t data[], const uint16_t & length);
@@ -123,6 +122,8 @@ struct PageArray {
 	void append_bytes(uint32_t address, const uint8_t * data, uint16_t length);
 
 	size_t printOn(Stream & out);
+
+	void sort_pages();
 };
 
 

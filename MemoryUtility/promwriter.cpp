@@ -33,13 +33,17 @@ void get_meminfo_byname(const char name[], MemoryInfo & dst) {
 
 void list_target_types(MemoryInfo & meminfo) {
 	MemoryInfo tmp;
+	uint8_t N = 0;
+	for(; ; ++N) {
+		memcpy_P(&tmp, &MEMINFO_DB[N], sizeof(MemoryInfo));
+		if ( tmp.partname[0] == 0 )
+			break;
+	}
 	uint8_t len;
 	char buf64[64];
-	for (uint8_t ix = 0; ; ++ix) {
+	for (uint8_t ix = 0; ix < N; ++ix) {
 		memcpy_P(&tmp, &MEMINFO_DB[ix], sizeof(MemoryInfo));
-		if (tmp.partname[0] == '\0' )
-			break;
-		snprintf(buf64, 64, "%c%2d %-12s %ldk ", (meminfo == tmp ? '*' : ' '), ix, tmp.partname, (tmp.capacity_inbits>>3) / 1024);
+		snprintf(buf64, 64, "%c%2d %-12s % 4ldk ", (meminfo == tmp ? '*' : ' '), ix, tmp.partname, tmp.capacity_inbits>>13);
 		len = Serial.print(buf64);
 		switch (tmp.type) {
 		case SRAM:
@@ -63,10 +67,10 @@ void list_target_types(MemoryInfo & meminfo) {
 			break;
 		}
 		len += 7;
-		len += Serial.print(" ");
-		len += Serial.print(tmp.page_size > 0 ? "pw" : "");
-		len += Serial.print(tmp.SDP ? " SDP" : "");
-		for(; len < 40; ++len) {
+//		len += Serial.print(" ");
+//		len += Serial.print(tmp.page_size > 0 ? "pw" : "");
+//		len += Serial.print(tmp.SDP ? " SDP" : "");
+		for(; len < 30; ++len) {
 			Serial.print(' ');
 		}
 		if ( (ix & 1) == 1 )
