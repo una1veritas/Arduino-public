@@ -140,8 +140,8 @@ void loop() {
 		if (line.length() == 0) {
 			return; // go to the next itertion of the loop()
 		}
-		Serial.println();
 		if (line[0] == '!') {
+			Serial.println();
 			// process the command
 			switch (line[1]) {
 			case 'B':
