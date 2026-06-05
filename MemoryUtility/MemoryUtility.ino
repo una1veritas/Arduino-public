@@ -184,7 +184,7 @@ void loop() {
 				line = line.substring(2);
 				start = strtoul(line.c_str(), &ptr, 16);
 				stop = strtoul(ptr, &ptr, 16);
-				dump_auxmem(start, stop);
+				read_pagearray(start, stop);
 				Serial.println(F("Finished."));
 				break;
 
@@ -194,7 +194,7 @@ void loop() {
 				line = line.substring(2);
 				start = strtoul(line.c_str(), &ptr, 16);
 				stop = strtoul(ptr, &ptr, 16);
-				dump_target(start, stop);
+				read_targetmem(start, stop);
 				Serial.println(F("Finished."));
 				break;
 
@@ -210,8 +210,16 @@ void loop() {
 				line = line.substring(2);
 				start = strtoul(line.c_str(), &ptr, 16);
 				stop = strtoul(ptr, &ptr, 16);
-				write_to_rom(start, stop);
-				Serial.println(F("Finished."));
+				if ( stop == 0 or start >= stop ) {
+					start = pagearray.lowest_address();
+					stop = pagearray.end_address();
+				}
+				if (  start < stop ) {
+					program_targetmem(start, stop);
+				} else {
+					Serial.println(F("No data to write."));
+				}
+				Serial.println(F("Done."));
 				break;
 
 			case 'X':
@@ -255,68 +263,66 @@ void memory_type(MemoryInfo & meminfo, const char * s) {
 	meminfo.printOn(Serial);
 }
 
-void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
+void program_targetmem(uint32_t startaddr, uint32_t stopaddr) {
 	Page64 page;
-	uint32_t lowestaddr = pagearray.lowest_address();
-	uint32_t endaddr = pagearray.end_address();
-
-	if (startaddr == 0 and stopaddr == 0) {
-		startaddr = lowestaddr;
-		stopaddr = endaddr;
-	}
-
-	if ( pagearray.size() == 0 or stopaddr == startaddr) {
-		Serial.println(F("No data to write."));
-		return;
-	}
-
 	uint32_t ix;
+	uint32_t addrmask = meminfo.size_inbytes() - 1;
+
 	for(ix = 0; ix < pagearray.size() ; ++ix) {
+
 		pagearray.get_byindex(ix, page);
-		if ( (startaddr > page.address + page.length - 1) or (page.address >= stopaddr) ) {
+
+		if ( (page.end_address() <= startaddr) or (stopaddr <= page.start_address()) ) {
 			continue;
 		}
+
 		bool err_flag = false;
 
-		snprintf(buf128, 127, "%04lX ", page.address);
+		snprintf(buf128, 127, "%04lX ", page.page_address);
 		Serial.print(buf128);
-
-		uint32_t addrmask = meminfo.size_inbytes() - 1;
-		// determine byte write or page write
-
-		if ( page.address != (addrmask & page.address) ) {
-			snprintf(buf128, 127, "(%04X) ", page.address & addrmask);
+		if ( page.page_address != (addrmask & page.page_address) ) {
+			snprintf(buf128, 127, "(%04X) ", page.page_address & addrmask);
 			Serial.print(buf128);
 		}
 
+		// determine byte write or page write
 		if ( meminfo.page_size == 0	// the target memory has no page write mode
-				or (! page.is_page_aligned() ) // start address is not aligned
+				or (! page.is_filled() ) // start address is not aligned
 				) {
 			//Serial.println(meminfo.page_size);
 			//Serial.println(page.address, HEX);
-
 			Serial.print("Byte write ");
-			uint16_t i;
-			for(i = 0; i < page.length; ++i) {
-				bool succ = exbusmem.program_byte( (page.address + i) & addrmask, page.data[i]);
+
+			for(uint16_t i = 0; i < page.length; ++i) {
+				bool succ = exbusmem.program_byte( (page.start_address() + i) & addrmask, page.data[page.start + i]);
 				if ( succ ) {
-					if ( (i & 1 ) == 0 )
+					// verify
+					uint8_t val = exbusmem.read_rom( (page.start_address() + i) & addrmask);
+					if ( val != page.data[page.start + i] ) {
+						err_flag = true;
+						snprintf(buf128, 127, "Error: Verify failed %02X/%02X at ", page.data[page.start + i], val);
+						Serial.print(buf128);
+						Serial.print(page.start_address() + i, HEX);
+						Serial.println(F("H"));
+					} else {
 						Serial.print('.');
+					}
 				} else {
 					promwriter.errorCount += 1;
 					err_flag = true;
-					Serial.print(F("Error: Write failed at $"));
-					Serial.println(page.address + i, HEX);
+					Serial.print(F("Error: Write failed at "));
+					Serial.print(page.start_address() + i, HEX);
+					Serial.println(F("H"));
 				}
 			}
 		} else {
 			Serial.print("Page write ");
-			bool succ = exbusmem.program_page(page.address & addrmask, page.data, meminfo.page_size, 1);
+			bool succ = exbusmem.program_page(page.page_address & addrmask, page.data, meminfo.page_size);
 			if ( !succ ) {
 				err_flag = true;
 				promwriter.errorCount += 1;
-                Serial.print("Error: Page write failed at 0x");
-                snprintf(buf128, 127, "%04X", page.address & addrmask);
+                Serial.print("Error: Page write failed at ");
+                snprintf(buf128, 127, "%04X", page.page_address & addrmask);
                 Serial.println(buf128);
             }
 		}
@@ -330,7 +336,7 @@ void write_to_rom(uint32_t startaddr, uint32_t stopaddr) {
 	}
 }
 
-void dump_auxmem(uint32_t start, uint32_t stop) {
+void read_pagearray(uint32_t start, uint32_t stop) {
 	Page64 page;
 	if ( stop == 0 ) {
 		stop = 0xffffffff;
@@ -338,27 +344,31 @@ void dump_auxmem(uint32_t start, uint32_t stop) {
 	uint32_t ix;
 	for ( ix = 0; ix < pagearray.size(); ++ix) {
 		pagearray.get_byindex(ix, page);
-		if ( start <= page.address and page.address + page.length < stop) {
+		if ( start <= page.start_address() and page.end_address() <= stop) {
 			page.printOn(Serial);
 		}
 	}
 	Serial.println();
 }
 
-void dump_target(const uint32_t & startaddr, const uint32_t & stopaddr) {
+void read_targetmem(const uint32_t & startaddr, const uint32_t & stopaddr) {
 	uint32_t addr = startaddr & 0xfffffff0;
 	uint8_t val;
 	while ( addr < stopaddr ) {
         snprintf(buf128, 127, "%04X: ", addr);
         Serial.print(buf128);
         for (int i = 0; i < 16; ++i) {
-        	if (meminfo.access_time <= 100) {
-        		val = exbusmem.read(addr + i);
+        	if (startaddr <= addr + i and addr + i < stopaddr) {
+				if (meminfo.access_time <= 100) {
+					val = exbusmem.read(addr + i);
+				} else {
+					val = exbusmem.read_rom(addr + i);
+				}
+				snprintf(buf128, 127, "%02X ", val);
+				Serial.print(buf128);
         	} else {
-        		val = exbusmem.read(addr + i, 1);
+        		Serial.print(F("   "));
         	}
-            snprintf(buf128, 127, "%02X ", val);
-            Serial.print(buf128);
         }
         Serial.println();
         addr += 16;

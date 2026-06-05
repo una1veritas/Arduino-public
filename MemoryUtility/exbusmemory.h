@@ -49,8 +49,20 @@ public:
 		__asm__ __volatile__("nop\n\t");
 	}  // about 62.5 ns at 16MHz
 
+	inline static void delay2nops() {
+		__asm__ __volatile__("nop\n\t");
+		__asm__ __volatile__("nop\n\t");
+	}  // about 125 ns at 16MHz
+
+	inline static void delay4nops() {
+		__asm__ __volatile__("nop\n\t");
+		__asm__ __volatile__("nop\n\t");
+		__asm__ __volatile__("nop\n\t");
+		__asm__ __volatile__("nop\n\t");
+	}  // about 250 ns at 16MHz
+
 	// delays n + 3 clocks
-	static void delay_nops(uint8_t n = 1) {
+	static void delayNnops(uint8_t n = 1) {
 		for(; n > 0; --n)
 			__asm__ __volatile__("nop\n\t");
 	}
@@ -134,14 +146,14 @@ private:
 	uint8_t get_byte(const uint32_t & addr) const;
 
 	void put_byte(const uint32_t &addr, const uint8_t data);
-	void put_byte(const uint32_t& addr, const uint8_t data, const uint8_t n);
+	//void put_byte(const uint32_t& addr, const uint8_t data, const uint8_t n);
 
 	bool waitfor_write_cycle_end(const uint8_t &data, const uint16_t & count);
 
 
 public:
 	uint8_t read(const uint32_t &addr) const;
-	uint8_t read(const uint32_t & addr, const uint8_t n) const;
+	uint8_t read_rom(const uint32_t & addr) const;
 
 	void write(const uint32_t &addr, const uint8_t data);
 
@@ -150,9 +162,10 @@ public:
 	bool enable_SDP();
 
 	bool program_byte(const uint32_t& addr, const uint8_t data);
-	bool program_byte(const uint32_t &addr, const uint8_t data, const uint8_t n);
+	//bool program_byte(const uint32_t &addr, const uint8_t data, const uint8_t n);
 
-	bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size, const uint8_t n);
+	bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size);
+	//bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size, const uint8_t n);
 
 private:
 	void down_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t val);

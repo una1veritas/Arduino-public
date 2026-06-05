@@ -13,28 +13,29 @@
 
 struct Page64 {
 	static const uint16_t page_size = 64;
+	static const uint32_t page_mask = page_size - 1;
 
-	uint32_t address;	// absolute address where data[0] must be aligned and be placed.
-	uint16_t length; 		//
+	uint32_t page_address;	// absolute address where the page (aligned 64 byte block) starts
+	uint16_t start; 	// offset in the page from which valid data starts
+	uint16_t length; 	// the number of valid data bytes from the address
 	uint8_t  data[page_size];
 
+
 	Page64(uint32_t & addr, uint8_t data[], uint16_t len) :
-		address( addr ),
+		page_address( addr & ~page_mask ),
+		start( addr & page_mask ),
 		length( len )
 	{
-		uint32_t page_boundary = (address & ~uint32_t(page_size - 1)) + page_size;
-		if ( address + len > page_boundary) {
-			length = page_boundary - address;
-		}
-		for(uint16_t i = 0; i < length; ++i) {
-			this->data[i] = data[i];
+		for(uint16_t i = 0; i < len and start + i < page_size; ++i) {
+			this->data[start + i] = data[i];
 		}
 	}
 
 	Page64(void) {}
 
 	Page64(const Page64 & another) :
-		address( another.address ),
+		page_address( another.page_address ),
+		start ( another.start ),
 		length( another.length )
 	{
 		for(uint16_t i = 0; i < page_size; ++i) {
@@ -42,8 +43,8 @@ struct Page64 {
 		}
 	}
 
-	Page64 & copy(const Page64 & another) {
-		address = another.address;
+	Page64 & operator=(const Page64 & another) {
+		page_address = another.page_address;
 		length = another.length;
 		for(uint16_t i = 0; i < page_size; ++i) {
 			data[i] = another.data[i];
@@ -51,30 +52,17 @@ struct Page64 {
 		return *this;
 	}
 
+	uint32_t start_address() const { return page_address + start; }
+	uint32_t end_address() const { return page_address + start + length; }
+
 	inline uint16_t size() const { return length; }
 
-	uint8_t & operator[](const uint16_t & index) {
-		return data[index];
-	}
-
-	Page64 & operator=(const Page64 & another) {
-		copy(another);
-		return *this;
-	}
-
 	bool is_filled() const {
-		uint32_t boundary = (address & ~uint32_t(page_size - 1)) + page_size;
-		return address + length == boundary;
+		return start + length == page_size;
 	}
 
-	bool is_page_aligned() const {
-		return (address & (page_size - 1)) == 0 and is_filled();
-	}
-
-	uint16_t remaining_capacity() const {
-		uint32_t page_boundary = (address & ~uint32_t(page_size - 1)) + page_size;
-		return page_boundary - (address + length);
-	}
+	// returns true if append a byte is succeeded
+	bool append(const uint8_t val);
 
 	size_t printOn(Stream & out) const;
 
