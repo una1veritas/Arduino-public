@@ -79,7 +79,7 @@ void ExBusMemory::write(const uint32_t & addr, const uint8_t data) {
 }
 
 // in continuous read from EEPROM
-
+/*
 uint8_t ExBusMemory::get_byte(const uint32_t & addr) const {
   //output_disable();
   //write_disable();
@@ -91,6 +91,7 @@ uint8_t ExBusMemory::get_byte(const uint32_t & addr) const {
   output_disable();
   return val;
 }
+*/
 
 // for eeprom continuous write
 /*
@@ -122,29 +123,38 @@ bool Memory::program_byte(const uint32_t& addr, const uint8_t data) {
 void ExBusMemory::put_byte(const uint32_t& addr, const uint8_t data) {
   write_addressbus(addr);
   write_databus(data);
-  delay2nops();
+  delay1nop();
   write_enable();
-  delay2nops();
+  delay1nop();
   write_disable();
   delay1nop();
 }
 
-// Succeeded: AT28C64-15 w/ n == 1
+// Succeeded: AT28C64-15, HN58C256
 bool ExBusMemory::program_byte(const uint32_t &addr, const uint8_t data) {
 	set_databus_mode(OUTPUT);
-	output_disable();
+	output_disable();	// make sure
 	write_disable(); 	// to ensure pulse
+
+	write_addressbus(addr);
+	write_databus(data);
 	select();
-	put_byte(addr, data);
-	deselect();
-	bool succ = waitfor_write_cycle_end(data, 10000);
+	//put_byte(addr, data);
+	//  delay1nop();
+	write_enable();
+	delay1nop();
+	write_disable();
+	//  delay1nop();
+
 	set_databus_mode(INPUT);
 
+	bool succ = waitfor_write_cycle_end(data, 10000);
+	deselect();
 	return succ;
 }
 
 /*
-// OK w/ HN58C256
+// Succeeded: HN58C256
 bool ExBusMemory::program_byte_100ns(const uint32_t& addr, const uint8_t data) {
   set_databus_mode(OUTPUT);
   //output_disable();
@@ -152,11 +162,11 @@ bool ExBusMemory::program_byte_100ns(const uint32_t& addr, const uint8_t data) {
   write_addressbus(addr);
   write_databus(data);
   select();
-  delay1clock();
-  delay1clock();
+  delay1nop();
+  delay1nop();
   write_enable();
-  delay1clock();
-  delay1clock();
+  delay1nop();
+  delay1nop();
   write_disable();
 
   set_databus_mode(INPUT);
@@ -170,19 +180,32 @@ bool ExBusMemory::program_byte_100ns(const uint32_t& addr, const uint8_t data) {
 
 // write to EEPROM
 // OK w/ HN58C256
-bool ExBusMemory::program_page(const uint32_t & addr, const uint8_t data[], uint16_t page_size) {
+bool ExBusMemory::program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size) {
 	uint8_t val;
-  uint32_t baseaddr = (~uint32_t(page_size - 1)) & addr;
-  set_databus_mode(OUTPUT);
-  select();
-  for(uint16_t ix = 0; ix < page_size; ++ix) {
-	  val = data[ix];
-	  put_byte(baseaddr + ix, val);
-  }
-  set_databus_mode(INPUT);
-  deselect();
-  bool succ = waitfor_write_cycle_end(val, 10000);
-  return succ;
+	uint32_t baseaddr = (~uint32_t(page_size - 1)) & addr;
+
+	set_databus_mode(OUTPUT);
+	output_disable();	// make sure
+	write_disable(); 	// to ensure pulse
+
+	select();
+
+	for (uint16_t ix = 0; ix < page_size; ++ix) {
+		val = data[ix];
+		//put_byte(baseaddr + ix, val);
+		write_addressbus(addr);
+		write_databus(data);
+		delay1nop();
+		write_enable();
+		delay1nop();
+		write_disable();
+	}
+	set_databus_mode(INPUT);
+
+	bool succ = waitfor_write_cycle_end(val, 20000);
+	deselect();
+
+	return succ;
 }
 
 // OK w/ HN58C256
@@ -190,24 +213,23 @@ bool ExBusMemory::waitfor_write_cycle_end(const uint8_t & data, const uint16_t &
 	uint8_t val0, val1;
 	//set_databus_mode(INPUT);
 	for(uint16_t i = 0; i < count; ++i) {
-		select();
+	    delay2nops();
 	    output_enable();
-	    delay1nop();
+	    delay2nops();
 	    val0 = read_databus();
 	    output_disable();
-	    deselect();
-	    delayNnops(1);
-	    select();
+
+	    delay4nops();
+
 	    output_enable();
-	    delay1nop();
+	    delay2nops();
 	    val1 = read_databus();
 	    output_disable();
-	    deselect();
 
-	    if ( val0 == val1 and val0 == data )
-	      break;
+	    if ( val0 == val1 and val1 == data )
+	    	return true;
 	  }
-	  return val0 == data;
+	  return false;
 }
 
 
@@ -263,10 +285,19 @@ void ExBusMemory::up_write(const uint32_t & base_addr, const uint32_t block_size
 
 uint32_t ExBusMemory::down_read_verify_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t vval, uint8_t wval) {
 	uint32_t errcount = 0;
+	write_disable();
+	output_disable();
 	select();
 	for(uint32_t ix = 0; ix < block_size; ++ix) {
 	    set_databus_mode(INPUT);
-		uint8_t val = get_byte(base_addr + ix);
+		//uint8_t val = get_byte(base_addr + ix);
+	    write_addressbus(base_addr + ix);
+	    delay1nop(); 	// 62.5 ns
+	    output_enable();
+	    delay1nop(); 	// 62.5 ns
+	    uint8_t val = read_databus();
+	    output_disable();
+
 		if ( val != vval )
 			++errcount;
 		// write without set address bus
@@ -278,19 +309,28 @@ uint32_t ExBusMemory::down_read_verify_write(const uint32_t & base_addr, const u
 	    write_disable();
 	    delay1nop();
 	}
-    set_databus_mode(INPUT);
 	deselect();
+    set_databus_mode(INPUT);
 	return errcount;
 }
 
 uint32_t ExBusMemory::up_read_verify_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t vval, uint8_t wval) {
 	uint32_t errcount = 0;
+	write_disable();
+	output_disable();
 	select();
 	for(uint32_t ix = block_size; ix > 0; ) {
 	    set_databus_mode(INPUT);
 		--ix;
-		uint8_t val = get_byte(base_addr + ix);
-		if ( val != vval )
+		//uint8_t val = get_byte(base_addr + ix);
+	    write_addressbus(base_addr + ix);
+	    delay1nop(); 	// 62.5 ns
+	    output_enable();
+	    delay1nop(); 	// 62.5 ns
+	    uint8_t val = read_databus();
+	    output_disable();
+
+	    if ( val != vval )
 			++errcount;
 		// write without set address bus
 	    set_databus_mode(OUTPUT);

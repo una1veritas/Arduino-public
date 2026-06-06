@@ -439,26 +439,12 @@ boolean processS19DataRecord(const HexRecord &record) {
 		return false;
 	}
 
-//	for(int ix = 0; ix < record.datalength; ++ix) {
-//		Serial.print(record.data[ix], HEX);
-//		Serial.print(' ');
-//	}
-//	Serial.println();
 	// Write data to auxiliary memory
 	pagearray.append_bytes(record.address, record.data, record.datalength );
-//	uint8_t * ptr = (uint8_t *) & record;
-//	for (uint32_t ix  = 0; ix < HexRecord::header_size(); ++ix, ++ptr) {
-//		auxsram.write(promwriter.start_ix + ix, *ptr);
-//	}
-//	for (uint32_t i = 0; i < record.datalength; ++i, ++ptr) {
-//		auxsram.write(promwriter.start_ix +  HexRecord::header_size() + i, *ptr);
-//	}
-//	promwriter.start_ix += HexRecord::header_size() + record.datalength;
-//	auxsram.write(promwriter.start_ix, 0x00);
 
 	promwriter.totalBytesWritten += record.datalength;
 
-	Serial.print("OK: S");
+	Serial.print(F("OK: S"));
 	Serial.print(record.type[1]);
 	Serial.print(F(" DATA "));
 	Serial.print(record.address, HEX);

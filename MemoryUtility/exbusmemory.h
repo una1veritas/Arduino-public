@@ -143,7 +143,7 @@ private:
 		addrbus.write_bytes((const uint8_t*) &addr, 3); 	// LSB first
 	}
 
-	uint8_t get_byte(const uint32_t & addr) const;
+	//uint8_t get_byte(const uint32_t & addr) const;
 
 	void put_byte(const uint32_t &addr, const uint8_t data);
 	//void put_byte(const uint32_t& addr, const uint8_t data, const uint8_t n);
@@ -162,7 +162,7 @@ public:
 	bool enable_SDP();
 
 	bool program_byte(const uint32_t& addr, const uint8_t data);
-	//bool program_byte(const uint32_t &addr, const uint8_t data, const uint8_t n);
+	//bool program_byte_100ns(const uint32_t& addr, const uint8_t data);
 
 	bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size);
 	//bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size, const uint8_t n);

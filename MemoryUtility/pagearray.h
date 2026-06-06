@@ -11,54 +11,58 @@
 #include <SPI.h>
 #include <SPISRAM.h>
 
-struct Page64 {
-	static const uint16_t page_size = 64;
+struct PageBuffer {
+	static const uint16_t page_size = 64;	// limit in bytes
 	static const uint32_t page_mask = page_size - 1;
 
-	uint32_t page_address;	// absolute address where the page (aligned 64 byte block) starts
-	uint16_t start; 	// offset in the page from which valid data starts
-	uint16_t length; 	// the number of valid data bytes from the address
-	uint8_t  data[page_size];
+	uint32_t address;	// absolute starting address
+	uint16_t length; 		// the number of byte data
+	uint8_t  bytes[page_size];
 
+	// utility
+	static uint32_t is_page_boundary(const uint32_t & addr) { return (addr & uint32_t(page_mask)) == 0 ; }
 
-	Page64(uint32_t & addr, uint8_t data[], uint16_t len) :
-		page_address( addr & ~page_mask ),
-		start( addr & page_mask ),
-		length( len )
+	PageBuffer(const uint32_t & addr, const uint8_t data[], const uint16_t & len) :
+		address( addr ),
+		length( len > page_size ? page_size : len )
 	{
-		for(uint16_t i = 0; i < len and start + i < page_size; ++i) {
-			this->data[start + i] = data[i];
+		for(uint16_t i = 0; i < len ; ++i) {
+			bytes[i] = data[i];
 		}
 	}
 
-	Page64(void) {}
+	PageBuffer(void) : address(0), length(0) {}
 
-	Page64(const Page64 & another) :
-		page_address( another.page_address ),
-		start ( another.start ),
-		length( another.length )
-	{
-		for(uint16_t i = 0; i < page_size; ++i) {
-			data[i] = another.data[i];
-		}
+	PageBuffer(const uint32_t & addr) : address(addr), length(0) {}
+
+	PageBuffer(const PageBuffer & another) {
+		*this = another;
 	}
 
-	Page64 & operator=(const Page64 & another) {
-		page_address = another.page_address;
+	PageBuffer & operator=(const PageBuffer & another) {
+		address = another.address;
 		length = another.length;
-		for(uint16_t i = 0; i < page_size; ++i) {
-			data[i] = another.data[i];
+		for(uint16_t i = 0; i < length; ++i) {
+			bytes[i] = another.bytes[i];
 		}
 		return *this;
 	}
 
-	uint32_t start_address() const { return page_address + start; }
-	uint32_t end_address() const { return page_address + start + length; }
-
-	inline uint16_t size() const { return length; }
-
 	bool is_filled() const {
-		return start + length == page_size;
+		return length == page_size;
+	}
+
+	bool is_aligned() const {
+		return is_page_boundary(address);
+	}
+
+	friend bool operator<(const PageBuffer & l, const PageBuffer & r) {
+		if ( l.address < r.address ) {
+			return true;
+		} else if ( l.address == r.address ) {
+			return l.length < r.length;
+		}
+		return false;
 	}
 
 	// returns true if append a byte is succeeded
@@ -98,14 +102,14 @@ struct PageArray {
 	// the first address appears in pages
 	uint32_t lowest_address() const;
 
-	// the largest value of the next of the last address (= page.address + page.length) among all the pages
-	uint32_t end_address() const;
+	// the largest value of the last address (= page.address + page.length - 1) among all the pages
+	uint32_t highest_address() const;
 
-	void get_byindex(const uint32_t & index, Page64 & page) const ;
-	void set_byindex(const uint32_t & index, Page64 &page) ;
+	void get_byindex(const uint32_t & index, PageBuffer & page) const ;
+	void set_byindex(const uint32_t & index, PageBuffer &page) ;
 
 	// create new page block then add to the next of the last, as tail page block.
-	uint16_t append_page(const uint32_t & addr, const uint8_t data[], const uint16_t & length);
+	uint16_t append_pages(const uint32_t & addr, const uint8_t data[], const uint16_t & length);
 
 	void append_bytes(uint32_t address, const uint8_t * data, uint16_t length);
 

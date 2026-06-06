@@ -62,6 +62,175 @@ char buf128[128];
 String line;
 MemoryInfo meminfo;
 
+
+void memory_type(MemoryInfo & meminfo, const char * s) {
+	uint8_t val = strtoul(s, NULL, 10);
+	if ( strlen(s) != 0 and val == 0 ) {
+		get_meminfo_byname(s, meminfo);
+	} else if ( strlen(s) != 0 ){
+		get_meminfo_byindex(val, meminfo);
+	}
+	list_target_types(meminfo);
+	meminfo.printOn(Serial);
+}
+
+void program_rom(uint32_t startaddr, uint32_t stopaddr) {
+	PageBuffer page;
+	uint32_t ix;
+	uint32_t addrmask = meminfo.size_inbytes() - 1;
+
+	for(ix = 0; ix < pagearray.size() ; ++ix) {
+
+		pagearray.get_byindex(ix, page);
+
+		if ( (page.address + page.length - 1 < startaddr) or ( stopaddr <= page.address ) ) {
+			continue;
+		}
+
+		bool err_flag = false;
+
+		snprintf(buf128, 127, "%04lX ", page.address);
+		Serial.print(buf128);
+		if ( page.address != (addrmask & page.address) ) {
+			snprintf(buf128, 127, "(%04X) ", page.address & addrmask);
+			Serial.print(buf128);
+		}
+
+		// determine byte write or page write
+		if ( page.is_aligned() and page.length == meminfo.page_size ) {
+			Serial.print("Page write ");
+
+			bool succ = exbusmem.program_page(page.address & addrmask, page.bytes, meminfo.page_size);
+			if ( !succ ) {
+				err_flag = true;
+				promwriter.errorCount += 1;
+                Serial.print("Error: Page write failed at ");
+                snprintf(buf128, 127, "%04X", page.address & addrmask);
+                Serial.println(buf128);
+            }
+		} else {
+			Serial.print("Byte write ");
+
+			for(uint16_t i = 0; i < page.length; ++i) {
+				bool succ = exbusmem.program_byte( (page.address + i) & addrmask, page.bytes[i]);
+				if ( succ ) {
+					Serial.print('.');
+				} else {
+					promwriter.errorCount += 1;
+					err_flag = true;
+					Serial.print(F("Error: Write failed at "));
+					Serial.print(page.address + i, HEX);
+					Serial.println(F("H"));
+				}
+			}
+		}
+
+		if (not err_flag) {
+			Serial.println(" Ok.");
+		} else {
+			Serial.println(" Stop writing to ROM.");
+            break;
+		}
+	}
+}
+
+void read_pagearray(uint32_t start, uint32_t stop) {
+	PageBuffer page;
+	if ( stop == 0 ) {
+		stop = 0xffffffff;
+	}
+	uint32_t ix;
+	for ( ix = 0; ix < pagearray.size(); ++ix) {
+		pagearray.get_byindex(ix, page);
+		if ( start <= page.address and page.address + page.length - 1 <= stop) {
+			page.printOn(Serial);
+		}
+	}
+	Serial.println();
+}
+
+void read_targetmem(const uint32_t & startaddr, const uint32_t & stopaddr) {
+	uint32_t addr = startaddr & 0xfffffff0;
+	uint8_t val;
+	while ( addr <= stopaddr ) {
+        snprintf(buf128, 127, "%04X ", addr);
+        Serial.print(buf128);
+        for (int i = 0; i < 16; ++i) {
+        	if (startaddr <= addr + i and addr + i <= stopaddr) {
+				if (meminfo.access_time <= 100) {
+					val = exbusmem.read(addr + i);
+				} else {
+					val = exbusmem.read_rom(addr + i);
+				}
+				snprintf(buf128, 127, "%02X ", val);
+				Serial.print(buf128);
+        	} else {
+        		Serial.print(F("   "));
+        	}
+        }
+        Serial.println();
+        addr += 16;
+	}
+}
+
+void sram_test() {
+	Serial.println(F("\nSRAM R/W test"));
+	uint32_t start = 0;
+	uint32_t end = meminfo.capacity_inbits >> 3 ;
+	uint32_t errcount = 0;
+	uint32_t tmperr = 0;
+
+	const uint32_t block_size = end > 0x1000 ? 0x1000 : end;
+	for(uint32_t base_addr = start; base_addr < end; base_addr += block_size) {
+		snprintf(buf128, 127, "%04X", base_addr);
+		Serial.print(buf128);
+		Serial.print(" -- ");
+		snprintf(buf128, 127, "%04X", base_addr + block_size -1);
+		Serial.print(buf128);
+		Serial.print(" : ");
+		Serial.flush();
+		tmperr += exbusmem.sram_check(base_addr, block_size);
+		if ( tmperr == 0 ) {
+			Serial.println(F("OK."));
+		} else {
+			Serial.print(tmperr);
+			Serial.println(F(" errors."));
+		}
+		errcount += tmperr;
+		if ( errcount > block_size ) {
+			Serial.println(F("Too many errors, abandon."));
+			break;
+		}
+	}
+	Serial.print(F("Total error count = "));
+	Serial.println(errcount);
+	Serial.println();
+}
+
+void printWelcome() {
+	Serial.println(F("\n========================================="));
+	Serial.println(F(" Arduino ihex/s19 Format Loader 20260603"));
+	Serial.println(F("========================================="));
+}
+
+void show_status() {
+	Serial.println();
+	Serial.println(F("--- Status and Statistics ---"));
+	Serial.print(F("Records processed: "));
+	Serial.println(pagearray.size());
+	Serial.print(F("Record errors: "));
+	Serial.println(promwriter.errorCount);
+	Serial.print(F("Checksum errors: "));
+	Serial.println(promwriter.checksumErrors);
+	Serial.print(F("Total bytes loaded: "));
+	Serial.println(promwriter.totalBytesWritten);
+	Serial.print(F("Target memory type: "));
+	Serial.println(meminfo.partname);
+	Serial.println();
+}
+
+
+// command processors
 bool char_isin(const char c, const char * str) {
 	const char * p;
 	for (p = str; *p != 0 and *p != c ; ++p);
@@ -110,7 +279,6 @@ unsigned int readStringUntilCrLf(String &line, const unsigned int & limit = 256,
 	return line.length();
 }
 
-void write_to_rom(const bool);
 
 void setup() {
 
@@ -212,10 +380,10 @@ void loop() {
 				stop = strtoul(ptr, &ptr, 16);
 				if ( stop == 0 or start >= stop ) {
 					start = pagearray.lowest_address();
-					stop = pagearray.end_address();
+					stop = pagearray.highest_address();
 				}
 				if (  start < stop ) {
-					program_targetmem(start, stop);
+					program_rom(start, stop);
 				} else {
 					Serial.println(F("No data to write."));
 				}
@@ -250,185 +418,6 @@ void loop() {
 		line = "";
 
 	}
-}
-
-void memory_type(MemoryInfo & meminfo, const char * s) {
-	uint8_t val = strtoul(s, NULL, 10);
-	if ( strlen(s) != 0 and val == 0 ) {
-		get_meminfo_byname(s, meminfo);
-	} else if ( strlen(s) != 0 ){
-		get_meminfo_byindex(val, meminfo);
-	}
-	list_target_types(meminfo);
-	meminfo.printOn(Serial);
-}
-
-void program_targetmem(uint32_t startaddr, uint32_t stopaddr) {
-	Page64 page;
-	uint32_t ix;
-	uint32_t addrmask = meminfo.size_inbytes() - 1;
-
-	for(ix = 0; ix < pagearray.size() ; ++ix) {
-
-		pagearray.get_byindex(ix, page);
-
-		if ( (page.end_address() <= startaddr) or (stopaddr <= page.start_address()) ) {
-			continue;
-		}
-
-		bool err_flag = false;
-
-		snprintf(buf128, 127, "%04lX ", page.page_address);
-		Serial.print(buf128);
-		if ( page.page_address != (addrmask & page.page_address) ) {
-			snprintf(buf128, 127, "(%04X) ", page.page_address & addrmask);
-			Serial.print(buf128);
-		}
-
-		// determine byte write or page write
-		if ( meminfo.page_size == 0	// the target memory has no page write mode
-				or (! page.is_filled() ) // start address is not aligned
-				) {
-			//Serial.println(meminfo.page_size);
-			//Serial.println(page.address, HEX);
-			Serial.print("Byte write ");
-
-			for(uint16_t i = 0; i < page.length; ++i) {
-				bool succ = exbusmem.program_byte( (page.start_address() + i) & addrmask, page.data[page.start + i]);
-				if ( succ ) {
-					// verify
-					uint8_t val = exbusmem.read_rom( (page.start_address() + i) & addrmask);
-					if ( val != page.data[page.start + i] ) {
-						err_flag = true;
-						snprintf(buf128, 127, "Error: Verify failed %02X/%02X at ", page.data[page.start + i], val);
-						Serial.print(buf128);
-						Serial.print(page.start_address() + i, HEX);
-						Serial.println(F("H"));
-					} else {
-						Serial.print('.');
-					}
-				} else {
-					promwriter.errorCount += 1;
-					err_flag = true;
-					Serial.print(F("Error: Write failed at "));
-					Serial.print(page.start_address() + i, HEX);
-					Serial.println(F("H"));
-				}
-			}
-		} else {
-			Serial.print("Page write ");
-			bool succ = exbusmem.program_page(page.page_address & addrmask, page.data, meminfo.page_size);
-			if ( !succ ) {
-				err_flag = true;
-				promwriter.errorCount += 1;
-                Serial.print("Error: Page write failed at ");
-                snprintf(buf128, 127, "%04X", page.page_address & addrmask);
-                Serial.println(buf128);
-            }
-		}
-
-		if (not err_flag) {
-			Serial.println(" Ok.");
-		} else {
-			Serial.println(" Stop writing to ROM.");
-            break;
-		}
-	}
-}
-
-void read_pagearray(uint32_t start, uint32_t stop) {
-	Page64 page;
-	if ( stop == 0 ) {
-		stop = 0xffffffff;
-	}
-	uint32_t ix;
-	for ( ix = 0; ix < pagearray.size(); ++ix) {
-		pagearray.get_byindex(ix, page);
-		if ( start <= page.start_address() and page.end_address() <= stop) {
-			page.printOn(Serial);
-		}
-	}
-	Serial.println();
-}
-
-void read_targetmem(const uint32_t & startaddr, const uint32_t & stopaddr) {
-	uint32_t addr = startaddr & 0xfffffff0;
-	uint8_t val;
-	while ( addr < stopaddr ) {
-        snprintf(buf128, 127, "%04X: ", addr);
-        Serial.print(buf128);
-        for (int i = 0; i < 16; ++i) {
-        	if (startaddr <= addr + i and addr + i < stopaddr) {
-				if (meminfo.access_time <= 100) {
-					val = exbusmem.read(addr + i);
-				} else {
-					val = exbusmem.read_rom(addr + i);
-				}
-				snprintf(buf128, 127, "%02X ", val);
-				Serial.print(buf128);
-        	} else {
-        		Serial.print(F("   "));
-        	}
-        }
-        Serial.println();
-        addr += 16;
-	}
-}
-
-void sram_test() {
-	Serial.println(F("\nSRAM R/W test"));
-	uint32_t start = 0;
-	uint32_t end = meminfo.capacity_inbits >> 3 ;
-	uint32_t errcount = 0;
-	uint32_t tmperr = 0;
-
-	const uint32_t block_size = end > 0x1000 ? 0x1000 : end;
-	for(uint32_t base_addr = start; base_addr < end; base_addr += block_size) {
-		snprintf(buf128, 127, "%04X", base_addr);
-		Serial.print(buf128);
-		Serial.print(" -- ");
-		snprintf(buf128, 127, "%04X", base_addr + block_size -1);
-		Serial.print(buf128);
-		Serial.print(" : ");
-		Serial.flush();
-		tmperr += exbusmem.sram_check(base_addr, block_size);
-		if ( tmperr == 0 ) {
-			Serial.println(F("OK."));
-		} else {
-			Serial.print(tmperr);
-			Serial.println(F(" errors."));
-		}
-		errcount += tmperr;
-		if ( errcount > block_size ) {
-			Serial.println(F("Too many errors, abandon."));
-			break;
-		}
-	}
-	Serial.print(F("Total error count = "));
-	Serial.println(errcount);
-	Serial.println();
-}
-
-void printWelcome() {
-	Serial.println(F("\n========================================="));
-	Serial.println(F(" Arduino ihex/s19 Format Loader 20260603"));
-	Serial.println(F("========================================="));
-}
-
-void show_status() {
-	Serial.println();
-	Serial.println(F("--- Status and Statistics ---"));
-	Serial.print(F("Records processed: "));
-	Serial.println(pagearray.size());
-	Serial.print(F("Record errors: "));
-	Serial.println(promwriter.errorCount);
-	Serial.print(F("Checksum errors: "));
-	Serial.println(promwriter.checksumErrors);
-	Serial.print(F("Total bytes loaded: "));
-	Serial.println(promwriter.totalBytesWritten);
-	Serial.print(F("Target memory type: "));
-	Serial.println(meminfo.partname);
-	Serial.println();
 }
 
 
