@@ -199,7 +199,8 @@ void ExBusMemory::put_byte(const uint32_t &addr, const uint8_t data) {
 bool ExBusMemory::waitfor_write_cycle_end(const uint8_t & data, const uint16_t & count) {
 	uint8_t val0, val1;
 	//set_databus_mode(INPUT);
-	for(uint16_t i = 0; i < count; ++i) {
+	uint16_t i = 0;
+	do {
 	    delay2nops();
 	    output_enable();
 	    delay2nops();
@@ -214,12 +215,12 @@ bool ExBusMemory::waitfor_write_cycle_end(const uint8_t & data, const uint16_t &
 	    output_disable();
 
 	    if ( val0 == val1 and val1 == data ) {
-	    	// Serial.print("i = ");
-	    	// Serial.println(i);  // loops 126 at page write, 125 at byte write in successful write
+	    	// toggle bit 6 and data poll bit 7 are settled
 	    	return true;
 	    }
-	  }
-	  return false;
+	} while ( i++ < count );
+	//Serial.println(i);  // loops 126 at page write, 125 at byte write in successful write
+	 return false;
 }
 
 
