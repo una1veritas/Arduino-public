@@ -143,10 +143,9 @@ private:
 		addrbus.write_bytes((const uint8_t*) &addr, 3); 	// LSB first
 	}
 
-	//uint8_t get_byte(const uint32_t & addr) const;
-
+	// two nops inserted
+	uint8_t get_byte(const uint32_t &addr) const;
 	void put_byte(const uint32_t &addr, const uint8_t data);
-	//void put_byte(const uint32_t& addr, const uint8_t data, const uint8_t n);
 
 	bool waitfor_write_cycle_end(const uint8_t &data, const uint16_t & count);
 
