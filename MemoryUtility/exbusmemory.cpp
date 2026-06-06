@@ -148,7 +148,7 @@ bool ExBusMemory::program_page(const uint32_t &addr, const uint8_t data[], uint1
 
 	for (uint16_t ix = 0; ix < page_size; ++ix) {
 		val = data[ix];
-		//put_byte(baseaddr + ix, data[ix]);
+		/*
 		write_addressbus(baseaddr + ix);
 		write_databus(val);
 		//delay1nop();
@@ -156,10 +156,12 @@ bool ExBusMemory::program_page(const uint32_t &addr, const uint8_t data[], uint1
 		delay2nops();
 		write_disable();
 		//delay4nops();
+		 */
+		put_byte(baseaddr + ix, val);
 	}
 	set_databus_mode(INPUT);
 
-	bool succ = waitfor_write_cycle_end(val, 20000);
+	bool succ = waitfor_write_cycle_end(val, 10000);
 	deselect();
 
 	return succ;
@@ -189,7 +191,7 @@ uint8_t ExBusMemory::get_byte(const uint32_t & addr) const {
 void ExBusMemory::put_byte(const uint32_t &addr, const uint8_t data) {
 	write_addressbus(addr);
 	write_databus(data);
-	delay1nop();
+	//delay1nop();
 	write_enable();
 	delay2nops();
 	write_disable();

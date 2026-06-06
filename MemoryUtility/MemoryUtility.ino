@@ -74,7 +74,7 @@ void memory_type(MemoryInfo & meminfo, const char * s) {
 	meminfo.printOn(Serial);
 }
 
-void program_rom(uint32_t startaddr, uint32_t stopaddr) {
+void program_rom(uint32_t startaddr, uint32_t stopaddr, bool force_bytewrite) {
 	PageBuffer page;
 	uint32_t ix;
 	uint32_t addrmask = meminfo.size_inbytes() - 1;
@@ -97,7 +97,7 @@ void program_rom(uint32_t startaddr, uint32_t stopaddr) {
 		}
 
 		// determine byte write or page write
-		if ( page.is_aligned() and page.length == meminfo.page_size ) {
+		if ( force_bytewrite == false and page.is_aligned() and page.length == meminfo.page_size ) {
 			Serial.print("Page write ");
 
 			bool succ = exbusmem.program_page(page.address & addrmask, page.bytes, meminfo.page_size);
@@ -108,6 +108,7 @@ void program_rom(uint32_t startaddr, uint32_t stopaddr) {
                 snprintf(buf128, 127, "%04X", page.address & addrmask);
                 Serial.println(buf128);
             }
+			delay(1);
 		} else {
 			Serial.print("Byte write ");
 
@@ -301,6 +302,7 @@ void setup() {
 void loop() {
 	uint8_t data, val;
 	uint32_t addr, start, stop;
+	char option;
 	char * ptr;
 
 	if (readStringUntilCrLf(line, 256) > 0) {
@@ -337,10 +339,13 @@ void loop() {
 
 			case 'P':
 				Serial.println(F("Software data protection "));
-				if ( line.length() >= 3 and line[2] == 'D' ) {
+				if ( line.length() >= 3 ) {
+					option = line[2];
+				}
+				if ( option == 'D' ) {
 					exbusmem.disable_SDP();
 					Serial.println(F(" disabled."));
-				} else if ( line.length() >= 3 and line[2] == 'E' ) {
+				} else if ( option == 'E' ) {
 					exbusmem.enable_SDP();
 					Serial.println(F(" enabled."));
 				}
@@ -375,7 +380,13 @@ void loop() {
 
 			case 'W':
 			case 'w':
-				line = line.substring(2);
+				if ( line.length() >= 3 and line[2] == 'B') {
+					option = 'B';
+					line = line.substring(3);
+				} else {
+					option = '\0';
+					line = line.substring(2);
+				}
 				start = strtoul(line.c_str(), &ptr, 16);
 				stop = strtoul(ptr, &ptr, 16);
 				if ( stop == 0 or start >= stop ) {
@@ -383,7 +394,7 @@ void loop() {
 					stop = pagearray.highest_address();
 				}
 				if (  start < stop ) {
-					program_rom(start, stop);
+					program_rom(start, stop, (option == 'B') );
 				} else {
 					Serial.println(F("No data to write."));
 				}
@@ -416,6 +427,7 @@ void loop() {
 		}
 
 		line = "";
+		option = '\0';
 
 	}
 }
