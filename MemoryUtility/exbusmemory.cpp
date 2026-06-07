@@ -128,17 +128,16 @@ bool ExBusMemory::program_byte(const uint32_t &addr, const uint8_t data) {
 
 	set_databus_mode(INPUT);
 
-	bool succ = waitfor_write_cycle_end(data, 10000);
+	bool succ = waitfor_write_cycle_end(addr, data, 10000);
 	deselect();
+
 	return succ;
 }
 
 
 // write to EEPROM
 // OK w/ HN58C256
-bool ExBusMemory::program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size) {
-	uint8_t val;
-	uint32_t baseaddr = (~uint32_t(page_size - 1)) & addr; 	// to ensure and to force page boundary
+bool ExBusMemory::program_page(const uint32_t &addr, const uint8_t bytes[], uint16_t page_size) {
 
 	set_databus_mode(OUTPUT);
 	output_disable();	// make sure
@@ -147,21 +146,11 @@ bool ExBusMemory::program_page(const uint32_t &addr, const uint8_t data[], uint1
 	select();
 
 	for (uint16_t ix = 0; ix < page_size; ++ix) {
-		val = data[ix];
-		/*
-		write_addressbus(baseaddr + ix);
-		write_databus(val);
-		//delay1nop();
-		write_enable();
-		delay2nops();
-		write_disable();
-		//delay4nops();
-		 */
-		put_byte(baseaddr + ix, val);
+		put_byte(addr + ix, bytes[ix]);
 	}
 	set_databus_mode(INPUT);
 
-	bool succ = waitfor_write_cycle_end(val, 10000);
+	bool succ = waitfor_write_cycle_end(addr + page_size - 1, bytes[page_size - 1], 10000);
 	deselect();
 
 	return succ;
@@ -191,38 +180,48 @@ uint8_t ExBusMemory::get_byte(const uint32_t & addr) const {
 void ExBusMemory::put_byte(const uint32_t &addr, const uint8_t data) {
 	write_addressbus(addr);
 	write_databus(data);
-	//delay1nop();
 	write_enable();
 	delay2nops();
 	write_disable();
 }
 
 // OK w/ HN58C256
-bool ExBusMemory::waitfor_write_cycle_end(const uint8_t & data, const uint16_t & count) {
+bool ExBusMemory::waitfor_write_cycle_end(const uint32_t & addr, const uint8_t data, const uint16_t & count) {
 	uint8_t val0, val1;
 	//set_databus_mode(INPUT);
 	uint16_t i = 0;
 	do {
-	    delay2nops();
-	    output_enable();
-	    delay2nops();
-	    val0 = read_databus();
-	    output_disable();
+	    delayMicroseconds(1);
+
+//	    output_enable();
+//	    delay2nop();
+//	    val0 = read_databus();
+//	    output_disable();
+	    val0 = get_byte(addr);
 
 	    delayMicroseconds(1);
 
-	    output_enable();
-	    delay2nops();
-	    val1 = read_databus();
-	    output_disable();
+//	    output_enable();
+//	    delay2nops();
+//	    val1 = read_databus();
+//	    output_disable();
+	    val1 = get_byte(addr);
 
-	    if ( val0 == val1 and val1 == data ) {
+	    if ( (val0 == val1) and (val1 == data) ) {
+	    	// if no D6 toggling function, the first eq always holds and simply ignored.
 	    	// toggle bit 6 and data poll bit 7 are settled
-	    	return true;
+	    	break;
 	    }
 	} while ( i++ < count );
 	//Serial.println(i);  // loops 126 at page write, 125 at byte write in successful write
-	 return false;
+	Serial.print(addr, HEX);
+	Serial.print(": ");
+	Serial.print(val0);
+	Serial.print(", ");
+	Serial.print(val1);
+	Serial.print(", ");
+	Serial.println(data);
+	 return  (val0 == val1) and (val1 == data) ;
 }
 
 

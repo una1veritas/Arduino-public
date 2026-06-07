@@ -41,6 +41,7 @@ struct MemoryInfo {
 	uint8_t type;
 	uint16_t access_time; 	// address or /CE to valid data read delay time
 	int16_t page_size;
+	bool polling; 			// b7 polling (and/or b6 toggling)
 	bool SDP;
 
 	uint32_t size_inbytes() const {
@@ -70,19 +71,19 @@ void get_meminfo_byindex(const uint8_t ix, MemoryInfo & minfo);
 void list_target_types(MemoryInfo & meminfo);
 
 const MemoryInfo MEMINFO_DB[] PROGMEM = {
-		{ "AT28C64-15", 	EEPROM64KBIT, 	EEPROM, 	150,	0, 		false },
-		{ "AT28C64B", 		EEPROM64KBIT, 	EEPROM, 	150, 	64,		true },
-		{ "AT28C256-15", 	EEPROM256KBIT, EEPROM, 	150, 	64,		true },
-		{ "AT29C256-15", 	EEPROM256KBIT, FLASH,	 	100, 	64,		true },
-		{ "HN58C256", 		EEPROM256KBIT, EEPROM, 	200,	64, 	false },
-		{ "HN58C256A", 		EEPROM256KBIT, EEPROM, 	200,	64, 	true },
+		{ "AT28C64-15", 	EEPROM64KBIT, 	EEPROM, 	150,	0, 		true, false },
+		{ "AT28C64B", 		EEPROM64KBIT, 	EEPROM, 	150, 	64,		true, true },
+		{ "AT28C256-15", 	EEPROM256KBIT, EEPROM, 	150, 	64,		true, true },
+		{ "AT29C256-15", 	EEPROM256KBIT, FLASH,	 	100, 	64,		true, true },
+		{ "HN58C256", 		EEPROM256KBIT, EEPROM, 	200,	64, 	true, false },
+		{ "HN58C256A", 		EEPROM256KBIT, EEPROM, 	200,	64, 	true, true },
 	//	{ "X28C256-20", 	EEPROM256KBIT, EEPROM, 	200,	64, 	true },
-		{ "X28C512-20", 	EEPROM512KBIT, EEPROM, 	200,	128,	true }, 	// page write allows 2 to 128 bytes
-		{ "SRAM64KBIT", 	SRAM64KBIT, 	SRAM, 		100, 	0, 		false },
-		{ "SRAM256KBIT", 	SRAM256KBIT, 	SRAM, 		100, 	0, 		false },
-		{ "SRAM1MBIT", 		SRAM1MBIT, 	SRAM, 		100, 	0, 		false },
-		{ "SRAM4MBIT", 		SRAM4MBIT, 	SRAM, 		100, 	0, 		false },
-		{ "", 0, 0, 0, },
+		{ "X28C512-20", 	EEPROM512KBIT, EEPROM, 	200,	128,	true, true }, 	// page write allows 2 to 128 bytes
+		{ "SRAM64KBIT", 	SRAM64KBIT, 	SRAM, 		100, 	0, 		false, false },
+		{ "SRAM256KBIT", 	SRAM256KBIT, 	SRAM, 		100, 	0, 		false, false },
+		{ "SRAM1MBIT", 		SRAM1MBIT, 	SRAM, 		100, 	0, 		false, false },
+		{ "SRAM4MBIT", 		SRAM4MBIT, 	SRAM, 		100, 	0, 		false, false },
+		{ "", 0, 0, 0, 0, false, false },
 };
 
 struct PROMWriter {

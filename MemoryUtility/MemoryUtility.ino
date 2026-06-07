@@ -208,6 +208,35 @@ void sram_test() {
 	Serial.println();
 }
 
+void verify(const uint32_t & start, uint32_t & stop) {
+	PageBuffer page;
+	uint16_t errcount = 0;
+	uint32_t pageix;
+	for ( pageix = 0; pageix < pagearray.size(); ++pageix) {
+		pagearray.get_byindex(pageix, page);
+		for(uint32_t iy = 0; iy < page.length; ++iy) {
+			uint8_t romval = exbusmem.read_rom(page.address + iy);
+			uint8_t pageval = page.bytes[iy];
+			if ( romval != pageval ) {
+				++errcount;
+				Serial.print(F("error at "));
+				Serial.print(page.address + iy, HEX);
+				Serial.print(F(" rom "));
+				Serial.print(romval, HEX);
+				Serial.print(F("/"));
+				Serial.print(pageval, HEX);
+				Serial.println(F(" page"));
+			}
+		}
+		if (errcount > 0 ) {
+			Serial.print(errcount);
+			Serial.println(" errors found at this block. Stop.");
+			break;
+		}
+	}
+	Serial.println("Done.");
+}
+
 void printWelcome() {
 	Serial.println(F("\n========================================="));
 	Serial.println(F(" Arduino ihex/s19 Format Loader 20260603"));
@@ -376,6 +405,15 @@ void loop() {
 				line = line.substring(2);
 				line.trim();
 				memory_type(meminfo, line.c_str());
+				break;
+
+			case 'V':
+			case 'v':
+				Serial.println(F("Verify"));
+				line = line.substring(2);
+				start = strtoul(line.c_str(), &ptr, 16);
+				stop = strtoul(ptr, &ptr, 16);
+				verify(start, stop);
 				break;
 
 			case 'W':

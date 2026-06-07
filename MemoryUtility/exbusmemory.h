@@ -13,7 +13,7 @@
 
 #include "MemoryDevice.h"
 
-class ExBusMemory : public MemoryDevice{
+class ExBusMemory : public MemoryDevice {
 private:
 	int MEM_CE;
 	int MEM_OE;
@@ -147,24 +147,24 @@ private:
 	uint8_t get_byte(const uint32_t &addr) const;
 	void put_byte(const uint32_t &addr, const uint8_t data);
 
-	bool waitfor_write_cycle_end(const uint8_t &data, const uint16_t & count);
-
+	bool waitfor_write_cycle_end(const uint32_t & addr, const uint8_t data, const uint16_t & count);
 
 public:
 	uint8_t read(const uint32_t &addr) const;
 	uint8_t read_rom(const uint32_t & addr) const;
+	void read_rom(const uint32_t & addr, uint8_t buf[], const uint32_t & bytes) const {
+		for (uint32_t i = 0; i < bytes; ++i)
+			buf[i] = read(addr+i);
+	}
 
 	void write(const uint32_t &addr, const uint8_t data);
+	bool program_byte(const uint32_t& addr, const uint8_t data);
+	bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size);
 
 	// Write the special six-byte code to turn off Software Data Protection.
 	bool disable_SDP();
 	bool enable_SDP();
 
-	bool program_byte(const uint32_t& addr, const uint8_t data);
-	//bool program_byte_100ns(const uint32_t& addr, const uint8_t data);
-
-	bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size);
-	//bool program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size, const uint8_t n);
 
 private:
 	void down_write(const uint32_t & base_addr, const uint32_t block_size, uint8_t val);

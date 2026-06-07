@@ -115,6 +115,9 @@ void MemoryInfo::printOn(Stream & out) const {
 		out.print(page_size);
 		out.print(F(" bytes page write"));
 	}
+	if ( polling ) {
+		out.print(F(", data polling"));
+	}
 	if (SDP) {
 		out.println(F(", has SDP."));
 	} else {
