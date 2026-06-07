@@ -100,7 +100,7 @@ void program_rom(uint32_t startaddr, uint32_t stopaddr, bool force_bytewrite) {
 		if ( force_bytewrite == false and page.is_aligned() and page.length == meminfo.page_size ) {
 			Serial.print("Page write ");
 
-			bool succ = exbusmem.program_page(page.address & addrmask, page.bytes, meminfo.page_size);
+			bool succ = exbusmem.program_page(page.address & addrmask, page.bytes, PageBuffer::page_size);
 			if ( !succ ) {
 				err_flag = true;
 				promwriter.errorCount += 1;

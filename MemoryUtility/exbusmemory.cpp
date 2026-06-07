@@ -26,7 +26,8 @@ uint8_t ExBusMemory::read(const uint32_t &addr) const {
 	uint8_t val;
 	//output_disable();
 	//write_disable();
-	set_databus_mode(INPUT);
+	//set_databus_mode(INPUT);
+
 	write_addressbus(addr);
 	select();  		// more than 62.5ns
 	output_enable(); 	// 62.5ns
@@ -34,6 +35,7 @@ uint8_t ExBusMemory::read(const uint32_t &addr) const {
 	val = read_databus();
 	output_disable();
 	deselect();
+
 	return val;
 }
 
@@ -48,20 +50,22 @@ uint8_t ExBusMemory::read(const uint32_t &addr) const {
 // T_CE  /CE to output dealy     >          (2 nops + output enable + 2 nops)
 // T_OE  /OE to output delay > ( 2 nops )
 // OK for HN58C256
-uint8_t ExBusMemory::read_rom(const uint32_t & addr) const {
+uint8_t ExBusMemory::read_rom(const uint32_t &addr) const {
 	uint8_t val;
-  //output_disable();
-  //write_disable();
-  set_databus_mode(INPUT);
-  write_addressbus(addr);
-  select();  		// more than 62.5 ns
-  delay2nops();
-  output_enable(); 	// 62.5 ns
-  delay2nops();
-  val = read_databus();
-  output_disable();
-  deselect();
-  return val;
+	//output_disable();
+	//write_disable();
+	//set_databus_mode(INPUT);
+
+	write_addressbus(addr);
+	select();  		// more than 62.5 ns
+	delay2nops();
+	output_enable(); 	// 62.5 ns
+	delay2nops();
+	val = read_databus();
+	output_disable();
+	deselect();
+
+	return val;
 }
 
 // basic write to SRAM with 1 clock wait after /CE and 1 clock after /WE
@@ -71,6 +75,7 @@ void ExBusMemory::write(const uint32_t & addr, const uint8_t data) {
   set_databus_mode(OUTPUT);
   //output_disable();
   //write_disable();
+
   write_addressbus(addr);
   write_databus(data);
   select();
@@ -78,58 +83,32 @@ void ExBusMemory::write(const uint32_t & addr, const uint8_t data) {
   delay1nop();
   write_disable();
   deselect();
+
   set_databus_mode(INPUT);
+
   return;
 }
 
 
-/*
-bool Memory::program_byte(const uint32_t& addr, const uint8_t data) {
-  set_databus_mode(OUTPUT);
-  //output_disable();
-  //write_disable();
-  select();
-  put_byte(addr, data);
-
-  bool succ = waitfor_write_cycle_end(data);
-  deselect();
-  set_databus_mode(INPUT);
-
-  return succ;
-}
-
-// partial eeprom write sequence after bus mode change and /CE, before CE, with address change
-void ExBusMemory::put_byte(const uint32_t& addr, const uint8_t data) {
-  write_addressbus(addr);
-  write_databus(data);
-  delay1nop();
-  write_enable();
-  delay1nop();
-  write_disable();
-  delay1nop();
-}
-*/
 
 // Succeeded: AT28C64-15, HN58C256
 bool ExBusMemory::program_byte(const uint32_t &addr, const uint8_t data) {
+	//output_disable();	// make sure
+	//write_disable(); 	// to ensure pulse
 	set_databus_mode(OUTPUT);
-	output_disable();	// make sure
-	write_disable(); 	// to ensure pulse
 
 	write_addressbus(addr);
 	write_databus(data);
+
 	select();
-	//put_byte(addr, data);
-	//  delay1nop();
 	write_enable();
 	delay2nops();
 	write_disable();
-	//  delay1nop();
+	deselect();
 
 	set_databus_mode(INPUT);
 
 	bool succ = waitfor_write_cycle_end(addr, data, 10000);
-	deselect();
 
 	return succ;
 }
@@ -138,28 +117,38 @@ bool ExBusMemory::program_byte(const uint32_t &addr, const uint8_t data) {
 // write to EEPROM
 // OK w/ HN58C256
 bool ExBusMemory::program_page(const uint32_t &addr, const uint8_t bytes[], uint16_t page_size) {
+	uint8_t data;
+	uint32_t address;
 
+	// output_disable();	// make sure
+	// write_disable(); 	// to ensure pulse
 	set_databus_mode(OUTPUT);
-	output_disable();	// make sure
-	write_disable(); 	// to ensure pulse
 
 	select();
-
 	for (uint16_t ix = 0; ix < page_size; ++ix) {
-		put_byte(addr + ix, bytes[ix]);
+		address = addr + ix;
+		data = bytes[ix];
+
+		write_addressbus(address);
+		write_databus(data);
+
+		//select();			// synchronize /CE and /WE
+		write_enable();
+		delay2nops();		// at least 62.5 ns x 2 >= t_WP: write pulse width min 100 ns
+		write_disable();
+		//deselect();
+		delay1nop();		// at least 62.5 ns >= t_WPH: write pulse width high min 50 ns
 	}
+	deselect();
 	set_databus_mode(INPUT);
 
-	bool succ = waitfor_write_cycle_end(addr + page_size - 1, bytes[page_size - 1], 10000);
-	deselect();
+	bool succ = waitfor_write_cycle_end(address, data, 10000);
 
 	return succ;
 }
 
 // in continuous read from EEPROM
 uint8_t ExBusMemory::get_byte(const uint32_t & addr) const {
-  //output_disable();
-  //write_disable();
   write_addressbus(addr);
   delay2nops(); 	// 62.5 ns x 2
   output_enable();
@@ -180,40 +169,47 @@ uint8_t ExBusMemory::get_byte(const uint32_t & addr) const {
 void ExBusMemory::put_byte(const uint32_t &addr, const uint8_t data) {
 	write_addressbus(addr);
 	write_databus(data);
+	delay2nops();
 	write_enable();
 	delay2nops();
 	write_disable();
+	delay1nop();
 }
 
 // OK w/ HN58C256
-bool ExBusMemory::waitfor_write_cycle_end(const uint32_t & addr, const uint8_t data, const uint16_t & count) {
+bool ExBusMemory::waitfor_write_cycle_end(const uint32_t &addr,
+		const uint8_t data, const uint16_t &count) {
 	uint8_t val0, val1;
-	//set_databus_mode(INPUT);
+	write_addressbus(addr);
 	uint16_t i = 0;
 	do {
-	    delayMicroseconds(1);
+		delayMicroseconds(1);
 
-//	    output_enable();
-//	    delay2nop();
-//	    val0 = read_databus();
-//	    output_disable();
-	    val0 = get_byte(addr);
+		select();
+		delay2nops();
+		output_enable();
+		delay2nops();
+		val0 = read_databus();
+		output_disable();
+		deselect();
 
-	    delayMicroseconds(1);
+		delayMicroseconds(1);
 
-//	    output_enable();
-//	    delay2nops();
-//	    val1 = read_databus();
-//	    output_disable();
-	    val1 = get_byte(addr);
+		select();
+		delay2nops();
+		output_enable();
+		delay2nops();
+		val1 = read_databus();
+		output_disable();
+		deselect();
 
-	    if ( (val0 == val1) and (val1 == data) ) {
-	    	// if no D6 toggling function, the first eq always holds and simply ignored.
-	    	// toggle bit 6 and data poll bit 7 are settled
-	    	break;
-	    }
-	} while ( i++ < count );
-	//Serial.println(i);  // loops 126 at page write, 125 at byte write in successful write
+		if ((val0 == val1) and (val1 == data)) {
+			// if no D6 toggling function, the first eq always holds and simply ignored.
+			// toggle bit 6 and data poll bit 7 are settled
+			return true;
+		}
+	} while (i++ < count);
+	Serial.println(i); // loops 126 at page write, 125 at byte write in successful write
 	Serial.print(addr, HEX);
 	Serial.print(": ");
 	Serial.print(val0);
@@ -221,7 +217,7 @@ bool ExBusMemory::waitfor_write_cycle_end(const uint32_t & addr, const uint8_t d
 	Serial.print(val1);
 	Serial.print(", ");
 	Serial.println(data);
-	 return  (val0 == val1) and (val1 == data) ;
+	return (val0 == val1) and (val1 == data);
 }
 
 
