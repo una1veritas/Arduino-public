@@ -147,6 +147,7 @@ private:
 	uint8_t get_byte(const uint32_t &addr) const;
 	void put_byte(const uint32_t &addr, const uint8_t data);
 
+	// verify the value of the last address
 	bool waitfor_write_cycle_end(const uint8_t &data, const uint16_t & count);
 
 
