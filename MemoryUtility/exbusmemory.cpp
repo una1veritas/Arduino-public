@@ -200,6 +200,7 @@ bool ExBusMemory::waitfor_write_cycle_end(const uint8_t & data, const uint16_t &
 	    	// toggle bit 6 and data poll bit 7 are settled
 	    	return true;
 	    }
+	    // 30 us + 31 us
 	} while ( i++ < count );
 	//Serial.println(i);  // loops 126 at page write, 125 at byte write in successful write
 	 return false;
