@@ -143,6 +143,10 @@ private:
 		addrbus.write_bytes((const uint8_t*) &addr, 3); 	// LSB first
 	}
 
+//	inline void write_addressbus16(const uint16_t & addr) {
+//		addrbus.write16(addr); 	// LSB first
+//	}
+
 	// two nops inserted
 	uint8_t get_byte(const uint32_t &addr) const;
 	void put_byte(const uint32_t &addr, const uint8_t data);
