@@ -104,9 +104,7 @@ void program_rom(uint32_t startaddr, uint32_t stopaddr) {
 			if ( !succ ) {
 				err_flag = true;
 				promwriter.errorCount += 1;
-                Serial.print("Error: Page write failed at ");
-                snprintf(buf128, 127, "%04X", page.address & addrmask);
-                Serial.println(buf128);
+                Serial.println("Page write failed.");
             }
 		} else {
 			Serial.print("Byte write ");
@@ -116,12 +114,15 @@ void program_rom(uint32_t startaddr, uint32_t stopaddr) {
 				if ( succ ) {
 					Serial.print('.');
 				} else {
+					Serial.print('x');
 					promwriter.errorCount += 1;
 					err_flag = true;
-					Serial.print(F("Error: Write failed at "));
-					Serial.print(page.address + i, HEX);
-					Serial.println(F("H"));
 				}
+			}
+			if ( err_flag ) {
+				Serial.print(F("Program byte failed "));
+				Serial.print(promwriter.errorCount);
+				Serial.println(F(" times."));
 			}
 		}
 
@@ -173,7 +174,35 @@ void read_targetmem(const uint32_t & startaddr, const uint32_t & stopaddr) {
 	}
 }
 
-void sram_test() {
+void verify(uint32_t startaddr, uint32_t stopaddr) {
+	if ( stopaddr == 0 or startaddr >= stopaddr ) {
+		startaddr = pagearray.lowest_address();
+		stopaddr = pagearray.highest_address();
+	}
+	PageBuffer page;
+	uint8_t val;
+	uint32_t ix;
+	for ( ix = 0; ix < pagearray.size(); ++ix) {
+		pagearray.get_byindex(ix, page);
+		for (uint16_t ix = 0; ix < page.length; ++ix) {
+			if ( page.address + ix < startaddr or page.address + ix > stopaddr )
+				continue;
+			if (meminfo.access_time <= 100) {
+				val = exbusmem.read(page.address + ix);
+			} else {
+				val = exbusmem.read_rom(page.address + ix);
+			}
+			if ( val != page.bytes[ix] ) {
+				Serial.print(F("Verify failed at "));
+				Serial.println(page.address + ix, HEX);
+				return;
+			}
+		}
+	}
+	Serial.println(F("Verify succeeded.\n"));
+}
+
+void sram_March_test() {
 	Serial.println(F("\nSRAM R/W test"));
 	uint32_t start = 0;
 	uint32_t end = meminfo.capacity_inbits >> 3 ;
@@ -311,27 +340,24 @@ void loop() {
 		if (line[0] == '!') {
 			Serial.println();
 			// process the command
-			switch (line[1]) {
+			switch (toupper(line[1])) {
 			case 'B':
-				sram_test();
+				sram_March_test();
 				break;
 
 			case 'C':
-			case 'c':
 				Serial.println(F("Start to load new data."));
 				pagearray.clear();
 				promwriter.clear();
 				break;
 
 			case 'O':
-			case 'o':
 				Serial.println(F("Organize pages..."));
 				pagearray.sort_pages();
 				Serial.println(F("Done."));
 				break;
 
 			case 'S':
-			case 's':
 				show_status();
 				break;
 
@@ -347,7 +373,6 @@ void loop() {
 				break;
 
 			case 'D':
-			case 'd':
 				Serial.println(F("Dump loaded data,"));
 				line = line.substring(2);
 				start = strtoul(line.c_str(), &ptr, 16);
@@ -357,12 +382,20 @@ void loop() {
 				break;
 
 			case 'R':
-			case 'r':
 				Serial.println(F("Reading target memory..."));
 				line = line.substring(2);
 				start = strtoul(line.c_str(), &ptr, 16);
 				stop = strtoul(ptr, &ptr, 16);
 				read_targetmem(start, stop);
+				Serial.println(F("Finished."));
+				break;
+
+			case 'V':
+				Serial.println(F("Verify target memory..."));
+				line = line.substring(2);
+				start = strtoul(line.c_str(), &ptr, 16);
+				stop = strtoul(ptr, &ptr, 16);
+				verify(start, stop);
 				Serial.println(F("Finished."));
 				break;
 
