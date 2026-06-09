@@ -1,9 +1,11 @@
 struct IOPin {
-  volatile uint8_t * portaddr;  // base port address for PINx, DDRx, PORTx.
+  volatile uint8_t * port;  // base port address for PINx, DDRx, PORTx.
   uint8_t pinmask;          // bit mask.
 
   IOPin(volatile uint8_t & port, uint8_t bitpos) 
   : port(&port), pinmask(1<<(bitpos & 0x7)) { 
+
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega644P__) || defined(__AVR_ATmega644PA__) 
     switch (uint8_t(port)) {
       case 0x23:
       case 0x24:
@@ -21,6 +23,9 @@ struct IOPin {
         port = &PIND;
         break;
     }
+#else
+#error "Unknown Processor."
+#endif
   }
 
   void iodir(uint8_t inout) {
@@ -50,6 +55,20 @@ void setup() {
   pd2.iodir(OUTPUT);
   pd2.out(HIGH);
   
+  Serial.begin(115200);
+  Serial.println("Hi.");
+  Serial.print("A0 = ");
+  Serial.println(A0, HEX);
+  Serial.print("A3 = ");
+  Serial.println(A3, HEX);
+  Serial.print("A5 = ");
+  Serial.println(A5, HEX);
+  Serial.print("PC2 = ");
+  Serial.println(PC2, HEX);
+  Serial.print("PB5 = ");
+  Serial.println(PB5, HEX);
+  Serial.print("PD7 = ");
+  Serial.println(PD7, HEX);
 }
 
 void loop() {
