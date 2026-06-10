@@ -54,7 +54,7 @@ PageArray pagearray(SPISRAM_23LC1024_CS);
 
 ExBusMemory exbusmem(addrbus_cs, addrbus_oe, databus_cs, ROM_CE, ROM_OE, ROM_WE);
 
-PROMWriter promwriter;
+PROMWriter promwriter(2);
 
 HexRecord record;
 
@@ -426,15 +426,19 @@ void loop() {
 			case 'X':
 			case 'x':
 				Serial.println("Memory power ");
-				if ( !promwriter.target_power ) {
+				if ( !promwriter.target_power() ) {
 					exbusmem.begin();
-					promwriter.target_power  = true;
+					promwriter.target_power_on();
 					Serial.println("on.");
 				} else {
 					exbusmem.end();
-					promwriter.target_power  = false;
+					promwriter.target_power_off();
 					Serial.println("off.");
 				}
+				break;
+
+			default:
+				Serial.println(F("Unknown command error."));
 				break;
 
 			}

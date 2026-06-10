@@ -20,6 +20,7 @@ void usart0_tx(uint8_t b);
 bool usart0_tx_ready(void);
 uint8_t usart0_rx(void);
 uint8_t usart0_rx_buffered(uint8_t *out); /* returns 1 if byte available, 0 otherwise */
+uint8_t usart0_rx_available(void);
 
 /* Hook to allow printf to use USART0 */
 int usart0_putchar_printf(char c, FILE *stream);
@@ -38,6 +39,6 @@ void usart1_tx(uint8_t b);
 bool usart1_tx_ready(void);
 int usart1_putchar_printf(char c, FILE *stream);
 uint8_t usart1_tx_buffered(uint8_t c);
-uint8_t usart0_rx_available(void);
+int usart1_rx_buffered(uint8_t *out);
 
 #endif /* ATMEGA2560_USART_H */

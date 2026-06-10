@@ -85,6 +85,8 @@ const MemoryInfo MEMINFO_DB[] PROGMEM = {
 		{ "", 0, 0, 0, },
 };
 
+
+
 struct PROMWriter {
 	uint32_t record_start_address;
 	uint16_t extendedLinearAddress; 	// ihex high 16 bits of 32 bit address
@@ -97,10 +99,24 @@ struct PROMWriter {
 	uint32_t checksumErrors;
 	uint32_t recordCount;
 
-	bool target_power;
+	uint8_t power_en;
 
-	PROMWriter() {
+	PROMWriter(const uint8_t pwrpin) : power_en(pwrpin) {
+		digitalWrite(power_en, LOW);
+		pinMode(power_en, OUTPUT);
 		clear();
+	}
+
+	bool target_power() {
+		return digitalRead(power_en) == LOW; // assuming returns the correspoinding of PORTx output register
+	}
+
+	void target_power_on() {
+		digitalWrite(power_en, LOW);
+	}
+
+	void target_power_off() {
+		digitalWrite(power_en, HIGH);
 	}
 
 	// clear programmer status
@@ -114,9 +130,8 @@ struct PROMWriter {
 		checksumErrors = 0;
 		recordCount = 0;
 
-		target_power = true;
+		target_power_on();
 	}
-
 
 
 };

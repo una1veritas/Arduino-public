@@ -69,7 +69,8 @@ void ExBusMemory::write(const uint32_t & addr, const uint8_t data) {
 // T_ACC Address to output delay > (select + 2 nops + output enable + 2 nops)
 // T_CE  /CE to output dealy     >          (2 nops + output enable + 2 nops)
 // T_OE  /OE to output delay > ( 2 nops )
-// OK for HN58C256
+
+// succeeded: AT28C64/B, HN58C256, AT29C256 (flash)
 
 uint8_t ExBusMemory::read_rom(const uint32_t & addr) const {
 	uint8_t val;
@@ -115,7 +116,7 @@ bool ExBusMemory::program_byte(const uint32_t &addr, const uint8_t data) {
 
 
 // write to EEPROM
-// OK w/ HN58C256
+// Succeeded: AT28C64B, HN58C256, AT29C256 (flash)
 bool ExBusMemory::program_page(const uint32_t &addr, const uint8_t data[], uint16_t page_size) {
 	uint8_t val;
 	uint32_t baseaddr = (~uint32_t(page_size - 1)) & addr; 	// to ensure and to force page boundary
@@ -176,7 +177,7 @@ void ExBusMemory::put_byte(const uint32_t &addr, const uint8_t data) {
 	delay1nop();
 }
 
-// OK w/ HN58C256
+// HN58C256, AT28C64B,  AT29C256 (flash)
 bool ExBusMemory::waitfor_write_cycle_end(const uint8_t & data, const uint16_t & count) {
 	uint8_t val0, val1;
 	uint16_t i = 0;
