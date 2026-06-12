@@ -1,34 +1,14 @@
 
+/*
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
-#define CCAT(x,y)   _CCAT(x,y)
-#define _CCAT(x,y)  x##y
-
-#define pinmode(pin, mode) (CCAT(TRIS, pin) = mode)
-// input with weak pull-up, output without w pull-up
-#define pinwpu(pin, endis)  ( CCAT(WPU, pin) = endis)
-#define pinmodewpu(pin, mode)    ( CCAT(WPU,pin) = mode, CCAT(TRIS,pin) = mode)
-#define pinwrite(pin, val) ( CCAT(LAT,pin) = val)
-#define pinread(pin)       ( CCAT(PORT,pin) )
-
-#define portmode(port, mode8)       ( CCAT(TRIS,port) = mode8)
-#define portmodewpu(port, mode8)    ( CCAT(TRIS,port) = mode8, CCAT(WPU,port) = mode8)
-#define portwrite(port, val8)       ( CCAT(LAT,port) = val8)
-#define portread(port)              ( CCAT(PORT,port) )
-
-#define MODE(pinport)   ( CCAT(TRIS, pinport) )
-#define PIN(pin)        ( CCAT(R, pin) )
-#define PORTIN(port)    ( CCAT(PORT, port) )
-#define OUT(pinport)    ( CCAT(LAT, pinport) )
-#define ANSEL(pinport)  ( CCAT(ANSEL, pinport) )
-#define WPU(pinport)    ( CCAT(WPU, pinport) )
-#define PPS(pin)        ( CCAT(CCAT(R,pin), PPS) )
 
 #ifdef	__cplusplus
 }
 #endif
+*/
 
 struct IOPin {
 	volatile uint8_t * _PORT;  // base port address for PINx, DDRx, PORTx.
@@ -81,9 +61,9 @@ struct IOPin {
 		} else {
 			// input
 			if ( wpull ) {
-				output(true);
+				write(true);
 			} else {
-				output(false);
+				write(false);
 			}
 			*(_PORT + 1) &= (~_PINBIT);
 		}
@@ -97,7 +77,7 @@ struct IOPin {
 		*(_PORT + 2) &= (~_PINBIT);
 	}
 
-	void output(bool hilow) {
+	void write(bool hilow) {
 		if ( hilow ) {
 			*(_PORT + 2) |= _PINBIT;
 		} else {
@@ -105,9 +85,22 @@ struct IOPin {
 		}
 	}
 
-	bool input(void) {
+	bool read(void) const {
 		return (*_PORT & _PINBIT) != 0;
 	}
+
+	IOPin & operator=(const int val) {
+		write(val != 0);
+		return *this;
+	}
+
+	IOPin & operator=(const bool val) {
+		write(val);
+		return *this;
+	}
+	
+	explicit operator bool() const noexcept { return read(); }
+	explicit operator uint8_t() const noexcept { return uint8_t(read()); }
 
 };
 
@@ -135,17 +128,17 @@ void setup() {
 void loop() {
 	// put your main code here, to run repeatedly:
 	if (no == 0) {
-		ledpin0.output(HIGH); 
-		ledpin1.output(LOW); 
-		ledpin2.output(LOW); 
+		ledpin0.write(HIGH); 
+		ledpin1.write(LOW); 
+		ledpin2.write(LOW); 
 	} else if (no == 1 ) {
-		ledpin0.output(LOW); 
-		ledpin1.output(HIGH); 
-		ledpin2.output(LOW); 
+		ledpin0.write(LOW); 
+		ledpin1.write(HIGH); 
+		ledpin2.write(LOW); 
 	} else if (no == 2 ) {
-		ledpin0.output(LOW); 
-		ledpin1.output(LOW); 
-		ledpin2.output(HIGH); 
+		ledpin0.write(LOW); 
+		ledpin1.write(LOW); 
+		ledpin2.write(HIGH); 
 	}
 	no = (no + 1) % 3;
 	delay(500);
