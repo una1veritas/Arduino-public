@@ -42,15 +42,12 @@ enum CS2x_CLK_SEL_BITS {
 };
 
 // global 
-volatile unsigned long T1Counter;
-volatile bool counterUpdated;
+unsigned int last_10secs;
+unsigned long pulse_count;
+unsigned long history[6];
+double cpm;
 
-long led_lit_millis;
-
-ISR(TIMER1_OVF_vect) {
-  T1Counter += TCNT1;
-  TCNT1 = 0;
-}
+long last_millis;
 
 void setup() {
   pinMode(5, INPUT);
@@ -61,8 +58,6 @@ void setup() {
   TCNT1 = 0;
   TIMSK1 |= (1 << TOIE1);
   sei();
-
-  T1Counter = 0;
 
   Serial.begin(115200);
 
@@ -79,28 +74,42 @@ void setup() {
   TCCR2B = _BV(WGM22) | CLK_T2S_8; // _BV(CS21) | _BV(CS20); 
 
   // Set the TOP limit for 125 kHz (16MHz / 1 / 125000) - 1
-  const unsigned int PERIOD = 39;
+  const unsigned int PERIOD = 82;
   OCR2A = PERIOD; //127;  
 
   // Set Duty Cycle (0 to 127)
   // Example: 50% duty cycle
-  OCR2B = PERIOD*2/3; // 1mH 1.1ohm , 64 -> 220V, 92 -> 300v ;
+  OCR2B = PERIOD*1/2; // 1mH 1.1ohm , 64 -> 220V, 92 -> 300v ;
 
+  for(uint8_t i = 0; i < 6; ++i) {
+    history[i] = 0;
+  }
+  pulse_count = 0;
+  last_10secs = millis() / 10000;
+  cpm = 0.0;
 }
 
 void loop() {
   if ( TCNT1 > 0 ) {
-    led_lit_millis = millis();
-    T1Counter += TCNT1;
+    pulse_count += TCNT1;
     TCNT1 = 0;
-    Serial.println(T1Counter, DEC);
-    counterUpdated = false;
-    
   }
   // put your main code here, to run repeatedly:
-
-  if ( millis() - led_lit_millis > 10000 ) {
-    Serial.print("A2 = "); Serial.println(analogRead(A2));
-    led_lit_millis = millis();
+  if ( last_10secs != millis() / 10000 ) {
+    last_10secs = millis() / 10000;
+    history[last_10secs % 6] = pulse_count;
+    //Serial.print("A2 = "); Serial.println(analogRead(A2));
+    //double new_cpm = (cpm * 5/6) + PulseCount / (millis() - last_millis);
+    //if ( new_cpm != cpm )
+    Serial.println(pulse_count);
+    pulse_count = 0;
+    unsigned long sum = 0;
+    for(uint8_t i = 0; i < 6; ++i) {
+      sum += history[i];
+    }
+    Serial.print(sum);
+    Serial.print(" CPM, ");
+    Serial.print(double(sum)*0.00926);
+    Serial.println(" uSv/h");
   }
 }
