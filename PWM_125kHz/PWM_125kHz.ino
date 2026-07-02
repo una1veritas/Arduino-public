@@ -29,6 +29,7 @@
   OCR1A = 64; // 50% duty cycle
   */
 
+
 enum CS2x_CLK_SEL_BITS {
   // without shift
   CLK_STOP = 0,
@@ -42,27 +43,51 @@ enum CS2x_CLK_SEL_BITS {
 };
 
 // global 
+constexpr static uint8_t PULSE_DETECT_PIN = 5;
+constexpr static uint8_t BUZZ_PIN = 12;
+
 unsigned int last_10secs;
 unsigned long pulse_count;
 unsigned long history[6];
 double cpm;
 
-long last_millis;
+unsigned long pcint_millis;
+volatile bool beepFlag = false;
+
+// --- PIN CHANGE ISR ---
+ISR(PCINT2_vect) {
+  // Fast logging to Serial (keep ISRs short in real applications!)
+  if (digitalRead(PULSE_DETECT_PIN) == LOW) {
+    beepFlag = true;
+  }
+}
+
+inline bool TimerCounter2_stopped() { return ((TCCR2B & 0x07) == 0); }
 
 void setup() {
-  pinMode(5, INPUT);
+  pinMode(PULSE_DETECT_PIN, INPUT);
+
+  noInterrupts();
+  // --- 1. PIN CHANGE INTERRUPT SETUP ---
+  PCICR |= (1 << PCIE2);    // Enable Pin Change Interrupt for Port B (which includes Pin 8)
+  PCMSK2 |= (1 << PCINT21);  // Enable interrupt specifically for PCINT0 (Pin 8)
+
+
+  // Timer/Counter 1 in Ext clock (pulse) count mode
   TCCR1A = 0;
   // ICES1 for falling edge, 
   //TCCR1B =  (1 << ICNC1)  | (0 << ICES1) ;// | (1 << CS11) | (1 << CS10);
   TCCR1B =  (1 << CS12) | (1 << CS11) | (0 << CS10);
   TCNT1 = 0;
-  TIMSK1 |= (1 << TOIE1);
-  sei();
+  // only count, makes no interrupt 
+
+  interrupts();
 
   Serial.begin(115200);
 
-  // digitalWrite(13, LOW);
-  pinMode(13, INPUT); 
+  digitalWrite(13, LOW); // as gbd for piezzo sounder
+  pinMode(13, OUTPUT); 
+  pinMode(BUZZ_PIN, OUTPUT); 
 
   // HV boost converter
   pinMode(3, OUTPUT); 
@@ -75,7 +100,7 @@ void setup() {
 
   // Set the TOP limit for 125 kHz (16MHz / 1 / 125000) - 1
   const unsigned int PERIOD = 82;
-  OCR2A = PERIOD; //127;  
+  OCR2A = PERIOD; //CLKDIV8, OCR2A = 82 -> 24kHz
 
   // Set Duty Cycle (0 to 127)
   // Example: 50% duty cycle
@@ -93,6 +118,23 @@ void loop() {
   if ( TCNT1 > 0 ) {
     pulse_count += TCNT1;
     TCNT1 = 0;
+  }
+    if ( beepFlag ) {
+    //Serial.println(millis() - pcint_millis);
+    for(int i = 0; i < 32; ++i) {
+      PORTB |= (1<<PB4);
+      delayMicroseconds(127);
+      PORTB &= ~(1<<PB4);
+      delayMicroseconds(127);
+    }
+    beepFlag = false;
+  }
+  if ( analogRead(2) > 63 and ! TimerCounter2_stopped() ) {
+    // stop
+    OCR2B = _BV(WGM22) | CLK_STOP; 
+  } else if (analogRead(2) < 20 and TimerCounter2_stopped() ) {
+    // restart
+    OCR2B = _BV(WGM22) | CLK_T2S_8; 
   }
   // put your main code here, to run repeatedly:
   if ( last_10secs != millis() / 10000 ) {
