@@ -99,12 +99,12 @@ void setup() {
   TCCR2B = _BV(WGM22) | CLK_T2S_8; // _BV(CS21) | _BV(CS20); 
 
   // Set the TOP limit for 125 kHz (16MHz / 1 / 125000) - 1
-  const unsigned int PERIOD = 79;
+  const unsigned int PERIOD = 82;
   OCR2A = PERIOD; //CLKDIV8, OCR2A = 82 -> 24kHz
 
   // Set Duty Cycle (0 to 127)
   // Example: 50% duty cycle
-  OCR2B = PERIOD>>1; // 1mH 1.1ohm , 64 -> 220V, 92 -> 300v ;
+  OCR2B = PERIOD*1/2; // 1mH 1.1ohm , 64 -> 220V, 92 -> 300v ;
 
   for(uint8_t i = 0; i < 6; ++i) {
     history[i] = 0;
