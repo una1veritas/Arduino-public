@@ -4,6 +4,7 @@ enum CS1x_CLK_SEL_BITS {
   CLK_STOP = 0,
   CLK_T1S_1 = 1,
   CLK_T1S_8 = 2,
+  CLK_T1S_64 = 3,
 };
 
 // global 
