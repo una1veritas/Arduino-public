@@ -27,7 +27,7 @@ void setup() {
   TCCR1B = (3 << WGM12) | CLK_CS1x_8;
   // 
   // Set the TOP limit 
-  const unsigned int PERIOD = 159;
+  const unsigned int PERIOD = 127;
   ICR1 = PERIOD; //CLKDIV8, 79 -> 25kHz
   //
   // Set Duty Cycle (0 to 127)
