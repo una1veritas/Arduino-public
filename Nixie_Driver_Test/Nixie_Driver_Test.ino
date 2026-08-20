@@ -25,7 +25,7 @@ void setup() {
   // Fast PWM Mode 
   TCCR1A = (2 << COM1A0) | (2 << WGM10);
   TCCR1B = (3 << WGM12) | CLK_CS1x_8;
-  // 
+  //  
   // Set the TOP limit 
   const unsigned int PERIOD = 127;
   ICR1 = PERIOD; //CLKDIV8, 79 -> 25kHz
